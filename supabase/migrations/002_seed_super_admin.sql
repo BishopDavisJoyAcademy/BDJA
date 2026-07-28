@@ -1,0 +1,4 @@
+-- Create super admin user (run after auth user is created manually or via script)
+-- This is a template; actual auth user creation happens via Supabase Auth API
+-- INSERT INTO profiles (id, email, full_name, role, campus_id, password_changed)
+-- VALUES ('super-admin-uuid', 'admin@bdja.ac.ke', 'Super Admin', 'super_admin', null, true);

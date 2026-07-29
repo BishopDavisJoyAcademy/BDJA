@@ -526,16 +526,27 @@ INSERT INTO campuses (name, location) VALUES
 ('BDJA Nanyuki', 'Nanyuki, Laikipia County'),
 ('BDJA Ngaridari', 'Ngaridari, Meru County');
 
--- Insert default subjects
-INSERT INTO subjects (name, code, grade_levels) VALUES
-('Mathematics', 'MATH', ARRAY['playgroup','pp1','pp2','grade1','grade2','grade3','grade4','grade5','grade6']),
-('English', 'ENG', ARRAY['playgroup','pp1','pp2','grade1','grade2','grade3','grade4','grade5','grade6']),
-('Kiswahili', 'KIS', ARRAY['playgroup','pp1','pp2','grade1','grade2','grade3','grade4','grade5','grade6']),
-('Science & Technology', 'SCI', ARRAY['grade1','grade2','grade3','grade4','grade5','grade6']),
-('Social Studies', 'SST', ARRAY['grade1','grade2','grade3','grade4','grade5','grade6']),
-('CRE', 'CRE', ARRAY['playgroup','pp1','pp2','grade1','grade2','grade3','grade4','grade5','grade6']),
-('Creative Arts', 'ART', ARRAY['playgroup','pp1','pp2','grade1','grade2','grade3','grade4','grade5','grade6']),
-('Physical Education', 'PE', ARRAY['playgroup','pp1','pp2','grade1','grade2','grade3','grade4','grade5','grade6']),
-('Home Science', 'HS', ARRAY['grade4','grade5','grade6']),
-('Agriculture', 'AGR', ARRAY['grade4','grade5','grade6']),
-('Indigenous Languages', 'IL', ARRAY['playgroup','pp1','pp2','grade1','grade2','grade3','grade4','grade5','grade6']);
+
+-- Audit trigger function
+CREATE OR REPLACE FUNCTION audit_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (TG_OP = 'UPDATE') THEN
+    INSERT INTO audit_logs (user_id, action, table_name, record_id, old_data, new_data)
+    VALUES (auth.uid(), 'UPDATE', TG_TABLE_NAME, NEW.id, row_to_json(OLD), row_to_json(NEW));
+  ELSIF (TG_OP = 'INSERT') THEN
+    INSERT INTO audit_logs (user_id, action, table_name, record_id, new_data)
+    VALUES (auth.uid(), 'INSERT', TG_TABLE_NAME, NEW.id, row_to_json(NEW));
+  ELSIF (TG_OP = 'DELETE') THEN
+    INSERT INTO audit_logs (user_id, action, table_name, record_id, old_data)
+    VALUES (auth.uid(), 'DELETE', TG_TABLE_NAME, OLD.id, row_to_json(OLD));
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Attach audit triggers to key tables
+CREATE TRIGGER audit_assessments AFTER INSERT OR UPDATE OR DELETE ON assessments FOR EACH ROW EXECUTE FUNCTION audit_trigger();
+CREATE TRIGGER audit_fee_payments AFTER INSERT OR UPDATE OR DELETE ON fee_payments FOR EACH ROW EXECUTE FUNCTION audit_trigger();
+CREATE TRIGGER audit_profiles AFTER UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION audit_trigger();
+CREATE TRIGGER audit_students AFTER UPDATE ON students FOR EACH ROW EXECUTE FUNCTION audit_trigger();

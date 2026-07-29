@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Table, TableHeader, TableRow, TableHead, TableCell } from "@/components/ui/Table";
-import { Users, Plus, Shield, UserCheck, UserX } from "lucide-react";
+import { Users, Plus, UserCheck, UserX } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function AdminUsersPage() {
@@ -46,15 +46,14 @@ export default function AdminUsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const password = "BDJA2026!";
     try {
       const res = await fetch("/api/admin/create-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, password }),
+        body: JSON.stringify({ ...formData }),
       });
       if (!res.ok) throw new Error("Failed to create user");
-      toast.success("User created with default password BDJA2026!");
+      toast.success("User created successfully");
       setIsModalOpen(false);
       setFormData({ email: "", full_name: "", phone: "", role: "teacher", campus_id: "" });
       loadData();
@@ -139,7 +138,7 @@ export default function AdminUsersPage() {
             <option value="">Select campus</option>
             {campuses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
-          <p className="text-xs text-gray-400">Default password will be: <span className="font-mono text-bdja-primary">BDJA2026!</span></p>
+          <p className="text-xs text-gray-400">Default password is set via environment variable DEFAULT_PASSWORD</p>
           <Button type="submit" variant="primary" className="w-full">Create User</Button>
         </form>
       </Modal>

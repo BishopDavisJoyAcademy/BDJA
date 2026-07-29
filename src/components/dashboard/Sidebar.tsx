@@ -25,7 +25,9 @@ const navItems = [
   { label: "Attendance", icon: UserCheck, path: "/attendance", roles: ["student", "parent", "teacher", "class_prefect", "principal", "super_admin"], permission: "viewAttendance" },
   { label: "Admissions", icon: ClipboardList, path: "/admissions", roles: ["principal", "super_admin"], permission: "viewAdmissions" },
   { label: "Users", icon: Users, path: "/admin/users", roles: ["principal", "super_admin"], permission: "manageUsers" },
+  { label: "Subjects", icon: BookOpen, path: "/admin/subjects", roles: ["principal", "super_admin"], permission: "manageUsers" },
   { label: "Analytics", icon: BarChart3, path: "/admin/analytics", roles: ["principal", "super_admin", "bursar", "librarian"], permission: "viewAnalytics" },
+  { label: "Audit Logs", icon: Shield, path: "/admin/audit", roles: ["principal", "super_admin"], permission: "viewAuditLogs" },
   { label: "Settings", icon: Settings, path: "/settings", roles: ["principal", "super_admin"], permission: "manageRoles" },
 ];
 

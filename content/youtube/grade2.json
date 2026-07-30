@@ -1,0 +1,999 @@
+[
+  {
+    "id": "grade2-001",
+    "title": "Addition and Subtraction up to 20 | Simple Math with Kids Academy",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Addition and Subtraction within 20",
+    "youtube_url": "https://youtube.com/watch?v=VOMt_H7Q684",
+    "summary": "Kids Academy teaches addition and subtraction up to 20 with colorful visuals and step-by-step examples. Builds number fluency essential for Grade 2 math progression.",
+    "tags": [
+      "addition",
+      "subtraction",
+      "numbers up to 20",
+      "grade 2 math",
+      "kids academy"
+    ],
+    "duration_seconds": 1129,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/VOMt_H7Q684/mqdefault.jpg",
+    "channel": "Kids Academy"
+  },
+  {
+    "id": "grade2-002",
+    "title": "What Are Fractions? - Math Antics",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Introduction to Fractions",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Math Antics introduces key concepts for understanding fractions. Clear explanations and visual models help Grade 2 students grasp what fractions are and how they work.",
+    "tags": [
+      "fractions",
+      "math basics",
+      "grade 2 math",
+      "math antics",
+      "visual math"
+    ],
+    "duration_seconds": 724,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade2-003",
+    "title": "4 Amazing Science Experiments for a Day Inside | SciShow Kids",
+    "subject": "Science",
+    "category": "Experiments",
+    "topic": "Hands-on Science Experiments",
+    "youtube_url": "https://youtube.com/watch?v=1Q_4HXewiS0",
+    "summary": "Squeaks shows Mister Brown favorite rainy day experiments including blubber, balloon rockets, invisible ink, and zoetropes. NGSS-aligned science for early elementary learners.",
+    "tags": [
+      "science experiments",
+      "hands-on science",
+      "grade 2 science",
+      "scishow kids",
+      "STEM"
+    ],
+    "duration_seconds": 1560,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/1Q_4HXewiS0/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade2-004",
+    "title": "How To Draw Our Art For Kids Hub Logo",
+    "subject": "Art",
+    "category": "Drawing",
+    "topic": "Basic Drawing with Shapes",
+    "youtube_url": "https://youtube.com/watch?v=x0e3EPHda2c",
+    "summary": "Rob teaches kids to draw the Art For Kids Hub logo using simple shapes and primary colors. A perfect introduction to drawing basics for Grade 2 artists.",
+    "tags": [
+      "drawing",
+      "art",
+      "shapes",
+      "colors",
+      "grade 2 art"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/x0e3EPHda2c/mqdefault.jpg",
+    "channel": "Art for Kids Hub"
+  },
+  {
+    "id": "grade2-005",
+    "title": "Dinosaur Yoga for Kids! Dinosaur Park | A Cosmic Kids Yoga Adventure",
+    "subject": "Physical Education",
+    "category": "Movement",
+    "topic": "Dinosaur-Themed Yoga",
+    "youtube_url": "https://youtube.com/watch?v=Sjq2OPw3AMQ",
+    "summary": "Join Jaime on a time-traveling yoga adventure to Dinosaur Park. Kids learn yoga poses inspired by dinosaurs while building strength, flexibility, and imagination.",
+    "tags": [
+      "yoga",
+      "dinosaurs",
+      "physical education",
+      "mindfulness",
+      "grade 2 PE"
+    ],
+    "duration_seconds": 1200,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/Sjq2OPw3AMQ/mqdefault.jpg",
+    "channel": "Cosmic Kids Yoga"
+  },
+  {
+    "id": "grade2-006",
+    "title": "Learn Addition and Counting | Mental Math for 1st Grade | Kids Academy",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Mental Math Strategies",
+    "youtube_url": "https://youtube.com/watch?v=scvwSXku0HQ",
+    "summary": "Kids Academy teaches mental math strategies for addition and counting. Grade 2 students build computational fluency through visual models and practice problems.",
+    "tags": [
+      "mental math",
+      "addition",
+      "counting",
+      "grade 2 math",
+      "kids academy"
+    ],
+    "duration_seconds": 300,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/scvwSXku0HQ/mqdefault.jpg",
+    "channel": "Kids Academy"
+  },
+  {
+    "id": "grade2-007",
+    "title": "The Ultimate A to Z Learn-A-Thon | Learn to Read | Alphablocks",
+    "subject": "English",
+    "category": "Reading",
+    "topic": "Complete Alphabet and Reading",
+    "youtube_url": "https://youtube.com/watch?v=9HKbQ1QyLaU",
+    "summary": "An educational marathon where children traverse A to Z and engage in captivating reading activities. Dynamic storytelling brings the alphabet to life for Grade 2 readers.",
+    "tags": [
+      "alphabet",
+      "reading",
+      "phonics",
+      "alphablocks",
+      "grade 2 literacy"
+    ],
+    "duration_seconds": 3600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/9HKbQ1QyLaU/mqdefault.jpg",
+    "channel": "Alphablocks"
+  },
+  {
+    "id": "grade2-008",
+    "title": "How To Draw A Cute Vanilla Ice Cream Kitten",
+    "subject": "Art",
+    "category": "Drawing",
+    "topic": "Cute Animal Drawing",
+    "youtube_url": "https://youtube.com/watch?v=EBO56RtTUbg",
+    "summary": "Hadley and Rob draw a super cute Vanilla Ice Cream Kitten - a sweet mashup covered in sprinkles sitting in a waffle cone. Grade 2 artists learn creative character design.",
+    "tags": [
+      "drawing",
+      "cute animals",
+      "ice cream",
+      "art for kids hub",
+      "creative drawing"
+    ],
+    "duration_seconds": 900,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/EBO56RtTUbg/mqdefault.jpg",
+    "channel": "Art for Kids Hub"
+  },
+  {
+    "id": "grade2-009",
+    "title": "Math Antics - Place Value",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Place Value (Ones, Tens, Hundreds)",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Math Antics teaches place value concepts for ones, tens, and hundreds. Understand how the position of a digit determines its value in a number.",
+    "tags": [
+      "place value",
+      "ones",
+      "tens",
+      "hundreds",
+      "grade 2 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade2-010",
+    "title": "Math Antics - Multi-Digit Addition",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Adding Two-Digit Numbers",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to add two-digit numbers with regrouping. Math Antics breaks down the standard algorithm with clear visual models and step-by-step instructions.",
+    "tags": [
+      "addition",
+      "two-digit",
+      "regrouping",
+      "grade 2 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade2-011",
+    "title": "Math Antics - Multi-Digit Subtraction",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Subtracting Two-Digit Numbers",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to subtract two-digit numbers with borrowing. Math Antics explains the standard subtraction algorithm with visual models and practice examples.",
+    "tags": [
+      "subtraction",
+      "two-digit",
+      "borrowing",
+      "grade 2 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade2-012",
+    "title": "The Counting Money Song | Coins and Bills",
+    "subject": "Mathematics",
+    "category": "Money",
+    "topic": "Counting Money",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn to count combinations of coins and bills. Practice making specific amounts and making change in real-world shopping scenarios.",
+    "tags": [
+      "money",
+      "counting",
+      "coins",
+      "bills",
+      "grade 2 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-013",
+    "title": "The Telling Time Song | Quarter Past, Half Past, Quarter To",
+    "subject": "Mathematics",
+    "category": "Time",
+    "topic": "Telling Time to the Nearest 5 Minutes",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn to tell time to the nearest 5 minutes using analog clocks. Understand quarter past, half past, and quarter to the hour.",
+    "tags": [
+      "time",
+      "analog clock",
+      "quarter past",
+      "half past",
+      "grade 2 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-014",
+    "title": "The Arrays Song | Introduction to Multiplication",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Arrays and Repeated Addition",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about arrays as rows and columns of objects. Arrays are the foundation of multiplication - 3 rows of 4 makes 12 objects total.",
+    "tags": [
+      "arrays",
+      "multiplication",
+      "repeated addition",
+      "grade 2 math",
+      "visual math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-015",
+    "title": "The Even and Odd Numbers Song",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Even and Odd Numbers",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn to identify even and odd numbers. Even numbers can be paired up, while odd numbers always have one left over. A key number sense concept for Grade 2.",
+    "tags": [
+      "even numbers",
+      "odd numbers",
+      "number sense",
+      "grade 2 math",
+      "patterns"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-016",
+    "title": "The Number Patterns Song | Skip Counting and Patterns",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Number Patterns",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn to identify and extend number patterns. Recognize growing patterns, repeating patterns, and skip counting sequences in numbers.",
+    "tags": [
+      "patterns",
+      "number patterns",
+      "skip counting",
+      "grade 2 math",
+      "sequences"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-017",
+    "title": "The Geometry Song | 2D Shapes and Their Attributes",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Properties of 2D Shapes",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about sides, vertices, and angles of 2D shapes. Compare and classify shapes based on their geometric attributes.",
+    "tags": [
+      "geometry",
+      "2D shapes",
+      "sides",
+      "vertices",
+      "grade 2 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-018",
+    "title": "The Partitioning Shapes Song | Halves, Thirds, Fourths",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Partitioning Shapes into Equal Parts",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn to partition circles and rectangles into halves, thirds, and fourths. Understand that equal parts must be the same size.",
+    "tags": [
+      "fractions",
+      "halves",
+      "thirds",
+      "fourths",
+      "partitioning"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-019",
+    "title": "The Length Measurement Song | Inches, Feet, Yards",
+    "subject": "Mathematics",
+    "category": "Measurement",
+    "topic": "Measuring Length",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn to measure length using inches, feet, and yards. Practice estimating and measuring objects with rulers and measuring tapes.",
+    "tags": [
+      "measurement",
+      "length",
+      "inches",
+      "feet",
+      "grade 2 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-020",
+    "title": "The Data and Graphs Song | Bar Graphs and Line Plots",
+    "subject": "Mathematics",
+    "category": "Data Handling",
+    "topic": "Creating and Reading Graphs",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn to create and read bar graphs and line plots. Collect data, organize it, and represent it visually to answer questions.",
+    "tags": [
+      "graphs",
+      "bar graphs",
+      "line plots",
+      "data",
+      "grade 2 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-021",
+    "title": "The Contractions Song | Can't, Won't, Don't, Isn't",
+    "subject": "English",
+    "category": "Grammar",
+    "topic": "Introduction to Contractions",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about contractions - shortened forms of two words joined together. Can't, won't, don't, isn't - understand what each contraction means.",
+    "tags": [
+      "contractions",
+      "grammar",
+      "apostrophe",
+      "grade 2 english",
+      "writing"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-022",
+    "title": "The Synonyms Song | Words with Similar Meanings",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Synonyms",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about synonyms - words that have similar meanings. Big and large, happy and joyful, sad and unhappy - expand vocabulary with synonyms.",
+    "tags": [
+      "synonyms",
+      "vocabulary",
+      "words",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-023",
+    "title": "The Antonyms Song | Words with Opposite Meanings",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Antonyms",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about antonyms - words with opposite meanings. Hot and cold, up and down, fast and slow - build vocabulary with antonym pairs.",
+    "tags": [
+      "antonyms",
+      "vocabulary",
+      "opposites",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-024",
+    "title": "The Homophones Song | Words That Sound Alike",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Homophones",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about homophones - words that sound the same but have different meanings and spellings. Their, there, they're and to, too, two.",
+    "tags": [
+      "homophones",
+      "spelling",
+      "vocabulary",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-025",
+    "title": "The Compound Words Song | Sun + Flower = Sunflower",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Compound Words",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about compound words - two smaller words joined to make a new word. Sun + flower = sunflower, rain + bow = rainbow, tooth + brush = toothbrush.",
+    "tags": [
+      "compound words",
+      "vocabulary",
+      "spelling",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-026",
+    "title": "The Prefixes Song | Un-, Re-, Pre-, Dis-",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Prefixes",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn common prefixes and how they change word meanings. Un- means not, re- means again, pre- means before, dis- means not or opposite.",
+    "tags": [
+      "prefixes",
+      "vocabulary",
+      "word parts",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-027",
+    "title": "The Suffixes Song | -Ful, -Less, -Ly, -Er",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Suffixes",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn common suffixes and how they change word meanings. -Ful means full of, -less means without, -ly means in a way, -er means more or a person who.",
+    "tags": [
+      "suffixes",
+      "vocabulary",
+      "word parts",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-028",
+    "title": "The Cause and Effect Song | Reading Comprehension",
+    "subject": "English",
+    "category": "Reading",
+    "topic": "Cause and Effect Relationships",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn to identify cause and effect relationships in stories. Understand that every effect has a cause and every cause leads to an effect.",
+    "tags": [
+      "cause and effect",
+      "reading comprehension",
+      "grade 2 reading",
+      "literacy"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-029",
+    "title": "The Compare and Contrast Song | Reading Strategy",
+    "subject": "English",
+    "category": "Reading",
+    "topic": "Comparing and Contrasting",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn to compare and contrast two things by finding similarities and differences. Use Venn diagrams to organize thinking about two subjects.",
+    "tags": [
+      "compare and contrast",
+      "reading strategy",
+      "venn diagram",
+      "grade 2 reading"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-030",
+    "title": "The Author's Purpose Song | Persuade, Inform, Entertain",
+    "subject": "English",
+    "category": "Reading",
+    "topic": "Author's Purpose (PIE)",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about the three main purposes authors have for writing - to persuade, to inform, and to entertain. Identify the author's purpose in different texts.",
+    "tags": [
+      "author's purpose",
+      "persuade",
+      "inform",
+      "entertain",
+      "grade 2 reading"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-031",
+    "title": "Math Antics - Place Value",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Place Value (Ones, Tens, Hundreds)",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Math Antics teaches place value concepts for ones, tens, and hundreds. Understand how the position of a digit determines its value in a number.",
+    "tags": [
+      "place value",
+      "ones",
+      "tens",
+      "hundreds",
+      "grade 2 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade2-032",
+    "title": "Math Antics - Multi-Digit Addition",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Adding Two-Digit Numbers",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to add two-digit numbers with regrouping. Math Antics breaks down the standard algorithm with clear visual models and step-by-step instructions.",
+    "tags": [
+      "addition",
+      "two-digit",
+      "regrouping",
+      "grade 2 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade2-033",
+    "title": "Math Antics - Multi-Digit Subtraction",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Subtracting Two-Digit Numbers",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to subtract two-digit numbers with borrowing. Math Antics explains the standard subtraction algorithm with visual models and practice examples.",
+    "tags": [
+      "subtraction",
+      "two-digit",
+      "borrowing",
+      "grade 2 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade2-034",
+    "title": "The Counting Money Song | Coins and Bills",
+    "subject": "Mathematics",
+    "category": "Money",
+    "topic": "Counting Money",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn to count combinations of coins and bills. Practice making specific amounts and making change in real-world shopping scenarios.",
+    "tags": [
+      "money",
+      "counting",
+      "coins",
+      "bills",
+      "grade 2 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-035",
+    "title": "The Telling Time Song | Quarter Past, Half Past, Quarter To",
+    "subject": "Mathematics",
+    "category": "Time",
+    "topic": "Telling Time to the Nearest 5 Minutes",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn to tell time to the nearest 5 minutes using analog clocks. Understand quarter past, half past, and quarter to the hour.",
+    "tags": [
+      "time",
+      "analog clock",
+      "quarter past",
+      "half past",
+      "grade 2 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-036",
+    "title": "The Arrays Song | Introduction to Multiplication",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Arrays and Repeated Addition",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about arrays as rows and columns of objects. Arrays are the foundation of multiplication - 3 rows of 4 makes 12 objects total.",
+    "tags": [
+      "arrays",
+      "multiplication",
+      "repeated addition",
+      "grade 2 math",
+      "visual math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-037",
+    "title": "The Even and Odd Numbers Song",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Even and Odd Numbers",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn to identify even and odd numbers. Even numbers can be paired up, while odd numbers always have one left over. A key number sense concept for Grade 2.",
+    "tags": [
+      "even numbers",
+      "odd numbers",
+      "number sense",
+      "grade 2 math",
+      "patterns"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-038",
+    "title": "The Number Patterns Song | Skip Counting and Patterns",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Number Patterns",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn to identify and extend number patterns. Recognize growing patterns, repeating patterns, and skip counting sequences in numbers.",
+    "tags": [
+      "patterns",
+      "number patterns",
+      "skip counting",
+      "grade 2 math",
+      "sequences"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-039",
+    "title": "The Geometry Song | 2D Shapes and Their Attributes",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Properties of 2D Shapes",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about sides, vertices, and angles of 2D shapes. Compare and classify shapes based on their geometric attributes.",
+    "tags": [
+      "geometry",
+      "2D shapes",
+      "sides",
+      "vertices",
+      "grade 2 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-040",
+    "title": "The Partitioning Shapes Song | Halves, Thirds, Fourths",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Partitioning Shapes into Equal Parts",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn to partition circles and rectangles into halves, thirds, and fourths. Understand that equal parts must be the same size.",
+    "tags": [
+      "fractions",
+      "halves",
+      "thirds",
+      "fourths",
+      "partitioning"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-041",
+    "title": "The Length Measurement Song | Inches, Feet, Yards",
+    "subject": "Mathematics",
+    "category": "Measurement",
+    "topic": "Measuring Length",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn to measure length using inches, feet, and yards. Practice estimating and measuring objects with rulers and measuring tapes.",
+    "tags": [
+      "measurement",
+      "length",
+      "inches",
+      "feet",
+      "grade 2 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-042",
+    "title": "The Data and Graphs Song | Bar Graphs and Line Plots",
+    "subject": "Mathematics",
+    "category": "Data Handling",
+    "topic": "Creating and Reading Graphs",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn to create and read bar graphs and line plots. Collect data, organize it, and represent it visually to answer questions.",
+    "tags": [
+      "graphs",
+      "bar graphs",
+      "line plots",
+      "data",
+      "grade 2 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-043",
+    "title": "The Contractions Song | Can't, Won't, Don't, Isn't",
+    "subject": "English",
+    "category": "Grammar",
+    "topic": "Introduction to Contractions",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about contractions - shortened forms of two words joined together. Can't, won't, don't, isn't - understand what each contraction means.",
+    "tags": [
+      "contractions",
+      "grammar",
+      "apostrophe",
+      "grade 2 english",
+      "writing"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-044",
+    "title": "The Synonyms Song | Words with Similar Meanings",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Synonyms",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about synonyms - words that have similar meanings. Big and large, happy and joyful, sad and unhappy - expand vocabulary with synonyms.",
+    "tags": [
+      "synonyms",
+      "vocabulary",
+      "words",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-045",
+    "title": "The Antonyms Song | Words with Opposite Meanings",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Antonyms",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about antonyms - words with opposite meanings. Hot and cold, up and down, fast and slow - build vocabulary with antonym pairs.",
+    "tags": [
+      "antonyms",
+      "vocabulary",
+      "opposites",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-046",
+    "title": "The Homophones Song | Words That Sound Alike",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Homophones",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about homophones - words that sound the same but have different meanings and spellings. Their, there, they're and to, too, two.",
+    "tags": [
+      "homophones",
+      "spelling",
+      "vocabulary",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-047",
+    "title": "The Compound Words Song | Sun + Flower = Sunflower",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Compound Words",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about compound words - two smaller words joined to make a new word. Sun + flower = sunflower, rain + bow = rainbow, tooth + brush = toothbrush.",
+    "tags": [
+      "compound words",
+      "vocabulary",
+      "spelling",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-048",
+    "title": "The Prefixes Song | Un-, Re-, Pre-, Dis-",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Prefixes",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn common prefixes and how they change word meanings. Un- means not, re- means again, pre- means before, dis- means not or opposite.",
+    "tags": [
+      "prefixes",
+      "vocabulary",
+      "word parts",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-049",
+    "title": "The Suffixes Song | -Ful, -Less, -Ly, -Er",
+    "subject": "English",
+    "category": "Vocabulary",
+    "topic": "Suffixes",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn common suffixes and how they change word meanings. -Ful means full of, -less means without, -ly means in a way, -er means more or a person who.",
+    "tags": [
+      "suffixes",
+      "vocabulary",
+      "word parts",
+      "grade 2 english",
+      "language"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade2-050",
+    "title": "The Cause and Effect Song | Reading Comprehension",
+    "subject": "English",
+    "category": "Reading",
+    "topic": "Cause and Effect Relationships",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn to identify cause and effect relationships in stories. Understand that every effect has a cause and every cause leads to an effect.",
+    "tags": [
+      "cause and effect",
+      "reading comprehension",
+      "grade 2 reading",
+      "literacy"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  }
+]

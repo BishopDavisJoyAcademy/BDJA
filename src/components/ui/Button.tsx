@@ -1,55 +1,32 @@
-import { cn } from "@/lib/utils";
-import { ButtonHTMLAttributes, forwardRef } from "react";
+"use client";
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
+import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "outline" | "danger" | "ghost";
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
 }
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", isLoading, children, disabled, ...props }, ref) => {
-    const variants = {
-      primary: "bg-bdja-primary text-white hover:bg-bdja-accent",
-      secondary: "bg-bdja-secondary text-white hover:opacity-90",
-      outline: "border-2 border-bdja-primary text-bdja-primary hover:bg-bdja-primary hover:text-white",
-      ghost: "text-bdja-primary hover:bg-bdja-primary/10",
-      danger: "bg-red-600 text-white hover:bg-red-700",
-    };
+export function Button({ children, variant = "primary", size = "md", isLoading, disabled, className, ...props }: ButtonProps) {
+  const variants = {
+    primary: "bg-bdja-primary text-white hover:bg-bdja-accent",
+    secondary: "bg-bdja-secondary text-white hover:bg-yellow-600",
+    outline: "border-2 border-bdja-primary text-bdja-primary hover:bg-bdja-primary hover:text-white",
+    danger: "bg-bdja-danger text-white hover:bg-red-600",
+    ghost: "text-gray-600 hover:bg-gray-100",
+  };
+  const sizes = { sm: "px-3 py-1.5 text-xs", md: "px-4 py-2 text-sm", lg: "px-6 py-3 text-base" };
 
-    const sizes = {
-      sm: "px-3 py-1.5 text-sm",
-      md: "px-4 py-2.5 text-sm",
-      lg: "px-6 py-3 text-base",
-    };
-
-    return (
-      <button
-        ref={ref}
-        className={cn(
-          "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
-          variants[variant],
-          sizes[size],
-          className
-        )}
-        disabled={disabled || isLoading}
-        {...props}
-      >
-        {isLoading ? (
-          <span className="flex items-center gap-2">
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            Loading...
-          </span>
-        ) : (
-          children
-        )}
-      </button>
-    );
-  }
-);
-
-Button.displayName = "Button";
-export { Button };
+  return (
+    <button
+      disabled={disabled || isLoading}
+      className={cn("inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed", variants[variant], sizes[size], className)}
+      {...props}
+    >
+      {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+      {children}
+    </button>
+  );
+}

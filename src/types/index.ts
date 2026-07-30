@@ -157,20 +157,21 @@ export interface VoraContent {
   id: string;
   title: string;
   description?: string;
-  video_url: string;
-  transcript?: string;
+  subject?: string;
+  category?: string;
+  topic?: string;
+  youtube_url: string;
   summary?: string;
-  captions?: any[];
+  tags?: string[];
   grade_level: string;
-  subject_id?: string;
-  strand?: string;
-  sub_strand?: string;
-  specific_learning_outcome?: string;
-  visibility: 'class' | 'campus' | 'cross_campus';
-  class_id?: string;
-  campus_id: string;
-  approved: boolean;
-  uploaded_by: string;
+  duration_seconds?: number;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  thumbnail_url?: string;
+  channel?: string;
+  source?: 'local' | 'youtube';
+  visibility?: 'class' | 'campus' | 'cross_campus';
+  approved?: boolean;
+  uploaded_by?: string;
 }
 
 export interface LibraryResource {
@@ -296,4 +297,19 @@ export interface JoyMessage {
   content: string;
   timestamp: string;
   context?: Record<string, any>;
+}
+
+export interface SavedVideo {
+  id: string;
+  user_id: string;
+  video_id: string;
+  title: string;
+  subject?: string;
+  grade_level?: string;
+  youtube_url: string;
+  summary?: string;
+  thumbnail_url?: string;
+  duration_seconds?: number;
+  difficulty?: string;
+  saved_at: string;
 }

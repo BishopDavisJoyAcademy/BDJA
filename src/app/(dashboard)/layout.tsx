@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { JoyChat } from "@/components/joy/JoyChat";
-import { useAppStore } from "@/hooks/useStore";
+import { QueryProvider } from "@/components/shared/QueryProvider";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const { user, loading } = useAuth();
-  const { sidebarOpen } = useAppStore();
+  const router = useRouter();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -21,11 +20,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-bdja-light">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Loading BDJA...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-10 h-10 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -33,13 +29,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="min-h-screen dashboard-bg">
-      <Sidebar />
-      <div className={`transition-all duration-300 ${sidebarOpen ? "ml-64" : "ml-0"}`}>
-        <TopBar />
-        <main className="p-6 pt-20">{children}</main>
+    <QueryProvider>
+      <div className="min-h-screen bg-gray-50 flex">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <TopBar />
+          <main className="flex-1 p-6 overflow-y-auto">{children}</main>
+        </div>
+        <JoyChat />
       </div>
-      <JoyChat />
-    </div>
+    </QueryProvider>
   );
 }

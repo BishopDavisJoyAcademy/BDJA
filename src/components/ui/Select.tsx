@@ -1,19 +1,23 @@
-import { cn } from "@/lib/utils";
-import { SelectHTMLAttributes, forwardRef } from "react";
+"use client";
 
-const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
-  ({ className, children, ...props }, ref) => (
+import { cn } from "@/lib/utils";
+
+interface SelectOption { value: string; label: string; }
+
+interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  options: SelectOption[];
+}
+
+export function Select({ options, className, ...props }: SelectProps) {
+  return (
     <select
-      ref={ref}
       className={cn(
-        "w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-bdja-primary focus:border-transparent transition-all bg-white text-sm appearance-none",
+        "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-bdja-primary/20 focus:border-bdja-primary transition-colors",
         className
       )}
       {...props}
     >
-      {children}
+      {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
     </select>
-  )
-);
-Select.displayName = "Select";
-export { Select };
+  );
+}

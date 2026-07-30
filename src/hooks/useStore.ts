@@ -2,11 +2,12 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Profile, UserRole, NotificationItem } from "@/types";
+import { Profile, NotificationItem } from "@/types";
 
 interface AppState {
   user: Profile | null;
   setUser: (user: Profile | null) => void;
+  clearUser: () => void;
   notifications: NotificationItem[];
   setNotifications: (notifications: NotificationItem[]) => void;
   unreadCount: number;
@@ -28,25 +29,29 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       user: null,
       setUser: (user) => set({ user }),
+      clearUser: () => set({ user: null, notifications: [], unreadCount: 0 }),
       notifications: [],
       setNotifications: (notifications) => set({ notifications }),
       unreadCount: 0,
-      setUnreadCount: (unreadCount) => set({ unreadCount }),
+      setUnreadCount: (count) => set({ unreadCount: count }),
       sidebarOpen: false,
-      setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+      setSidebarOpen: (open) => set({ sidebarOpen: open }),
       activeCampus: null,
-      setActiveCampus: (activeCampus) => set({ activeCampus }),
+      setActiveCampus: (campusId) => set({ activeCampus: campusId }),
       joyOpen: false,
-      setJoyOpen: (joyOpen) => set({ joyOpen }),
+      setJoyOpen: (open) => set({ joyOpen: open }),
       onboardingStep: 0,
-      setOnboardingStep: (onboardingStep) => set({ onboardingStep }),
+      setOnboardingStep: (step) => set({ onboardingStep: step }),
       isOnboarding: false,
-      setIsOnboarding: (isOnboarding) => set({ isOnboarding }),
+      setIsOnboarding: (v) => set({ isOnboarding: v }),
     }),
     {
-      name: "bdja-store",
+      name: "bdja-store-v2",
+      // NEVER persist user data, notifications, or auth state to localStorage
       partialize: (state) => ({
+        sidebarOpen: state.sidebarOpen,
         activeCampus: state.activeCampus,
+        joyOpen: state.joyOpen,
         onboardingStep: state.onboardingStep,
         isOnboarding: state.isOnboarding,
       }),

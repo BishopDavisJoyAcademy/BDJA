@@ -1,0 +1,1002 @@
+[
+  {
+    "id": "playgroup-001",
+    "title": "Baby Learning with Ms Rachel - First Words, Songs and Nursery Rhymes",
+    "subject": "English",
+    "category": "Language Development",
+    "topic": "First Words and Speech",
+    "youtube_url": "https://youtube.com/watch?v=hTqtGJwsJVE",
+    "summary": "Ms Rachel teaches babies and toddlers their first words through songs, nursery rhymes, and interactive play. Covers mama, dada, animal sounds, and gestures to encourage speech and language milestones.",
+    "tags": [
+      "first words",
+      "speech therapy",
+      "baby learning",
+      "toddler songs",
+      "language development"
+    ],
+    "duration_seconds": 3600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/hTqtGJwsJVE/mqdefault.jpg",
+    "channel": "Ms Rachel - Toddler Learning Videos"
+  },
+  {
+    "id": "playgroup-002",
+    "title": "ABC Quack - Alphabet Song with Ducks",
+    "subject": "English",
+    "category": "Phonics",
+    "topic": "Alphabet Recognition",
+    "youtube_url": "https://youtube.com/watch?v=I_3mbra4dHU",
+    "summary": "A fun alphabet song where kids practice letters and quack like ducks. High-contrast visuals and slow pacing perfect for the youngest learners beginning their ABC journey.",
+    "tags": [
+      "alphabet",
+      "abc song",
+      "phonics",
+      "ducks",
+      "early literacy"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/I_3mbra4dHU/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-003",
+    "title": "The Colors Song with Popsicles",
+    "subject": "Mathematics",
+    "category": "Color Recognition",
+    "topic": "Learning Primary and Secondary Colors",
+    "youtube_url": "https://youtube.com/watch?v=RvgnuPL9x-s",
+    "summary": "Join JJ and friends to learn colors by making rainbow popsicles. Each color is matched with a real fruit, making color learning delicious and memorable for toddlers.",
+    "tags": [
+      "colors",
+      "popsicles",
+      "rainbow",
+      "fruit",
+      "color recognition"
+    ],
+    "duration_seconds": 150,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/RvgnuPL9x-s/mqdefault.jpg",
+    "channel": "Cocomelon - Nursery Rhymes"
+  },
+  {
+    "id": "playgroup-004",
+    "title": "The Alphabet Song + More | Learn Letters",
+    "subject": "English",
+    "category": "Phonics",
+    "topic": "Alphabet A to Z",
+    "youtube_url": "https://youtube.com/watch?v=l-sEZaHet8c",
+    "summary": "A super simple version of the classic Alphabet Song plus many more ABC songs and nursery rhymes. Over 130 million views make this a trusted resource for early letter learning.",
+    "tags": [
+      "alphabet song",
+      "abc",
+      "letters",
+      "nursery rhymes",
+      "early learning"
+    ],
+    "duration_seconds": 3600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/l-sEZaHet8c/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-005",
+    "title": "Phonics Song with Two Words | Nursery Rhymes",
+    "subject": "English",
+    "category": "Phonics",
+    "topic": "Letter Sounds and Vocabulary",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "ChuChu TV's classic phonics song teaches each letter with two words and their sounds. A for Airplane, B for Bus - building early phonemic awareness through catchy melodies.",
+    "tags": [
+      "phonics",
+      "letter sounds",
+      "abc",
+      "vocabulary",
+      "nursery rhymes"
+    ],
+    "duration_seconds": 300,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "ChuChu TV Nursery Rhymes & Kids Songs"
+  },
+  {
+    "id": "playgroup-006",
+    "title": "Counting to 10 | 10 Little Numbers Song",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Counting 1-10",
+    "youtube_url": "https://youtube.com/watch?v=BUZaPCLJA3c",
+    "summary": "Billy Beaver and the 10 Funny Little Numbers teach kids to count from 1 to 10 through an easy repetitious song with colorful animation. Perfect for first number learning.",
+    "tags": [
+      "counting",
+      "numbers 1-10",
+      "number song",
+      "early math",
+      "toddler learning"
+    ],
+    "duration_seconds": 150,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/BUZaPCLJA3c/mqdefault.jpg",
+    "channel": "Busy Beavers - Kids Learn ABCs 123s & More"
+  },
+  {
+    "id": "playgroup-007",
+    "title": "The Color Song by Blippi | Learn Colors for Toddlers",
+    "subject": "Mathematics",
+    "category": "Color Recognition",
+    "topic": "Color Names and Identification",
+    "youtube_url": "https://youtube.com/watch?v=rygCGixasfc",
+    "summary": "Blippi's energetic color song helps toddlers learn their colors through music and colorful visuals. Educational and engaging with Blippi's signature high-energy style.",
+    "tags": [
+      "colors",
+      "color song",
+      "toddlers",
+      "blippi",
+      "color learning"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/rygCGixasfc/mqdefault.jpg",
+    "channel": "Blippi - Kids Learning Videos"
+  },
+  {
+    "id": "playgroup-008",
+    "title": "Baby's First Words with Ms Rachel - Videos for Babies",
+    "subject": "English",
+    "category": "Language Development",
+    "topic": "50 First Words for Babies",
+    "youtube_url": "https://youtube.com/watch?v=zwL2o4jZxbc",
+    "summary": "Ms Rachel goes over about 50 first words for babies, incorporating sign language and gestures that help speech development. Research-based techniques for early language acquisition.",
+    "tags": [
+      "first words",
+      "baby talk",
+      "sign language",
+      "speech development",
+      "early learning"
+    ],
+    "duration_seconds": 1800,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/zwL2o4jZxbc/mqdefault.jpg",
+    "channel": "Ms Rachel - Toddler Learning Videos"
+  },
+  {
+    "id": "playgroup-009",
+    "title": "Baby Shark Dance | Most Viewed Video on YouTube",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Animal Songs and Movement",
+    "youtube_url": "https://youtube.com/watch?v=XqZsoesa55w",
+    "summary": "The most viewed video on YouTube of all time. Baby Shark Dance teaches animal names, family members, and gets toddlers moving with simple dance moves.",
+    "tags": [
+      "baby shark",
+      "dance",
+      "animal songs",
+      "movement",
+      "family members"
+    ],
+    "duration_seconds": 136,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/XqZsoesa55w/mqdefault.jpg",
+    "channel": "Pinkfong! Kids' Songs & Stories"
+  },
+  {
+    "id": "playgroup-010",
+    "title": "Twinkle Twinkle Little Star + More Nursery Rhymes",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Classic Nursery Rhymes",
+    "youtube_url": "https://youtube.com/watch?v=ymHSD8Z4n6o",
+    "summary": "A compilation of classic nursery rhymes including Twinkle Twinkle Little Star, Baa Baa Black Sheep, and more. Perfect for bedtime and language development.",
+    "tags": [
+      "nursery rhymes",
+      "twinkle twinkle",
+      "songs",
+      "bedtime",
+      "language"
+    ],
+    "duration_seconds": 3600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/ymHSD8Z4n6o/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-011",
+    "title": "Wheels on the Bus | CoComelon Nursery Rhymes & Kids Songs",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Transportation and Action Words",
+    "youtube_url": "https://youtube.com/watch?v=6X3A-Qe4lPg",
+    "summary": "The classic Wheels on the Bus song with Cocomelon's engaging animation. Teaches transportation vocabulary and action words through repetition and fun characters.",
+    "tags": [
+      "wheels on the bus",
+      "transportation",
+      "action words",
+      "cocomelon",
+      "songs"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/6X3A-Qe4lPg/mqdefault.jpg",
+    "channel": "Cocomelon - Nursery Rhymes"
+  },
+  {
+    "id": "playgroup-012",
+    "title": "Head, Shoulders, Knees and Toes | Exercise Song for Kids",
+    "subject": "Physical Education",
+    "category": "Movement",
+    "topic": "Body Parts Recognition",
+    "youtube_url": "https://youtube.com/watch?v=ZanHgPprl-0",
+    "summary": "The classic body parts song that gets toddlers moving while learning the names of body parts. Simple actions make it easy for the youngest learners to follow along.",
+    "tags": [
+      "body parts",
+      "movement",
+      "exercise",
+      "head shoulders",
+      "toddlers"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/ZanHgPprl-0/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-013",
+    "title": "If You're Happy and You Know It | Nursery Rhymes",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Emotions and Actions",
+    "youtube_url": "https://youtube.com/watch?v=71hqRT9U0wg",
+    "summary": "The beloved song that teaches emotions and actions. Clap your hands, stomp your feet, and shout hooray while learning to express feelings through music.",
+    "tags": [
+      "emotions",
+      "happy",
+      "actions",
+      "nursery rhymes",
+      "social skills"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/71hqRT9U0wg/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-014",
+    "title": "Old MacDonald Had a Farm | Animal Sounds Song",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Farm Animals and Sounds",
+    "youtube_url": "https://youtube.com/watch?v=_6HzoUcx3eo",
+    "summary": "Old MacDonald Had a Farm teaches toddlers the names and sounds of farm animals. A timeless song that builds vocabulary and phonemic awareness.",
+    "tags": [
+      "farm animals",
+      "animal sounds",
+      "old macdonald",
+      "vocabulary",
+      "phonics"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/_6HzoUcx3eo/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-015",
+    "title": "Five Little Ducks | Kids Songs | Super Simple Songs",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Counting Backwards 5-1",
+    "youtube_url": "https://youtube.com/watch?v=pZw9veQ76fo",
+    "summary": "Five little ducks went out one day... This counting song teaches backward counting from 5 to 1 while telling a gentle story about ducklings and their mother.",
+    "tags": [
+      "counting",
+      "backward counting",
+      "ducks",
+      "numbers",
+      "subtraction"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/pZw9veQ76fo/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-016",
+    "title": "The Itsy Bitsy Spider | Nursery Rhymes for Kids",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Finger Play and Fine Motor Skills",
+    "youtube_url": "https://youtube.com/watch?v=w_lCi8U49mA",
+    "summary": "The Itsy Bitsy Spider finger play song helps develop fine motor skills while teaching a simple narrative about perseverance. A classic for toddler development.",
+    "tags": [
+      "finger play",
+      "fine motor",
+      "spider",
+      "nursery rhymes",
+      "perseverance"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/w_lCi8U49mA/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-017",
+    "title": "Row Row Row Your Boat | Nursery Rhymes for Children",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Rhythm and Coordination",
+    "youtube_url": "https://youtube.com/watch?v=7otAJa3jui8",
+    "summary": "Row your boat gently down the stream while learning rhythm, coordination, and the concept of gentle movement. A soothing song perfect for group singing.",
+    "tags": [
+      "rowing",
+      "rhythm",
+      "coordination",
+      "gentle",
+      "group singing"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/7otAJa3jui8/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-018",
+    "title": "Open Shut Them | Super Simple Songs",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Opposites and Body Control",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Open shut them, open shut them... This song teaches opposites (open/close, big/small, fast/slow) while developing body control and following instructions.",
+    "tags": [
+      "opposites",
+      "body control",
+      "instructions",
+      "open shut",
+      "toddlers"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-019",
+    "title": "One Little Finger | Tap Tap Tap | Kids Songs",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Body Parts and Following Directions",
+    "youtube_url": "https://youtube.com/watch?v=tVlcKp3bO88",
+    "summary": "One little finger, tap tap tap! This interactive song teaches body parts and following directions. Kids point to their head, nose, chin, and more while singing.",
+    "tags": [
+      "body parts",
+      "finger",
+      "following directions",
+      "interactive",
+      "movement"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/tVlcKp3bO88/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-020",
+    "title": "Clean Up Song | Kids Song for Tidying Up",
+    "subject": "Life Skills",
+    "category": "Social Skills",
+    "topic": "Cleaning Up and Responsibility",
+    "youtube_url": "https://youtube.com/watch?v=SoXD5pp8zu0",
+    "summary": "Clean up, clean up, everybody everywhere! This song teaches toddlers the importance of cleaning up after playtime, building responsibility and good habits.",
+    "tags": [
+      "clean up",
+      "responsibility",
+      "tidying",
+      "life skills",
+      "habits"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/SoXD5pp8zu0/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-021",
+    "title": "Hello Hello! | Super Simple Songs",
+    "subject": "English",
+    "category": "Social Skills",
+    "topic": "Greetings and Social Interaction",
+    "youtube_url": "https://youtube.com/watch?v=tVlcKp3bO88",
+    "summary": "Hello, hello, hello, how are you? This greeting song teaches toddlers how to say hello, ask how someone is, and respond appropriately in social situations.",
+    "tags": [
+      "greetings",
+      "hello",
+      "social skills",
+      "manners",
+      "interaction"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/tVlcKp3bO88/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-022",
+    "title": "BINGO | Dog Song | Nursery Rhymes for Kids",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Letter Recognition and Clapping Patterns",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "There was a farmer had a dog and Bingo was his name-o! This classic song teaches letter recognition and clapping patterns as letters are progressively replaced with claps.",
+    "tags": [
+      "bingo",
+      "letters",
+      "clapping",
+      "patterns",
+      "dog"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-023",
+    "title": "The Shape Song #1 | Learn Shapes for Kids",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Basic Shapes Recognition",
+    "youtube_url": "https://youtube.com/watch?v=XKehq1j4hO4",
+    "summary": "A circle, a circle, round and round... This shape song teaches toddlers to recognize circles, squares, triangles, and more through catchy lyrics and visuals.",
+    "tags": [
+      "shapes",
+      "circle",
+      "square",
+      "triangle",
+      "geometry"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/XKehq1j4hO4/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-024",
+    "title": "Peek-a-Boo Song | Kids Songs | Super Simple Songs",
+    "subject": "English",
+    "category": "Games",
+    "topic": "Object Permanence and Social Play",
+    "youtube_url": "https://youtube.com/watch?v=0nJk1ax2R9Q",
+    "summary": "Peek-a-boo, I see you! This song teaches object permanence - the understanding that things exist even when out of sight - while encouraging social play and laughter.",
+    "tags": [
+      "peek a boo",
+      "object permanence",
+      "social play",
+      "games",
+      "toddlers"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0nJk1ax2R9Q/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-025",
+    "title": "Walking Walking | Action Song for Kids",
+    "subject": "Physical Education",
+    "category": "Movement",
+    "topic": "Action Verbs and Gross Motor Skills",
+    "youtube_url": "https://youtube.com/watch?v=SoXD5pp8zu0",
+    "summary": "Walking walking, hop hop hop! This action song teaches verbs like walk, hop, run, stop, tiptoe, and jump while developing gross motor skills through movement.",
+    "tags": [
+      "walking",
+      "action verbs",
+      "gross motor",
+      "movement",
+      "physical"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/SoXD5pp8zu0/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-026",
+    "title": "Rain Rain Go Away | Nursery Rhymes for Kids",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Weather and Wishes",
+    "youtube_url": "https://youtube.com/watch?v=LFrKYjrIDs8",
+    "summary": "Rain rain go away, come again another day! This weather song teaches toddlers about rain while expressing wishes and feelings about the weather.",
+    "tags": [
+      "rain",
+      "weather",
+      "wishes",
+      "nursery rhymes",
+      "feelings"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/LFrKYjrIDs8/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-027",
+    "title": "Humpty Dumpty | Nursery Rhymes for Children",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Classic Rhyme and Storytelling",
+    "youtube_url": "https://youtube.com/watch?v=9XKSfuzN1tU",
+    "summary": "Humpty Dumpty sat on a wall... This classic nursery rhyme introduces storytelling, cause and effect, and problem-solving in a simple narrative format.",
+    "tags": [
+      "humpty dumpty",
+      "storytelling",
+      "cause and effect",
+      "classic",
+      "rhyme"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/9XKSfuzN1tU/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-028",
+    "title": "Five Little Monkeys Jumping on the Bed",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Counting Backwards 5-1",
+    "youtube_url": "https://youtube.com/watch?v=PRWH9sw_98E",
+    "summary": "Five little monkeys jumping on the bed, one fell off and bumped his head! Teaches backward counting from 5 to 1 while reinforcing safety messages about jumping on beds.",
+    "tags": [
+      "monkeys",
+      "counting",
+      "backward counting",
+      "safety",
+      "numbers"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/PRWH9sw_98E/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-029",
+    "title": "This Is The Way | Morning Routine Song for Kids",
+    "subject": "Life Skills",
+    "category": "Daily Routines",
+    "topic": "Morning Routine and Self-Care",
+    "youtube_url": "https://youtube.com/watch?v=ffZ0SLqE6nI",
+    "summary": "This is the way we brush our teeth, wash our face, comb our hair... Teaches morning routines and self-care habits through a catchy, repetitive song.",
+    "tags": [
+      "morning routine",
+      "self care",
+      "brush teeth",
+      "daily habits",
+      "life skills"
+    ],
+    "duration_seconds": 150,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/ffZ0SLqE6nI/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-030",
+    "title": "The Bath Song | Kids Songs | Super Simple Songs",
+    "subject": "Life Skills",
+    "category": "Daily Routines",
+    "topic": "Bathing and Hygiene",
+    "youtube_url": "https://youtube.com/watch?v=OG3QfGQ5EKE",
+    "summary": "Can you wash your hair? I can wash my hair! This interactive song teaches body parts and hygiene routines during bath time, making washing fun.",
+    "tags": [
+      "bath",
+      "hygiene",
+      "body parts",
+      "washing",
+      "daily routines"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/OG3QfGQ5EKE/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-031",
+    "title": "Twinkle Twinkle Little Star + More Nursery Rhymes",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Classic Nursery Rhymes",
+    "youtube_url": "https://youtube.com/watch?v=ymHSD8Z4n6o",
+    "summary": "A compilation of classic nursery rhymes including Twinkle Twinkle Little Star, Baa Baa Black Sheep, and more. Perfect for bedtime and language development.",
+    "tags": [
+      "nursery rhymes",
+      "twinkle twinkle",
+      "songs",
+      "bedtime",
+      "language"
+    ],
+    "duration_seconds": 3600,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/ymHSD8Z4n6o/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-032",
+    "title": "Baby Shark Dance | Most Viewed Video on YouTube",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Animal Songs and Movement",
+    "youtube_url": "https://youtube.com/watch?v=XqZsoesa55w",
+    "summary": "The most viewed video on YouTube of all time. Baby Shark Dance teaches animal names, family members, and gets toddlers moving with simple dance moves.",
+    "tags": [
+      "baby shark",
+      "dance",
+      "animal songs",
+      "movement",
+      "family members"
+    ],
+    "duration_seconds": 136,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/XqZsoesa55w/mqdefault.jpg",
+    "channel": "Pinkfong! Kids' Songs & Stories"
+  },
+  {
+    "id": "playgroup-033",
+    "title": "Wheels on the Bus | CoComelon Nursery Rhymes & Kids Songs",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Transportation and Action Words",
+    "youtube_url": "https://youtube.com/watch?v=6X3A-Qe4lPg",
+    "summary": "The classic Wheels on the Bus song with Cocomelon's engaging animation. Teaches transportation vocabulary and action words through repetition and fun characters.",
+    "tags": [
+      "wheels on the bus",
+      "transportation",
+      "action words",
+      "cocomelon",
+      "songs"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/6X3A-Qe4lPg/mqdefault.jpg",
+    "channel": "Cocomelon - Nursery Rhymes"
+  },
+  {
+    "id": "playgroup-034",
+    "title": "Head, Shoulders, Knees and Toes | Exercise Song for Kids",
+    "subject": "Physical Education",
+    "category": "Movement",
+    "topic": "Body Parts Recognition",
+    "youtube_url": "https://youtube.com/watch?v=ZanHgPprl-0",
+    "summary": "The classic body parts song that gets toddlers moving while learning the names of body parts. Simple actions make it easy for the youngest learners to follow along.",
+    "tags": [
+      "body parts",
+      "movement",
+      "exercise",
+      "head shoulders",
+      "toddlers"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/ZanHgPprl-0/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-035",
+    "title": "If You're Happy and You Know It | Nursery Rhymes",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Emotions and Actions",
+    "youtube_url": "https://youtube.com/watch?v=71hqRT9U0wg",
+    "summary": "The beloved song that teaches emotions and actions. Clap your hands, stomp your feet, and shout hooray while learning to express feelings through music.",
+    "tags": [
+      "emotions",
+      "happy",
+      "actions",
+      "nursery rhymes",
+      "social skills"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/71hqRT9U0wg/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-036",
+    "title": "Old MacDonald Had a Farm | Animal Sounds Song",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Farm Animals and Sounds",
+    "youtube_url": "https://youtube.com/watch?v=_6HzoUcx3eo",
+    "summary": "Old MacDonald Had a Farm teaches toddlers the names and sounds of farm animals. A timeless song that builds vocabulary and phonemic awareness.",
+    "tags": [
+      "farm animals",
+      "animal sounds",
+      "old macdonald",
+      "vocabulary",
+      "phonics"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/_6HzoUcx3eo/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-037",
+    "title": "Five Little Ducks | Kids Songs | Super Simple Songs",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Counting Backwards 5-1",
+    "youtube_url": "https://youtube.com/watch?v=pZw9veQ76fo",
+    "summary": "Five little ducks went out one day... This counting song teaches backward counting from 5 to 1 while telling a gentle story about ducklings and their mother.",
+    "tags": [
+      "counting",
+      "backward counting",
+      "ducks",
+      "numbers",
+      "subtraction"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/pZw9veQ76fo/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-038",
+    "title": "The Itsy Bitsy Spider | Nursery Rhymes for Kids",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Finger Play and Fine Motor Skills",
+    "youtube_url": "https://youtube.com/watch?v=w_lCi8U49mA",
+    "summary": "The Itsy Bitsy Spider finger play song helps develop fine motor skills while teaching a simple narrative about perseverance. A classic for toddler development.",
+    "tags": [
+      "finger play",
+      "fine motor",
+      "spider",
+      "nursery rhymes",
+      "perseverance"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/w_lCi8U49mA/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-039",
+    "title": "Row Row Row Your Boat | Nursery Rhymes for Children",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Rhythm and Coordination",
+    "youtube_url": "https://youtube.com/watch?v=7otAJa3jui8",
+    "summary": "Row your boat gently down the stream while learning rhythm, coordination, and the concept of gentle movement. A soothing song perfect for group singing.",
+    "tags": [
+      "rowing",
+      "rhythm",
+      "coordination",
+      "gentle",
+      "group singing"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/7otAJa3jui8/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-040",
+    "title": "Open Shut Them | Super Simple Songs",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Opposites and Body Control",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Open shut them, open shut them... This song teaches opposites (open/close, big/small, fast/slow) while developing body control and following instructions.",
+    "tags": [
+      "opposites",
+      "body control",
+      "instructions",
+      "open shut",
+      "toddlers"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-041",
+    "title": "One Little Finger | Tap Tap Tap | Kids Songs",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Body Parts and Following Directions",
+    "youtube_url": "https://youtube.com/watch?v=tVlcKp3bO88",
+    "summary": "One little finger, tap tap tap! This interactive song teaches body parts and following directions. Kids point to their head, nose, chin, and more while singing.",
+    "tags": [
+      "body parts",
+      "finger",
+      "following directions",
+      "interactive",
+      "movement"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/tVlcKp3bO88/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-042",
+    "title": "Clean Up Song | Kids Song for Tidying Up",
+    "subject": "Life Skills",
+    "category": "Social Skills",
+    "topic": "Cleaning Up and Responsibility",
+    "youtube_url": "https://youtube.com/watch?v=SoXD5pp8zu0",
+    "summary": "Clean up, clean up, everybody everywhere! This song teaches toddlers the importance of cleaning up after playtime, building responsibility and good habits.",
+    "tags": [
+      "clean up",
+      "responsibility",
+      "tidying",
+      "life skills",
+      "habits"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/SoXD5pp8zu0/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-043",
+    "title": "Hello Hello! | Super Simple Songs",
+    "subject": "English",
+    "category": "Social Skills",
+    "topic": "Greetings and Social Interaction",
+    "youtube_url": "https://youtube.com/watch?v=tVlcKp3bO88",
+    "summary": "Hello, hello, hello, how are you? This greeting song teaches toddlers how to say hello, ask how someone is, and respond appropriately in social situations.",
+    "tags": [
+      "greetings",
+      "hello",
+      "social skills",
+      "manners",
+      "interaction"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/tVlcKp3bO88/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-044",
+    "title": "BINGO | Dog Song | Nursery Rhymes for Kids",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Letter Recognition and Clapping Patterns",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "There was a farmer had a dog and Bingo was his name-o! This classic song teaches letter recognition and clapping patterns as letters are progressively replaced with claps.",
+    "tags": [
+      "bingo",
+      "letters",
+      "clapping",
+      "patterns",
+      "dog"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-045",
+    "title": "The Shape Song #1 | Learn Shapes for Kids",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Basic Shapes Recognition",
+    "youtube_url": "https://youtube.com/watch?v=XKehq1j4hO4",
+    "summary": "A circle, a circle, round and round... This shape song teaches toddlers to recognize circles, squares, triangles, and more through catchy lyrics and visuals.",
+    "tags": [
+      "shapes",
+      "circle",
+      "square",
+      "triangle",
+      "geometry"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/XKehq1j4hO4/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-046",
+    "title": "Peek-a-Boo Song | Kids Songs | Super Simple Songs",
+    "subject": "English",
+    "category": "Games",
+    "topic": "Object Permanence and Social Play",
+    "youtube_url": "https://youtube.com/watch?v=0nJk1ax2R9Q",
+    "summary": "Peek-a-boo, I see you! This song teaches object permanence - the understanding that things exist even when out of sight - while encouraging social play and laughter.",
+    "tags": [
+      "peek a boo",
+      "object permanence",
+      "social play",
+      "games",
+      "toddlers"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/0nJk1ax2R9Q/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-047",
+    "title": "Walking Walking | Action Song for Kids",
+    "subject": "Physical Education",
+    "category": "Movement",
+    "topic": "Action Verbs and Gross Motor Skills",
+    "youtube_url": "https://youtube.com/watch?v=SoXD5pp8zu0",
+    "summary": "Walking walking, hop hop hop! This action song teaches verbs like walk, hop, run, stop, tiptoe, and jump while developing gross motor skills through movement.",
+    "tags": [
+      "walking",
+      "action verbs",
+      "gross motor",
+      "movement",
+      "physical"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/SoXD5pp8zu0/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-048",
+    "title": "Rain Rain Go Away | Nursery Rhymes for Kids",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Weather and Wishes",
+    "youtube_url": "https://youtube.com/watch?v=LFrKYjrIDs8",
+    "summary": "Rain rain go away, come again another day! This weather song teaches toddlers about rain while expressing wishes and feelings about the weather.",
+    "tags": [
+      "rain",
+      "weather",
+      "wishes",
+      "nursery rhymes",
+      "feelings"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/LFrKYjrIDs8/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-049",
+    "title": "Humpty Dumpty | Nursery Rhymes for Children",
+    "subject": "English",
+    "category": "Songs",
+    "topic": "Classic Rhyme and Storytelling",
+    "youtube_url": "https://youtube.com/watch?v=9XKSfuzN1tU",
+    "summary": "Humpty Dumpty sat on a wall... This classic nursery rhyme introduces storytelling, cause and effect, and problem-solving in a simple narrative format.",
+    "tags": [
+      "humpty dumpty",
+      "storytelling",
+      "cause and effect",
+      "classic",
+      "rhyme"
+    ],
+    "duration_seconds": 120,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/9XKSfuzN1tU/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  },
+  {
+    "id": "playgroup-050",
+    "title": "Five Little Monkeys Jumping on the Bed",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Counting Backwards 5-1",
+    "youtube_url": "https://youtube.com/watch?v=PRWH9sw_98E",
+    "summary": "Five little monkeys jumping on the bed, one fell off and bumped his head! Teaches backward counting from 5 to 1 while reinforcing safety messages about jumping on beds.",
+    "tags": [
+      "monkeys",
+      "counting",
+      "backward counting",
+      "safety",
+      "numbers"
+    ],
+    "duration_seconds": 180,
+    "difficulty": "beginner",
+    "thumbnail_url": "https://img.youtube.com/vi/PRWH9sw_98E/mqdefault.jpg",
+    "channel": "Super Simple Songs"
+  }
+]

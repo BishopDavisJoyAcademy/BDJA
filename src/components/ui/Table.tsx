@@ -1,41 +1,29 @@
+"use client";
+
 import { cn } from "@/lib/utils";
-import { HTMLAttributes, forwardRef } from "react";
 
-const Table = forwardRef<HTMLTableElement, HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="overflow-x-auto">
-      <table ref={ref} className={cn("w-full text-sm", className)} {...props} />
-    </div>
-  )
-);
-Table.displayName = "Table";
+interface TableProps { children: React.ReactNode; className?: string; }
 
-const TableHeader = forwardRef<HTMLTableSectionElement, HTMLAttributes<HTMLTableSectionElement>>(
-  ({ className, ...props }, ref) => (
-    <thead ref={ref} className={cn("bg-gray-50", className)} {...props} />
-  )
-);
-TableHeader.displayName = "TableHeader";
+export function Table({ children, className }: TableProps) {
+  return <div className="overflow-x-auto"><table className={cn("w-full text-sm text-left", className)}>{children}</table></div>;
+}
 
-const TableRow = forwardRef<HTMLTableRowElement, HTMLAttributes<HTMLTableRowElement>>(
-  ({ className, ...props }, ref) => (
-    <tr ref={ref} className={cn("border-b border-gray-100 hover:bg-gray-50/50 transition-colors", className)} {...props} />
-  )
-);
-TableRow.displayName = "TableRow";
+export function TableHead({ children, className }: TableProps) {
+  return <thead className={cn("bg-gray-50 text-gray-600 font-medium", className)}>{children}</thead>;
+}
 
-const TableHead = forwardRef<HTMLTableCellElement, HTMLAttributes<HTMLTableCellElement>>(
-  ({ className, ...props }, ref) => (
-    <th ref={ref} className={cn("px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider", className)} {...props} />
-  )
-);
-TableHead.displayName = "TableHead";
+export function TableBody({ children, className }: TableProps) {
+  return <tbody className={cn("divide-y divide-gray-100", className)}>{children}</tbody>;
+}
 
-const TableCell = forwardRef<HTMLTableCellElement, HTMLAttributes<HTMLTableCellElement>>(
-  ({ className, ...props }, ref) => (
-    <td ref={ref} className={cn("px-4 py-3 text-gray-600", className)} {...props} />
-  )
-);
-TableCell.displayName = "TableCell";
+export function TableRow({ children, className }: TableProps) {
+  return <tr className={cn("hover:bg-gray-50 transition-colors", className)}>{children}</tr>;
+}
 
-export { Table, TableHeader, TableRow, TableHead, TableCell };
+export function TableCell({ children, className }: TableProps) {
+  return <td className={cn("px-4 py-3", className)}>{children}</td>;
+}
+
+export function TableHeader({ children, className }: TableProps) {
+  return <th className={cn("px-4 py-3", className)}>{children}</th>;
+}

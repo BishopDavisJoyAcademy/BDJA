@@ -1,128 +1,67 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppStore } from "@/hooks/useStore";
-import { cn } from "@/lib/utils";
-import { getPermissions } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import {
-  LayoutDashboard, BookOpen, Calendar, Clock, GraduationCap, MessageSquare,
-  Bell, Settings, Users, FileText, DollarSign, Library, Video, Shield,
-  ChevronLeft, ChevronRight, LogOut, School, BarChart3, UserCheck, ClipboardList
+  LayoutDashboard, Users, GraduationCap, Calendar, BookOpen, MessageSquare,
+  Settings, Shield, ChevronLeft, ChevronRight, Video, Library, Wallet,
+  ClipboardList, UserCheck, BarChart3, LogOut, School
 } from "lucide-react";
 
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/", roles: ["student", "parent", "teacher", "class_prefect", "bursar", "librarian", "principal", "super_admin"] },
-  { label: "Timetable", icon: Clock, path: "/timetable", roles: ["student", "parent", "teacher", "class_prefect", "principal", "super_admin"], permission: "viewTimetable" },
-  { label: "Calendar", icon: Calendar, path: "/calendar", roles: ["student", "parent", "teacher", "class_prefect", "principal", "super_admin"], permission: "viewCalendar" },
-  { label: "Assignments", icon: FileText, path: "/assignments", roles: ["student", "parent", "teacher", "class_prefect", "principal", "super_admin"], permission: "viewAssignments" },
-  { label: "Grades", icon: GraduationCap, path: "/grades", roles: ["student", "parent", "teacher", "class_prefect", "principal", "super_admin"], permission: "viewGrades" },
-  { label: "VORA Hub", icon: Video, path: "/vora", roles: ["student", "parent", "teacher", "class_prefect", "principal", "super_admin"], permission: "viewVora" },
-  { label: "Library", icon: Library, path: "/library", roles: ["student", "parent", "teacher", "class_prefect", "librarian", "principal", "super_admin"], permission: "viewLibrary" },
-  { label: "Messages", icon: MessageSquare, path: "/messages", roles: ["student", "parent", "teacher", "class_prefect", "bursar", "librarian", "principal", "super_admin"], permission: "viewMessages" },
-  { label: "Fees", icon: DollarSign, path: "/fees", roles: ["parent", "bursar", "principal", "super_admin"], permission: "viewFees" },
-  { label: "Attendance", icon: UserCheck, path: "/attendance", roles: ["student", "parent", "teacher", "class_prefect", "principal", "super_admin"], permission: "viewAttendance" },
-  { label: "Admissions", icon: ClipboardList, path: "/admissions", roles: ["principal", "super_admin"], permission: "viewAdmissions" },
-  { label: "Users", icon: Users, path: "/admin/users", roles: ["principal", "super_admin"], permission: "manageUsers" },
-  { label: "Subjects", icon: BookOpen, path: "/admin/subjects", roles: ["principal", "super_admin"], permission: "manageUsers" },
-  { label: "Analytics", icon: BarChart3, path: "/admin/analytics", roles: ["principal", "super_admin", "bursar", "librarian"], permission: "viewAnalytics" },
-  { label: "Audit Logs", icon: Shield, path: "/admin/audit", roles: ["principal", "super_admin"], permission: "viewAuditLogs" },
-  { label: "Settings", icon: Settings, path: "/settings", roles: ["principal", "super_admin"], permission: "manageRoles" },
+  { label: "Dashboard", href: "/", icon: LayoutDashboard, perm: "viewDashboard" },
+  { label: "Students", href: "/student", icon: Users, perm: "viewStudents" },
+  { label: "Grades", href: "/grades", icon: GraduationCap, perm: "viewGrades" },
+  { label: "Attendance", href: "/attendance", icon: UserCheck, perm: "viewAttendance" },
+  { label: "Timetable", href: "/timetable", icon: Calendar, perm: "viewTimetable" },
+  { label: "Assignments", href: "/assignments", icon: ClipboardList, perm: "viewAssignments" },
+  { label: "VORA", href: "/vora", icon: Video, perm: "viewVora" },
+  { label: "Library", href: "/library", icon: Library, perm: "viewLibrary" },
+  { label: "Fees", href: "/fees", icon: Wallet, perm: "viewFees" },
+  { label: "Messages", href: "/messages", icon: MessageSquare, perm: "viewMessages" },
+  { label: "Admissions", href: "/admissions", icon: BookOpen, perm: "viewAdmissions" },
+  { label: "Analytics", href: "/admin/analytics", icon: BarChart3, perm: "viewAnalytics" },
+  { label: "Admin", href: "/admin/users", icon: Shield, perm: "manageUsers" },
+  { label: "Settings", href: "/settings", icon: Settings, perm: "viewDashboard" },
 ];
 
 export function Sidebar() {
-  const pathname = usePathname();
   const { user, signOut } = useAuth();
   const { sidebarOpen, setSidebarOpen } = useAppStore();
+  const role = user?.role || "student";
 
-  if (!user) return null;
-
-  const permissions = getPermissions(user.role);
-
-  const filteredNav = navItems.filter((item) => {
-    if (!item.roles.includes(user.role)) return false;
-    if (item.permission && !permissions[item.permission as keyof typeof permissions]) return false;
-    return true;
-  });
+  const filteredNav = navItems.filter(item => hasPermission(role, item.perm as any));
 
   return (
     <>
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/30 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      <aside
-        className={cn(
-          "fixed top-0 left-0 z-50 h-full bg-bdja-primary text-white transition-all duration-300 flex flex-col",
-          sidebarOpen ? "w-64 translate-x-0" : "w-64 -translate-x-full lg:translate-x-0 lg:w-20 xl:w-64"
-        )}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
-              <School className="w-6 h-6 text-bdja-secondary" />
-            </div>
-            <div className={cn("transition-opacity", sidebarOpen || "lg:opacity-0 xl:opacity-100")}>
-              <h1 className="font-bold text-sm whitespace-nowrap">BDJA Platform</h1>
-              <p className="text-[10px] text-white/60 whitespace-nowrap">Prayer - Commitment - Success</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden p-1.5 hover:bg-white/10 rounded-lg"
-          >
-            {sidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      <aside className={`fixed inset-y-0 left-0 z-40 bg-bdja-dark text-white transition-all duration-300 ${sidebarOpen ? "w-64" : "w-0 md:w-16 overflow-hidden"} flex flex-col`}>
+        <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
+          {sidebarOpen && <div className="flex items-center gap-2"><School className="w-6 h-6 text-bdja-secondary" /><span className="font-bold text-sm">BDJA</span></div>}
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+            {sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
           </button>
         </div>
-
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {filteredNav.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-                onClick={() => window.innerWidth < 1024 && setSidebarOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group",
-                  isActive
-                    ? "bg-bdja-secondary text-white"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
-                )}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className={cn("text-sm font-medium whitespace-nowrap transition-opacity", sidebarOpen || "lg:opacity-0 xl:opacity-100")}>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-2">
+          {filteredNav.map(item => (
+            <a key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors text-sm">
+              <item.icon className="w-5 h-5 shrink-0" />
+              {sidebarOpen && <span className="truncate">{item.label}</span>}
+            </a>
+          ))}
         </nav>
-
-        <div className="p-3 border-t border-white/10">
-          <button
-            onClick={signOut}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-all w-full"
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            <span className={cn("text-sm font-medium whitespace-nowrap transition-opacity", sidebarOpen || "lg:opacity-0 xl:opacity-100")}>
-              Sign Out
-            </span>
+        <div className="p-2 border-t border-white/10 shrink-0">
+          <button onClick={signOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors text-sm w-full text-left">
+            <LogOut className="w-5 h-5 shrink-0" />
+            {sidebarOpen && <span>Sign Out</span>}
           </button>
         </div>
       </aside>
-
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed bottom-6 left-6 z-50 w-10 h-10 bg-bdja-primary text-white rounded-full shadow-lg flex items-center justify-center hover:bg-bdja-accent transition-colors lg:flex hidden"
-      >
-        {sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-      </button>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
     </>
   );
 }

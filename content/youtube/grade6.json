@@ -1,0 +1,1002 @@
+[
+  {
+    "id": "grade6-001",
+    "title": "Math Antics - Ratios and Rates",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Ratios and Rates",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Math Antics teaches ratios as comparisons of two quantities and rates as ratios with different units. Learn to write ratios, simplify them, and solve ratio problems.",
+    "tags": [
+      "ratios",
+      "rates",
+      "comparisons",
+      "grade 6 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-002",
+    "title": "Math Antics - Proportions",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Proportions and Proportional Reasoning",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn about proportions as equivalent ratios. Use cross-multiplication to solve proportion problems. Apply proportions to real-world scenarios like scaling and recipes.",
+    "tags": [
+      "proportions",
+      "equivalent ratios",
+      "cross multiplication",
+      "grade 6 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-003",
+    "title": "Math Antics - Negative Numbers",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Introduction to Negative Numbers",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Math Antics introduces negative numbers and the concept of opposites. Learn to compare, order, and perform basic operations with positive and negative integers.",
+    "tags": [
+      "negative numbers",
+      "integers",
+      "opposites",
+      "grade 6 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-004",
+    "title": "Math Antics - Adding and Subtracting Integers",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Integer Addition and Subtraction",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to add and subtract positive and negative integers using number lines and rules. Same signs add, different signs subtract, keep the sign of the bigger number.",
+    "tags": [
+      "integers",
+      "adding",
+      "subtracting",
+      "positive",
+      "negative"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-005",
+    "title": "Math Antics - Multiplying and Dividing Integers",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Integer Multiplication and Division",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn the rules for multiplying and dividing integers. Same signs give positive answers, different signs give negative answers. Apply to multi-step problems.",
+    "tags": [
+      "integers",
+      "multiplying",
+      "dividing",
+      "signs",
+      "grade 6 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-006",
+    "title": "Math Antics - Absolute Value",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Absolute Value",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn that absolute value is the distance from zero on the number line, always positive. Use absolute value to compare numbers and solve problems.",
+    "tags": [
+      "absolute value",
+      "distance",
+      "number line",
+      "grade 6 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-007",
+    "title": "Math Antics - Decimal Place Value",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Decimal Place Value to Thousandths",
+    "youtube_url": "https://youtube.com/watch?v=kwh4SD1ToFc",
+    "summary": "Extend decimal place value understanding to thousandths. Compare, order, and round decimals. Understand the relationship between place values in decimals.",
+    "tags": [
+      "decimals",
+      "place value",
+      "thousandths",
+      "grade 6 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/kwh4SD1ToFc/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-008",
+    "title": "Math Antics - Decimal Arithmetic",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Adding, Subtracting, Multiplying, Dividing Decimals",
+    "youtube_url": "https://youtube.com/watch?v=kwh4SD1ToFc",
+    "summary": "Learn all four operations with decimals. Line up decimal points for addition and subtraction, count decimal places for multiplication, move decimal points for division.",
+    "tags": [
+      "decimals",
+      "arithmetic",
+      "operations",
+      "grade 6 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/kwh4SD1ToFc/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-009",
+    "title": "Math Antics - What Is Algebra?",
+    "subject": "Mathematics",
+    "category": "Algebra",
+    "topic": "Introduction to Algebra",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Math Antics introduces algebra as using letters to represent unknown numbers. Learn about variables, constants, expressions, and equations. The foundation of algebraic thinking.",
+    "tags": [
+      "algebra",
+      "variables",
+      "expressions",
+      "equations",
+      "grade 6 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-010",
+    "title": "Math Antics - Solving Basic Equations Part 1",
+    "subject": "Mathematics",
+    "category": "Algebra",
+    "topic": "Solving One-Step Equations",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to solve one-step equations using inverse operations. Addition and subtraction equations. Isolate the variable by doing the opposite operation to both sides.",
+    "tags": [
+      "equations",
+      "one-step",
+      "inverse operations",
+      "grade 6 math",
+      "algebra"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-011",
+    "title": "Math Antics - Solving Basic Equations Part 2",
+    "subject": "Mathematics",
+    "category": "Algebra",
+    "topic": "Solving Two-Step Equations",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to solve two-step equations by undoing operations in reverse order. First undo addition/subtraction, then undo multiplication/division. Check your answer.",
+    "tags": [
+      "equations",
+      "two-step",
+      "solving",
+      "grade 6 math",
+      "algebra"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-012",
+    "title": "Math Antics - Mean, Median, and Mode",
+    "subject": "Mathematics",
+    "category": "Statistics",
+    "topic": "Measures of Central Tendency",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to find the mean (average), median (middle), and mode (most frequent) of a data set. Understand when to use each measure and how outliers affect them.",
+    "tags": [
+      "mean",
+      "median",
+      "mode",
+      "statistics",
+      "grade 6 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-013",
+    "title": "Math Antics - Basic Probability",
+    "subject": "Mathematics",
+    "category": "Statistics",
+    "topic": "Introduction to Probability",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn about probability as the likelihood of an event occurring. Express probability as fractions, decimals, and percentages. Understand impossible, unlikely, equally likely, likely, and certain.",
+    "tags": [
+      "probability",
+      "likelihood",
+      "fractions",
+      "grade 6 math",
+      "statistics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-014",
+    "title": "Math Antics - Circles: What Is PI?",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Introduction to Pi",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn about pi as the ratio of a circle's circumference to its diameter. Understand that pi is approximately 3.14 and is an irrational number that goes on forever.",
+    "tags": [
+      "pi",
+      "circles",
+      "circumference",
+      "diameter",
+      "grade 6 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-015",
+    "title": "Math Antics - Circles: Circumference and Area",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Circumference and Area of Circles",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn the formulas for circumference (C = pi x d) and area (A = pi x r squared) of circles. Practice finding circumference and area given radius or diameter.",
+    "tags": [
+      "circles",
+      "circumference",
+      "area",
+      "pi",
+      "grade 6 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-016",
+    "title": "Math Antics - Volume",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Volume of Prisms and Pyramids",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to find the volume of rectangular prisms, triangular prisms, and pyramids. Use the formula V = B x h (base area times height) for prisms.",
+    "tags": [
+      "volume",
+      "prisms",
+      "pyramids",
+      "formulas",
+      "grade 6 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-017",
+    "title": "Math Antics - The Pythagorean Theorem",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Pythagorean Theorem",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn the Pythagorean Theorem: a squared plus b squared equals c squared for right triangles. Use it to find missing side lengths and solve real-world problems.",
+    "tags": [
+      "pythagorean theorem",
+      "right triangles",
+      "hypotenuse",
+      "grade 6 math",
+      "geometry"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-018",
+    "title": "Math Antics - The Number Line",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Number Line and Coordinate Plane",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Extend understanding of the number line to include negative numbers. Plot and compare rational numbers on the number line. Connect to the coordinate plane.",
+    "tags": [
+      "number line",
+      "negative numbers",
+      "rational numbers",
+      "grade 6 math",
+      "comparison"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-019",
+    "title": "Math Antics - Inequalities",
+    "subject": "Mathematics",
+    "category": "Algebra",
+    "topic": "Introduction to Inequalities",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn about inequalities using greater than, less than, greater than or equal to, and less than or equal to. Graph inequalities on a number line and solve simple inequalities.",
+    "tags": [
+      "inequalities",
+      "greater than",
+      "less than",
+      "graphing",
+      "grade 6 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-020",
+    "title": "Math Antics - Data and Graphs",
+    "subject": "Mathematics",
+    "category": "Statistics",
+    "topic": "Interpreting Data and Graphs",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to create and interpret various graphs including bar graphs, line graphs, circle graphs, and histograms. Understand how to read and analyze data displays.",
+    "tags": [
+      "data",
+      "graphs",
+      "statistics",
+      "interpretation",
+      "grade 6 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-021",
+    "title": "The Scientific Method Song | Steps of Science",
+    "subject": "Science",
+    "category": "Scientific Inquiry",
+    "topic": "The Scientific Method",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn the steps of the scientific method - question, research, hypothesis, experiment, analyze data, and conclusion. Apply the scientific method to investigations.",
+    "tags": [
+      "scientific method",
+      "hypothesis",
+      "experiment",
+      "grade 6 science",
+      "inquiry"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-022",
+    "title": "The Photosynthesis Song | How Plants Make Food",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Photosynthesis",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about photosynthesis - how plants use sunlight, water, and carbon dioxide to make glucose and oxygen. Understand the importance of photosynthesis for life on Earth.",
+    "tags": [
+      "photosynthesis",
+      "plants",
+      "sunlight",
+      "glucose",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-023",
+    "title": "The Cell Division Song | Mitosis",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Cell Division and Mitosis",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about cell division through mitosis. Understand the stages - prophase, metaphase, anaphase, and telophase. How one cell becomes two identical daughter cells.",
+    "tags": [
+      "mitosis",
+      "cell division",
+      "stages",
+      "grade 6 science",
+      "biology"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-024",
+    "title": "The Genetics Song | DNA and Heredity",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Genetics and Heredity",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about DNA, genes, chromosomes, and heredity. Understand how traits are passed from parents to offspring through genetic inheritance.",
+    "tags": [
+      "genetics",
+      "DNA",
+      "heredity",
+      "traits",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-025",
+    "title": "The Weather and Climate Song | What's the Difference?",
+    "subject": "Science",
+    "category": "Earth Science",
+    "topic": "Weather vs Climate",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn the difference between weather (short-term atmospheric conditions) and climate (long-term patterns). Understand how climate is determined by latitude, altitude, and distance from water.",
+    "tags": [
+      "weather",
+      "climate",
+      "difference",
+      "patterns",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-026",
+    "title": "The Plate Tectonics Song | Earth's Moving Crust",
+    "subject": "Science",
+    "category": "Earth Science",
+    "topic": "Plate Tectonics",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about plate tectonics - how Earth's crust is divided into moving plates. Understand convergent, divergent, and transform boundaries and the landforms they create.",
+    "tags": [
+      "plate tectonics",
+      "earth's crust",
+      "boundaries",
+      "grade 6 science",
+      "geology"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-027",
+    "title": "The Rock Cycle Song | Igneous, Sedimentary, Metamorphic",
+    "subject": "Science",
+    "category": "Earth Science",
+    "topic": "The Rock Cycle",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about the three types of rocks and how they transform through the rock cycle. Igneous rocks form from cooled magma, sedimentary from compressed sediments, metamorphic from heat and pressure.",
+    "tags": [
+      "rock cycle",
+      "igneous",
+      "sedimentary",
+      "metamorphic",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-028",
+    "title": "The Force and Motion Song | Newton's Laws",
+    "subject": "Science",
+    "category": "Physical Science",
+    "topic": "Forces and Motion",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about forces, motion, speed, velocity, and acceleration. Understand Newton's three laws of motion and how they explain the movement of objects.",
+    "tags": [
+      "force",
+      "motion",
+      "newton's laws",
+      "speed",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-029",
+    "title": "The Energy Song | Kinetic and Potential",
+    "subject": "Science",
+    "category": "Physical Science",
+    "topic": "Forms of Energy",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about different forms of energy - kinetic, potential, thermal, electrical, chemical, and light. Understand the law of conservation of energy.",
+    "tags": [
+      "energy",
+      "kinetic",
+      "potential",
+      "forms",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-030",
+    "title": "The Simple Machines Song | Levers, Pulleys, Wedges, and More",
+    "subject": "Science",
+    "category": "Physical Science",
+    "topic": "Simple Machines",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about the six simple machines - lever, wheel and axle, pulley, inclined plane, wedge, and screw. Understand how simple machines make work easier.",
+    "tags": [
+      "simple machines",
+      "lever",
+      "pulley",
+      "wedge",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-031",
+    "title": "Math Antics - Inequalities",
+    "subject": "Mathematics",
+    "category": "Algebra",
+    "topic": "Introduction to Inequalities",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn about inequalities using greater than, less than, greater than or equal to, and less than or equal to. Graph inequalities on a number line and solve simple inequalities.",
+    "tags": [
+      "inequalities",
+      "greater than",
+      "less than",
+      "graphing",
+      "grade 6 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-032",
+    "title": "Math Antics - Data and Graphs",
+    "subject": "Mathematics",
+    "category": "Statistics",
+    "topic": "Interpreting Data and Graphs",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Learn to create and interpret various graphs including bar graphs, line graphs, circle graphs, and histograms. Understand how to read and analyze data displays.",
+    "tags": [
+      "data",
+      "graphs",
+      "statistics",
+      "interpretation",
+      "grade 6 math"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade6-033",
+    "title": "The Scientific Method Song | Steps of Science",
+    "subject": "Science",
+    "category": "Scientific Inquiry",
+    "topic": "The Scientific Method",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn the steps of the scientific method - question, research, hypothesis, experiment, analyze data, and conclusion. Apply the scientific method to investigations.",
+    "tags": [
+      "scientific method",
+      "hypothesis",
+      "experiment",
+      "grade 6 science",
+      "inquiry"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-034",
+    "title": "The Photosynthesis Song | How Plants Make Food",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Photosynthesis",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about photosynthesis - how plants use sunlight, water, and carbon dioxide to make glucose and oxygen. Understand the importance of photosynthesis for life on Earth.",
+    "tags": [
+      "photosynthesis",
+      "plants",
+      "sunlight",
+      "glucose",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-035",
+    "title": "The Cell Division Song | Mitosis",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Cell Division and Mitosis",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about cell division through mitosis. Understand the stages - prophase, metaphase, anaphase, and telophase. How one cell becomes two identical daughter cells.",
+    "tags": [
+      "mitosis",
+      "cell division",
+      "stages",
+      "grade 6 science",
+      "biology"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-036",
+    "title": "The Genetics Song | DNA and Heredity",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Genetics and Heredity",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about DNA, genes, chromosomes, and heredity. Understand how traits are passed from parents to offspring through genetic inheritance.",
+    "tags": [
+      "genetics",
+      "DNA",
+      "heredity",
+      "traits",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-037",
+    "title": "The Weather and Climate Song | What's the Difference?",
+    "subject": "Science",
+    "category": "Earth Science",
+    "topic": "Weather vs Climate",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn the difference between weather (short-term atmospheric conditions) and climate (long-term patterns). Understand how climate is determined by latitude, altitude, and distance from water.",
+    "tags": [
+      "weather",
+      "climate",
+      "difference",
+      "patterns",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-038",
+    "title": "The Plate Tectonics Song | Earth's Moving Crust",
+    "subject": "Science",
+    "category": "Earth Science",
+    "topic": "Plate Tectonics",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about plate tectonics - how Earth's crust is divided into moving plates. Understand convergent, divergent, and transform boundaries and the landforms they create.",
+    "tags": [
+      "plate tectonics",
+      "earth's crust",
+      "boundaries",
+      "grade 6 science",
+      "geology"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-039",
+    "title": "The Rock Cycle Song | Igneous, Sedimentary, Metamorphic",
+    "subject": "Science",
+    "category": "Earth Science",
+    "topic": "The Rock Cycle",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about the three types of rocks and how they transform through the rock cycle. Igneous rocks form from cooled magma, sedimentary from compressed sediments, metamorphic from heat and pressure.",
+    "tags": [
+      "rock cycle",
+      "igneous",
+      "sedimentary",
+      "metamorphic",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-040",
+    "title": "The Force and Motion Song | Newton's Laws",
+    "subject": "Science",
+    "category": "Physical Science",
+    "topic": "Forces and Motion",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about forces, motion, speed, velocity, and acceleration. Understand Newton's three laws of motion and how they explain the movement of objects.",
+    "tags": [
+      "force",
+      "motion",
+      "newton's laws",
+      "speed",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-041",
+    "title": "The Energy Song | Kinetic and Potential",
+    "subject": "Science",
+    "category": "Physical Science",
+    "topic": "Forms of Energy",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about different forms of energy - kinetic, potential, thermal, electrical, chemical, and light. Understand the law of conservation of energy.",
+    "tags": [
+      "energy",
+      "kinetic",
+      "potential",
+      "forms",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-042",
+    "title": "The Simple Machines Song | Levers, Pulleys, Wedges, and More",
+    "subject": "Science",
+    "category": "Physical Science",
+    "topic": "Simple Machines",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about the six simple machines - lever, wheel and axle, pulley, inclined plane, wedge, and screw. Understand how simple machines make work easier.",
+    "tags": [
+      "simple machines",
+      "lever",
+      "pulley",
+      "wedge",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-043",
+    "title": "The Circulatory System Song | Heart, Blood, and Vessels",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Human Circulatory System",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about the circulatory system - the heart, blood, and blood vessels. Understand how blood carries oxygen and nutrients throughout the body.",
+    "tags": [
+      "circulatory system",
+      "heart",
+      "blood",
+      "vessels",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-044",
+    "title": "The Respiratory System Song | Breathing and Lungs",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Human Respiratory System",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about the respiratory system - how we breathe and how lungs work. Understand the path of air from nose to alveoli and the gas exchange process.",
+    "tags": [
+      "respiratory system",
+      "breathing",
+      "lungs",
+      "oxygen",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-045",
+    "title": "The Digestive System Song | From Mouth to Intestines",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Human Digestive System",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about the digestive system - how food travels from mouth to intestines. Understand the role of each organ in breaking down food and absorbing nutrients.",
+    "tags": [
+      "digestive system",
+      "stomach",
+      "intestines",
+      "nutrients",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-046",
+    "title": "The Nervous System Song | Brain, Spinal Cord, and Nerves",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Human Nervous System",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about the nervous system - the brain, spinal cord, and nerves. Understand how electrical signals travel through the body to control movement, thought, and sensation.",
+    "tags": [
+      "nervous system",
+      "brain",
+      "spinal cord",
+      "nerves",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-047",
+    "title": "The Muscular System Song | How Muscles Work",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Human Muscular System",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about the muscular system - skeletal, smooth, and cardiac muscles. Understand how muscles contract and relax to produce movement.",
+    "tags": [
+      "muscular system",
+      "muscles",
+      "movement",
+      "contraction",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-048",
+    "title": "The Solar System Song | Planets, Moons, and Stars",
+    "subject": "Science",
+    "category": "Space Science",
+    "topic": "Our Solar System",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about our solar system - the Sun, eight planets, moons, asteroids, and comets. Understand the scale and structure of our cosmic neighborhood.",
+    "tags": [
+      "solar system",
+      "planets",
+      "moons",
+      "stars",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-049",
+    "title": "The Moon Phases Song | Waxing and Waning",
+    "subject": "Science",
+    "category": "Space Science",
+    "topic": "Phases of the Moon",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about the phases of the moon - new moon, waxing crescent, first quarter, waxing gibbous, full moon, and waning phases. Understand why the moon appears to change shape.",
+    "tags": [
+      "moon phases",
+      "waxing",
+      "waning",
+      "lunar",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade6-050",
+    "title": "The Eclipses Song | Solar and Lunar Eclipses",
+    "subject": "Science",
+    "category": "Space Science",
+    "topic": "Solar and Lunar Eclipses",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about solar and lunar eclipses. Understand how the alignment of the Sun, Earth, and Moon creates these spectacular celestial events.",
+    "tags": [
+      "eclipses",
+      "solar",
+      "lunar",
+      "celestial",
+      "grade 6 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  }
+]

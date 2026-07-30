@@ -1,0 +1,1002 @@
+[
+  {
+    "id": "grade4-001",
+    "title": "Math Antics - Adding and Subtracting Fractions",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Fraction Addition and Subtraction",
+    "youtube_url": "https://youtube.com/watch?v=5juto2ze8Lg",
+    "summary": "Math Antics teaches how to add and subtract fractions with clear, step-by-step instructions. Covers common denominators, simplifying, and mixed numbers for Grade 4 learners.",
+    "tags": [
+      "fractions",
+      "adding fractions",
+      "subtracting fractions",
+      "grade 4 math",
+      "math antics"
+    ],
+    "duration_seconds": 720,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/5juto2ze8Lg/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade4-002",
+    "title": "Math Antics - Simplifying Fractions",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Simplifying and Reducing Fractions",
+    "youtube_url": "https://youtube.com/watch?v=AtBUQH8Tkqc",
+    "summary": "Learn how to simplify fractions by finding greatest common factors. Math Antics breaks down the procedure with visual models and practice examples for Grade 4 students.",
+    "tags": [
+      "fractions",
+      "simplifying",
+      "greatest common factor",
+      "grade 4 math",
+      "math antics"
+    ],
+    "duration_seconds": 720,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/AtBUQH8Tkqc/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade4-003",
+    "title": "What On Earth: Crash Course Kids #10.1",
+    "subject": "Science",
+    "category": "Earth Science",
+    "topic": "Earth's Spheres and Interactions",
+    "youtube_url": "https://youtube.com/watch?v=YkrAIz_Ha6E",
+    "summary": "Sabrina explains how Earth's four spheres - geosphere, biosphere, hydrosphere, and atmosphere - interact with each other. NGSS-aligned content for upper elementary science.",
+    "tags": [
+      "earth science",
+      "spheres",
+      "geosphere",
+      "biosphere",
+      "grade 4 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/YkrAIz_Ha6E/mqdefault.jpg",
+    "channel": "Crash Course Kids"
+  },
+  {
+    "id": "grade4-004",
+    "title": "How Your Brain Works? - The Dr. Binocs Show",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Human Brain Structure and Function",
+    "youtube_url": "https://youtube.com/watch?v=ndDpjT0_IM0",
+    "summary": "Dr. Binocs explains how the brain works in simple terms. Covers brain parts, neurons, and how we think, learn, and remember. Fascinating biology for Grade 4 students.",
+    "tags": [
+      "brain",
+      "human body",
+      "biology",
+      "dr binocs",
+      "grade 4 science"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/ndDpjT0_IM0/mqdefault.jpg",
+    "channel": "Peekaboo Kidz"
+  },
+  {
+    "id": "grade4-005",
+    "title": "Basic multiplication | Multiplication and division | Khan Academy",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Multiplication Concepts",
+    "youtube_url": "https://youtube.com/watch?v=mvOkMYCygps",
+    "summary": "Sal Khan introduces multiplication as groups of objects. This foundational lesson helps Grade 4 students understand the meaning behind multiplication before memorizing tables.",
+    "tags": [
+      "multiplication",
+      "groups",
+      "khan academy",
+      "grade 4 math",
+      "arithmetic"
+    ],
+    "duration_seconds": 780,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/mvOkMYCygps/mqdefault.jpg",
+    "channel": "Khan Academy"
+  },
+  {
+    "id": "grade4-006",
+    "title": "Bones | The Dr. Binocs Show | Learn Videos For Kids",
+    "subject": "Science",
+    "category": "Life Science",
+    "topic": "Human Skeletal System",
+    "youtube_url": "https://youtube.com/watch?v=ywDOiNEdJVc",
+    "summary": "Dr. Binocs explains every detail about human bones - their forms, names, and functions. Grade 4 students learn about the skeletal system through engaging animation.",
+    "tags": [
+      "bones",
+      "skeletal system",
+      "human body",
+      "dr binocs",
+      "grade 4 science"
+    ],
+    "duration_seconds": 256,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/ywDOiNEdJVc/mqdefault.jpg",
+    "channel": "Peekaboo Kidz"
+  },
+  {
+    "id": "grade4-007",
+    "title": "How To Draw A Cute Hawaiian Shave Ice",
+    "subject": "Art",
+    "category": "Drawing",
+    "topic": "Food Illustration",
+    "youtube_url": "https://youtube.com/watch?v=EBO56RtTUbg",
+    "summary": "Learn to draw a cute Hawaiian shave ice with colorful toppings. A fun art lesson that teaches shading, color blending, and creative food illustration for Grade 4 artists.",
+    "tags": [
+      "drawing",
+      "food art",
+      "shave ice",
+      "art for kids hub",
+      "grade 4 art"
+    ],
+    "duration_seconds": 900,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/EBO56RtTUbg/mqdefault.jpg",
+    "channel": "Art for Kids Hub"
+  },
+  {
+    "id": "grade4-008",
+    "title": "The Amazing Science of Balloons | SciShow Kids Compilation",
+    "subject": "Science",
+    "category": "Physical Science",
+    "topic": "Balloon Science Experiments",
+    "youtube_url": "https://youtube.com/watch?v=hHQpiCrZSIc",
+    "summary": "Jessi and friends learn about electricity, pressure, and chemical reactions from balloon science experiments. Covers static electricity, balloon rockets, and more for Grade 4.",
+    "tags": [
+      "balloons",
+      "science experiments",
+      "physics",
+      "scishow kids",
+      "grade 4 science"
+    ],
+    "duration_seconds": 1200,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/hHQpiCrZSIc/mqdefault.jpg",
+    "channel": "SciShow Kids"
+  },
+  {
+    "id": "grade4-009",
+    "title": "Math Antics - Long Division",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Long Division with One-Digit Divisors",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Math Antics teaches long division step by step. Learn to divide multi-digit dividends by one-digit divisors using the standard long division algorithm.",
+    "tags": [
+      "long division",
+      "division algorithm",
+      "grade 4 math",
+      "math antics",
+      "multi-digit"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade4-010",
+    "title": "Math Antics - Long Division with 2-Digit Divisors",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Long Division with Two-Digit Divisors",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Continue learning long division with two-digit divisors. Math Antics explains estimation, trial quotients, and checking answers with multiplication.",
+    "tags": [
+      "long division",
+      "two-digit divisor",
+      "estimation",
+      "grade 4 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade4-011",
+    "title": "Math Antics - Factors and Multiples",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Factors and Multiples",
+    "youtube_url": "https://youtube.com/watch?v=CA9XLJpQp3c",
+    "summary": "Learn the difference between factors and multiples. Find all factor pairs of a number and identify multiples of a number. Essential for fraction work.",
+    "tags": [
+      "factors",
+      "multiples",
+      "factor pairs",
+      "grade 4 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/CA9XLJpQp3c/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade4-012",
+    "title": "Math Antics - Prime Factorization",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Prime Factorization",
+    "youtube_url": "https://youtube.com/watch?v=CA9XLJpQp3c",
+    "summary": "Learn to break down composite numbers into their prime factors using factor trees. Prime factorization is the foundation for finding GCF and LCM.",
+    "tags": [
+      "prime factorization",
+      "factor trees",
+      "prime numbers",
+      "grade 4 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/CA9XLJpQp3c/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade4-013",
+    "title": "The Multiplying Fractions Song | By Whole Numbers",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Multiplying Fractions by Whole Numbers",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn to multiply a fraction by a whole number. Understand that 3 x 1/4 means three groups of one-fourth, which equals three-fourths.",
+    "tags": [
+      "multiplying fractions",
+      "whole numbers",
+      "grade 4 math",
+      "visual models",
+      "fractions"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-014",
+    "title": "The Decimal Place Value Song | Tenths and Hundredths",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Decimal Place Value",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about decimal place value - tenths and hundredths. Understand that decimals are another way to write fractions with denominators of 10 or 100.",
+    "tags": [
+      "decimals",
+      "place value",
+      "tenths",
+      "hundredths",
+      "grade 4 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-015",
+    "title": "The Comparing Decimals Song | Greater Than, Less Than",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Comparing Decimals",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn to compare decimals using place value. Compare tenths first, then hundredths if needed. Use greater than, less than, and equal to symbols correctly.",
+    "tags": [
+      "comparing decimals",
+      "place value",
+      "grade 4 math",
+      "number sense",
+      "symbols"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-016",
+    "title": "The Angle Song | Acute, Right, Obtuse, Straight",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Types of Angles",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about different types of angles - acute (less than 90), right (exactly 90), obtuse (more than 90), and straight (exactly 180). Measure angles with a protractor.",
+    "tags": [
+      "angles",
+      "acute",
+      "right",
+      "obtuse",
+      "grade 4 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-017",
+    "title": "The Lines Song | Parallel, Perpendicular, Intersecting",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Types of Lines",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about parallel lines (never meet), perpendicular lines (meet at 90 degrees), and intersecting lines (cross at any angle). Identify lines in real-world objects.",
+    "tags": [
+      "lines",
+      "parallel",
+      "perpendicular",
+      "intersecting",
+      "grade 4 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-018",
+    "title": "The Symmetry Song | Lines of Symmetry",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Symmetry in 2D Shapes",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about lines of symmetry - imaginary lines that divide a shape into two matching halves. Find lines of symmetry in letters, shapes, and real-world objects.",
+    "tags": [
+      "symmetry",
+      "lines of symmetry",
+      "geometry",
+      "grade 4 math",
+      "shapes"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-019",
+    "title": "The Metric System Song | Meters, Liters, Grams",
+    "subject": "Mathematics",
+    "category": "Measurement",
+    "topic": "Metric System Units",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn the metric system units for length (meters), volume (liters), and mass (grams). Understand prefixes like kilo-, centi-, and milli- and how they change unit size.",
+    "tags": [
+      "metric system",
+      "meters",
+      "liters",
+      "grams",
+      "grade 4 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-020",
+    "title": "The Customary Units Song | Inches, Feet, Yards, Miles",
+    "subject": "Mathematics",
+    "category": "Measurement",
+    "topic": "Customary System Units",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn customary units of measurement for length, weight, and capacity. Inches, feet, yards, miles, ounces, pounds, cups, pints, quarts, and gallons.",
+    "tags": [
+      "customary units",
+      "inches",
+      "feet",
+      "yards",
+      "grade 4 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-021",
+    "title": "The Prepositions Song | Location Words",
+    "subject": "English",
+    "category": "Grammar",
+    "topic": "Prepositions",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about prepositions - words that show the relationship between a noun and other words in a sentence. Above, below, between, through, during, and more.",
+    "tags": [
+      "prepositions",
+      "location words",
+      "grammar",
+      "grade 4 english",
+      "parts of speech"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-022",
+    "title": "The Conjunctions Song | FANBOYS",
+    "subject": "English",
+    "category": "Grammar",
+    "topic": "Coordinating Conjunctions",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn the coordinating conjunctions using FANBOYS - For, And, Nor, But, Or, Yet, So. Use conjunctions to join words, phrases, and clauses in sentences.",
+    "tags": [
+      "conjunctions",
+      "FANBOYS",
+      "grammar",
+      "grade 4 english",
+      "sentence structure"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-023",
+    "title": "The Interjections Song | Wow! Ouch! Hey!",
+    "subject": "English",
+    "category": "Grammar",
+    "topic": "Interjections",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about interjections - words that express strong emotion. Wow! Ouch! Hey! Hurray! Understand how interjections add feeling and excitement to writing.",
+    "tags": [
+      "interjections",
+      "emotions",
+      "grammar",
+      "grade 4 english",
+      "parts of speech"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-024",
+    "title": "The Idioms Song | Figurative Language",
+    "subject": "English",
+    "category": "Literature",
+    "topic": "Idioms and Their Meanings",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn common idioms like 'it's raining cats and dogs' and 'break a leg.' Understand that idioms are phrases that don't mean what the words literally say.",
+    "tags": [
+      "idioms",
+      "figurative language",
+      "expressions",
+      "grade 4 english",
+      "vocabulary"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-025",
+    "title": "The Alliteration Song | Tongue Twisters",
+    "subject": "English",
+    "category": "Literature",
+    "topic": "Alliteration",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about alliteration - the repetition of the same beginning sound in nearby words. Peter Piper picked a peck of pickled peppers! Create your own alliterative phrases.",
+    "tags": [
+      "alliteration",
+      "tongue twisters",
+      "poetry",
+      "grade 4 english",
+      "sound devices"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-026",
+    "title": "The Onomatopoeia Song | Sound Words",
+    "subject": "English",
+    "category": "Literature",
+    "topic": "Onomatopoeia",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about onomatopoeia - words that imitate sounds. Buzz, hiss, pop, crash, bang! Understand how onomatopoeia brings writing to life with sound.",
+    "tags": [
+      "onomatopoeia",
+      "sound words",
+      "poetry",
+      "grade 4 english",
+      "sound devices"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-027",
+    "title": "The Personification Song | Giving Human Traits to Objects",
+    "subject": "English",
+    "category": "Literature",
+    "topic": "Personification",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about personification - giving human qualities to non-human things. The wind whispered through the trees. The sun smiled down on us.",
+    "tags": [
+      "personification",
+      "figurative language",
+      "poetry",
+      "grade 4 english",
+      "literary devices"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-028",
+    "title": "The Hyperbole Song | Exaggeration for Effect",
+    "subject": "English",
+    "category": "Literature",
+    "topic": "Hyperbole",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about hyperbole - extreme exaggeration used for emphasis or humor. I'm so hungry I could eat a horse! Understand when and why writers use hyperbole.",
+    "tags": [
+      "hyperbole",
+      "exaggeration",
+      "figurative language",
+      "grade 4 english",
+      "literary devices"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-029",
+    "title": "The Summary Song | Summarizing a Text",
+    "subject": "English",
+    "category": "Reading",
+    "topic": "Summarizing",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn to write a summary - a brief retelling of the main ideas of a text. Include only the most important information and leave out unnecessary details.",
+    "tags": [
+      "summary",
+      "summarizing",
+      "main ideas",
+      "grade 4 reading",
+      "comprehension"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-030",
+    "title": "The Inference Song | Reading Between the Lines",
+    "subject": "English",
+    "category": "Reading",
+    "topic": "Making Inferences",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn to make inferences by reading between the lines. Use text evidence and background knowledge to draw conclusions that the author doesn't directly state.",
+    "tags": [
+      "inference",
+      "reading between the lines",
+      "evidence",
+      "grade 4 reading",
+      "comprehension"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-031",
+    "title": "Math Antics - Long Division",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Long Division with One-Digit Divisors",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Math Antics teaches long division step by step. Learn to divide multi-digit dividends by one-digit divisors using the standard long division algorithm.",
+    "tags": [
+      "long division",
+      "division algorithm",
+      "grade 4 math",
+      "math antics",
+      "multi-digit"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade4-032",
+    "title": "Math Antics - Long Division with 2-Digit Divisors",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Long Division with Two-Digit Divisors",
+    "youtube_url": "https://youtube.com/watch?v=I1u3pM9g9o8",
+    "summary": "Continue learning long division with two-digit divisors. Math Antics explains estimation, trial quotients, and checking answers with multiplication.",
+    "tags": [
+      "long division",
+      "two-digit divisor",
+      "estimation",
+      "grade 4 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/I1u3pM9g9o8/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade4-033",
+    "title": "Math Antics - Factors and Multiples",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Factors and Multiples",
+    "youtube_url": "https://youtube.com/watch?v=CA9XLJpQp3c",
+    "summary": "Learn the difference between factors and multiples. Find all factor pairs of a number and identify multiples of a number. Essential for fraction work.",
+    "tags": [
+      "factors",
+      "multiples",
+      "factor pairs",
+      "grade 4 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/CA9XLJpQp3c/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade4-034",
+    "title": "Math Antics - Prime Factorization",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Prime Factorization",
+    "youtube_url": "https://youtube.com/watch?v=CA9XLJpQp3c",
+    "summary": "Learn to break down composite numbers into their prime factors using factor trees. Prime factorization is the foundation for finding GCF and LCM.",
+    "tags": [
+      "prime factorization",
+      "factor trees",
+      "prime numbers",
+      "grade 4 math",
+      "math antics"
+    ],
+    "duration_seconds": 600,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/CA9XLJpQp3c/mqdefault.jpg",
+    "channel": "mathantics"
+  },
+  {
+    "id": "grade4-035",
+    "title": "The Multiplying Fractions Song | By Whole Numbers",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Multiplying Fractions by Whole Numbers",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn to multiply a fraction by a whole number. Understand that 3 x 1/4 means three groups of one-fourth, which equals three-fourths.",
+    "tags": [
+      "multiplying fractions",
+      "whole numbers",
+      "grade 4 math",
+      "visual models",
+      "fractions"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-036",
+    "title": "The Decimal Place Value Song | Tenths and Hundredths",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Decimal Place Value",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about decimal place value - tenths and hundredths. Understand that decimals are another way to write fractions with denominators of 10 or 100.",
+    "tags": [
+      "decimals",
+      "place value",
+      "tenths",
+      "hundredths",
+      "grade 4 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-037",
+    "title": "The Comparing Decimals Song | Greater Than, Less Than",
+    "subject": "Mathematics",
+    "category": "Number Work",
+    "topic": "Comparing Decimals",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn to compare decimals using place value. Compare tenths first, then hundredths if needed. Use greater than, less than, and equal to symbols correctly.",
+    "tags": [
+      "comparing decimals",
+      "place value",
+      "grade 4 math",
+      "number sense",
+      "symbols"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-038",
+    "title": "The Angle Song | Acute, Right, Obtuse, Straight",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Types of Angles",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about different types of angles - acute (less than 90), right (exactly 90), obtuse (more than 90), and straight (exactly 180). Measure angles with a protractor.",
+    "tags": [
+      "angles",
+      "acute",
+      "right",
+      "obtuse",
+      "grade 4 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-039",
+    "title": "The Lines Song | Parallel, Perpendicular, Intersecting",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Types of Lines",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about parallel lines (never meet), perpendicular lines (meet at 90 degrees), and intersecting lines (cross at any angle). Identify lines in real-world objects.",
+    "tags": [
+      "lines",
+      "parallel",
+      "perpendicular",
+      "intersecting",
+      "grade 4 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-040",
+    "title": "The Symmetry Song | Lines of Symmetry",
+    "subject": "Mathematics",
+    "category": "Geometry",
+    "topic": "Symmetry in 2D Shapes",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about lines of symmetry - imaginary lines that divide a shape into two matching halves. Find lines of symmetry in letters, shapes, and real-world objects.",
+    "tags": [
+      "symmetry",
+      "lines of symmetry",
+      "geometry",
+      "grade 4 math",
+      "shapes"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-041",
+    "title": "The Metric System Song | Meters, Liters, Grams",
+    "subject": "Mathematics",
+    "category": "Measurement",
+    "topic": "Metric System Units",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn the metric system units for length (meters), volume (liters), and mass (grams). Understand prefixes like kilo-, centi-, and milli- and how they change unit size.",
+    "tags": [
+      "metric system",
+      "meters",
+      "liters",
+      "grams",
+      "grade 4 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-042",
+    "title": "The Customary Units Song | Inches, Feet, Yards, Miles",
+    "subject": "Mathematics",
+    "category": "Measurement",
+    "topic": "Customary System Units",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn customary units of measurement for length, weight, and capacity. Inches, feet, yards, miles, ounces, pounds, cups, pints, quarts, and gallons.",
+    "tags": [
+      "customary units",
+      "inches",
+      "feet",
+      "yards",
+      "grade 4 math"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-043",
+    "title": "The Prepositions Song | Location Words",
+    "subject": "English",
+    "category": "Grammar",
+    "topic": "Prepositions",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about prepositions - words that show the relationship between a noun and other words in a sentence. Above, below, between, through, during, and more.",
+    "tags": [
+      "prepositions",
+      "location words",
+      "grammar",
+      "grade 4 english",
+      "parts of speech"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-044",
+    "title": "The Conjunctions Song | FANBOYS",
+    "subject": "English",
+    "category": "Grammar",
+    "topic": "Coordinating Conjunctions",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn the coordinating conjunctions using FANBOYS - For, And, Nor, But, Or, Yet, So. Use conjunctions to join words, phrases, and clauses in sentences.",
+    "tags": [
+      "conjunctions",
+      "FANBOYS",
+      "grammar",
+      "grade 4 english",
+      "sentence structure"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-045",
+    "title": "The Interjections Song | Wow! Ouch! Hey!",
+    "subject": "English",
+    "category": "Grammar",
+    "topic": "Interjections",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about interjections - words that express strong emotion. Wow! Ouch! Hey! Hurray! Understand how interjections add feeling and excitement to writing.",
+    "tags": [
+      "interjections",
+      "emotions",
+      "grammar",
+      "grade 4 english",
+      "parts of speech"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-046",
+    "title": "The Idioms Song | Figurative Language",
+    "subject": "English",
+    "category": "Literature",
+    "topic": "Idioms and Their Meanings",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn common idioms like 'it's raining cats and dogs' and 'break a leg.' Understand that idioms are phrases that don't mean what the words literally say.",
+    "tags": [
+      "idioms",
+      "figurative language",
+      "expressions",
+      "grade 4 english",
+      "vocabulary"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-047",
+    "title": "The Alliteration Song | Tongue Twisters",
+    "subject": "English",
+    "category": "Literature",
+    "topic": "Alliteration",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about alliteration - the repetition of the same beginning sound in nearby words. Peter Piper picked a peck of pickled peppers! Create your own alliterative phrases.",
+    "tags": [
+      "alliteration",
+      "tongue twisters",
+      "poetry",
+      "grade 4 english",
+      "sound devices"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-048",
+    "title": "The Onomatopoeia Song | Sound Words",
+    "subject": "English",
+    "category": "Literature",
+    "topic": "Onomatopoeia",
+    "youtube_url": "https://youtube.com/watch?v=2n4enj6YMnw",
+    "summary": "Learn about onomatopoeia - words that imitate sounds. Buzz, hiss, pop, crash, bang! Understand how onomatopoeia brings writing to life with sound.",
+    "tags": [
+      "onomatopoeia",
+      "sound words",
+      "poetry",
+      "grade 4 english",
+      "sound devices"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/2n4enj6YMnw/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-049",
+    "title": "The Personification Song | Giving Human Traits to Objects",
+    "subject": "English",
+    "category": "Literature",
+    "topic": "Personification",
+    "youtube_url": "https://youtube.com/watch?v=8N7LNtT6xQc",
+    "summary": "Learn about personification - giving human qualities to non-human things. The wind whispered through the trees. The sun smiled down on us.",
+    "tags": [
+      "personification",
+      "figurative language",
+      "poetry",
+      "grade 4 english",
+      "literary devices"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/8N7LNtT6xQc/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  },
+  {
+    "id": "grade4-050",
+    "title": "The Hyperbole Song | Exaggeration for Effect",
+    "subject": "English",
+    "category": "Literature",
+    "topic": "Hyperbole",
+    "youtube_url": "https://youtube.com/watch?v=0IvC6fVZQT8",
+    "summary": "Learn about hyperbole - extreme exaggeration used for emphasis or humor. I'm so hungry I could eat a horse! Understand when and why writers use hyperbole.",
+    "tags": [
+      "hyperbole",
+      "exaggeration",
+      "figurative language",
+      "grade 4 english",
+      "literary devices"
+    ],
+    "duration_seconds": 240,
+    "difficulty": "intermediate",
+    "thumbnail_url": "https://img.youtube.com/vi/0IvC6fVZQT8/mqdefault.jpg",
+    "channel": "Jack Hartmann Kids Music Channel"
+  }
+]

@@ -124,3 +124,34 @@ export function getPermissions(role: UserRole, customPermissions?: Record<string
 export function hasPermission(role: UserRole, permission: keyof PermissionSet, customPermissions?: Record<string, boolean>): boolean {
   return getPermissions(role, customPermissions)[permission];
 }
+
+// Route-level permission mapping
+export const ROUTE_PERMISSIONS: Record<string, (keyof PermissionSet)[]> = {
+  "/admin": ["manageUsers"],
+  "/admin/users": ["manageUsers"],
+  "/admin/analytics": ["viewAnalytics"],
+  "/admin/audit": ["viewAuditLogs"],
+  "/admin/subjects": ["manageRoles"],
+  "/bursar": ["viewFees"],
+  "/fees": ["viewFees"],
+  "/librarian": ["editLibrary"],
+  "/library": ["viewLibrary"],
+  "/teacher": ["editGrades"],
+  "/grades": ["viewGrades"],
+  "/attendance": ["viewAttendance"],
+  "/timetable": ["viewTimetable"],
+  "/assignments": ["viewAssignments"],
+  "/admissions": ["viewAdmissions"],
+  "/vora": ["viewVora"],
+  "/calendar": ["viewCalendar"],
+  "/messages": ["viewMessages"],
+  "/parent": ["viewGrades"],
+  "/student": ["viewDashboard"],
+};
+
+export function getRequiredPermission(pathname: string): (keyof PermissionSet)[] | null {
+  for (const [route, perms] of Object.entries(ROUTE_PERMISSIONS)) {
+    if (pathname.startsWith(route)) return perms;
+  }
+  return null;
+}

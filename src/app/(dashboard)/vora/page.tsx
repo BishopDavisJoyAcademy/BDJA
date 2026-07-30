@@ -1,273 +1,237 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { hasPermission } from "@/lib/permissions";
-import { formatDate } from "@/lib/utils";
-import { Video, Plus, Play, FileText, CheckCircle, Search, X, Download, ExternalLink } from "lucide-react";
+import { Play, Clock, Bookmark, BookmarkCheck, Search, Filter, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
 
-function getYouTubeId(url: string): string | null {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  return match && match[2].length === 11 ? match[2] : null;
-}
-
-function isYouTubeUrl(url: string): boolean {
-  return url.includes("youtube.com") || url.includes("youtu.be");
+interface VoraItem {
+  id: string;
+  title: string;
+  subject?: string;
+  category?: string;
+  topic?: string;
+  youtube_url: string;
+  summary?: string;
+  tags?: string[];
+  grade_level: string;
+  duration_seconds?: number;
+  difficulty?: string;
+  thumbnail_url?: string;
+  channel?: string;
+  source?: string;
 }
 
 export default function VoraPage() {
   const { user } = useAuth();
-  const [content, setContent] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [gradeFilter, setGradeFilter] = useState("");
-  const [subjectFilter, setSubjectFilter] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [playingVideo, setPlayingVideo] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    video_url: "",
-    transcript: "",
-    summary: "",
-    grade_level: "grade1",
-    subject_id: "",
-    strand: "",
-    sub_strand: "",
-    specific_learning_outcome: "",
-    visibility: "class",
-  });
+  const [content, setContent] = useState<VoraItem[]>([]);
+  const [filtered, setFiltered] = useState<VoraItem[]>([]);
+  const [search, setSearch] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("all");
+  const [subjectFilter, setSubjectFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [selectedVideo, setSelectedVideo] = useState<VoraItem | null>(null);
 
-  const canEdit = user ? hasPermission(user.role, "editVora") : false;
+  const userGrade = user?.role === "student" ? (user as any)?.grade_level : undefined;
 
   useEffect(() => {
-    if (!user) return;
-    loadData();
-    loadSubjects();
-  }, [user]);
+    fetchContent();
+    fetchSavedVideos();
+  }, []);
 
-  const loadData = async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from("vora_content")
-      .select("*, subjects(name), profiles(full_name)")
-      .eq("approved", true)
-      .order("created_at", { ascending: false });
-    setContent(data || []);
-    setLoading(false);
+  useEffect(() => {
+    filterContent();
+  }, [content, search, gradeFilter, subjectFilter, categoryFilter]);
+
+  const fetchContent = async () => {
+    try {
+      const res = await fetch("/api/vora/content?mode=all");
+      const data = await res.json();
+      setContent(data.content || []);
+      setSubjects(data.subjects || []);
+      setCategories(data.categories || []);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
-  const loadSubjects = async () => {
-    const { data } = await supabase.from("subjects").select("*").order("name");
-    setSubjects(data || []);
+  const fetchSavedVideos = async () => {
+    try {
+      const res = await fetch("/api/vora/saved-videos");
+      const data = await res.json();
+      setSavedIds(new Set((data.videos || []).map((v: any) => v.video_id)));
+    } catch (err) { console.error(err); }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canEdit) { toast.error("No permission"); return; }
+  const filterContent = useCallback(() => {
+    let result = [...content];
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(c =>
+        c.title.toLowerCase().includes(q) ||
+        (c.subject?.toLowerCase().includes(q)) ||
+        (c.category?.toLowerCase().includes(q)) ||
+        (c.topic?.toLowerCase().includes(q)) ||
+        (c.tags?.some(t => t.toLowerCase().includes(q)))
+      );
+    }
+    if (gradeFilter !== "all") result = result.filter(c => c.grade_level === gradeFilter);
+    if (subjectFilter !== "all") result = result.filter(c => c.subject === subjectFilter);
+    if (categoryFilter !== "all") result = result.filter(c => c.category === categoryFilter);
+    // Boost user's grade to top
+    if (userGrade) {
+      result.sort((a, b) => {
+        const aMatch = a.grade_level === userGrade ? 1 : 0;
+        const bMatch = b.grade_level === userGrade ? 1 : 0;
+        return bMatch - aMatch;
+      });
+    }
+    setFiltered(result);
+  }, [content, search, gradeFilter, subjectFilter, categoryFilter, userGrade]);
 
-    const payload = {
-      ...formData,
-      campus_id: user?.campus_id,
-      uploaded_by: user?.id,
-      approved: false,
-    };
-
-    const { error } = await supabase.from("vora_content").insert(payload);
-    if (error) { toast.error("Failed to upload"); return; }
-    toast.success("Content uploaded for approval");
-    setIsModalOpen(false);
-    setFormData({ title: "", description: "", video_url: "", transcript: "", summary: "", grade_level: "grade1", subject_id: "", strand: "", sub_strand: "", specific_learning_outcome: "", visibility: "class" });
-    loadData();
+  const toggleSave = async (video: VoraItem) => {
+    const isSaved = savedIds.has(video.id);
+    try {
+      if (isSaved) {
+        const res = await fetch(`/api/vora/saved-videos?id=${video.id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to remove");
+        setSavedIds(prev => { const n = new Set(prev); n.delete(video.id); return n; });
+        toast.success("Removed from saved videos");
+      } else {
+        const res = await fetch("/api/vora/saved-videos", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            video_id: video.id, title: video.title, subject: video.subject,
+            grade_level: video.grade_level, youtube_url: video.youtube_url,
+            summary: video.summary, thumbnail_url: video.thumbnail_url,
+            duration_seconds: video.duration_seconds, difficulty: video.difficulty,
+          }),
+        });
+        if (!res.ok) throw new Error("Failed to save");
+        setSavedIds(prev => new Set(prev).add(video.id));
+        toast.success("Saved for later!");
+      }
+    } catch (err: any) { toast.error(err.message); }
   };
 
-  const filtered = content.filter((item) => {
-    const matchesSearch = !searchTerm ||
-      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.strand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.sub_strand?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesGrade = !gradeFilter || item.grade_level === gradeFilter;
-    const matchesSubject = !subjectFilter || item.subject_id === subjectFilter;
-    return matchesSearch && matchesGrade && matchesSubject;
-  });
+  const formatDuration = (s?: number) => {
+    if (!s) return "Unknown";
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const getEmbedUrl = (url: string) => {
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+    return match ? `https://www.youtube.com/embed/${match[1]}?rel=0&modestbranding=1` : url;
+  };
+
+  const gradeOptions = [
+    { value: "all", label: "All Grades" }, { value: "playgroup", label: "Playgroup" },
+    { value: "pp1", label: "PP1" }, { value: "pp2", label: "PP2" },
+    { value: "grade1", label: "Grade 1" }, { value: "grade2", label: "Grade 2" },
+    { value: "grade3", label: "Grade 3" }, { value: "grade4", label: "Grade 4" },
+    { value: "grade5", label: "Grade 5" }, { value: "grade6", label: "Grade 6" },
+  ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-bdja-dark">VORA Learning Hub</h1>
-          <p className="text-gray-500 text-sm mt-1">Vision - Opportunity - Resilience - Achievement</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-bdja-dark flex items-center gap-2"><BookOpen className="w-6 h-6 text-bdja-secondary" /> VORA Learning</h1>
+        <p className="text-gray-500 text-sm mt-1">Browse educational videos by grade, subject, and category</p>
+      </div>
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search videos, topics, subjects..." className="pl-10" />
         </div>
-        {canEdit && (
-          <Button variant="primary" onClick={() => setIsModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" /> Upload Content
-          </Button>
-        )}
+        <Select value={gradeFilter} onChange={e => setGradeFilter(e.target.value)} options={gradeOptions} className="w-full md:w-40" />
+        <Select value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)} options={[{ value: "all", label: "All Subjects" }, ...subjects.map(s => ({ value: s, label: s }))]} className="w-full md:w-40" />
+        <Select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} options={[{ value: "all", label: "All Categories" }, ...categories.map(c => ({ value: c, label: c }))]} className="w-full md:w-40" />
       </div>
 
-      {/* Smart Search & Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by title, strand, sub-strand, or topic..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-bdja-primary"
-              />
-            </div>
-            <Select value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} className="w-40">
-              <option value="">All Grades</option>
-              {["playgroup", "pp1", "pp2", "grade1", "grade2", "grade3", "grade4", "grade5", "grade6"].map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </Select>
-            <Select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="w-40">
-              <option value="">All Subjects</option>
-              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-10 h-10 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin" />
-        </div>
+        <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin" /></div>
       ) : filtered.length === 0 ? (
-        <Card><CardContent className="p-12 text-center text-gray-400">No VORA content found.</CardContent></Card>
+        <div className="text-center py-12 text-gray-500">No videos found. Try adjusting your filters or search query.</div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((item) => {
-            const ytId = getYouTubeId(item.video_url);
-            return (
-              <Card key={item.id} className="card-hover overflow-hidden">
-                <div
-                  className="relative h-40 bg-gray-900 flex items-center justify-center cursor-pointer group"
-                  onClick={() => setPlayingVideo(item)}
-                >
-                  {ytId ? (
-                    <img
-                      src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
-                      alt={item.title}
-                      className="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition-opacity"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-bdja-primary to-bdja-accent" />
-                  )}
-                  <Play className="absolute w-12 h-12 text-white/80 group-hover:text-white group-hover:scale-110 transition-all" />
-                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
-                    {ytId ? "YouTube" : "Video"}
-                  </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map(video => (
+            <Card key={video.id} className="overflow-hidden group hover:shadow-lg transition-shadow">
+              <div className="relative aspect-video bg-gray-100 cursor-pointer" onClick={() => setSelectedVideo(video)}>
+                {video.thumbnail_url ? (
+                  <img src={video.thumbnail_url} alt={video.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center"><Play className="w-10 h-10 text-gray-300" /></div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center"><Play className="w-6 h-6 text-bdja-primary ml-1" /></div>
                 </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-bdja-dark text-sm">{item.title}</h3>
-                  <p className="text-xs text-gray-500 mt-1">{item.subjects?.name} - {item.grade_level}</p>
-                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.description}</p>
-                  {(item.strand || item.sub_strand) && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {item.strand && <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full">{item.strand}</span>}
-                      {item.sub_strand && <span className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-600 rounded-full">{item.sub_strand}</span>}
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between mt-3">
-                    <span className="text-xs text-gray-400">By {item.profiles?.full_name}</span>
-                    {item.approved && <CheckCircle className="w-4 h-4 text-green-500" />}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                {video.duration_seconds && <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded flex items-center gap-1"><Clock className="w-3 h-3" />{formatDuration(video.duration_seconds)}</span>}
+                {video.grade_level === userGrade && <span className="absolute top-2 left-2 bg-bdja-secondary text-white text-xs px-2 py-0.5 rounded font-medium">Your Grade</span>}
+              </div>
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-semibold text-bdja-dark text-sm line-clamp-2">{video.title}</h3>
+                  <button onClick={() => toggleSave(video)} className="shrink-0 text-gray-400 hover:text-bdja-secondary transition-colors">
+                    {savedIds.has(video.id) ? <BookmarkCheck className="w-5 h-5 text-bdja-secondary" /> : <Bookmark className="w-5 h-5" />}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {video.subject && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{video.subject}</span>}
+                  {video.category && <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded">{video.category}</span>}
+                  {video.difficulty && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded capitalize">{video.difficulty}</span>}
+                </div>
+                {video.summary && <p className="text-xs text-gray-500 mt-2 line-clamp-2">{video.summary}</p>}
+              </div>
+            </Card>
+          ))}
         </div>
       )}
 
-      {/* Upload Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Upload VORA Content">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input placeholder="Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
-          <textarea placeholder="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm min-h-[60px]" />
-          <Input placeholder="Video URL (YouTube link or direct video URL)" value={formData.video_url} onChange={(e) => setFormData({ ...formData, video_url: e.target.value })} required />
-          <p className="text-xs text-gray-400">Supports YouTube links and direct video URLs</p>
-          <Select value={formData.grade_level} onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}>
-            {["playgroup", "pp1", "pp2", "grade1", "grade2", "grade3", "grade4", "grade5", "grade6"].map((g) => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </Select>
-          <Select value={formData.subject_id} onChange={(e) => setFormData({ ...formData, subject_id: e.target.value })}>
-            <option value="">Select subject</option>
-            {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </Select>
-          <Input placeholder="Strand (e.g. Number Work)" value={formData.strand} onChange={(e) => setFormData({ ...formData, strand: e.target.value })} />
-          <Input placeholder="Sub-strand (e.g. Counting 1-20)" value={formData.sub_strand} onChange={(e) => setFormData({ ...formData, sub_strand: e.target.value })} />
-          <Input placeholder="Specific Learning Outcome" value={formData.specific_learning_outcome} onChange={(e) => setFormData({ ...formData, specific_learning_outcome: e.target.value })} />
-          <textarea placeholder="Transcript (optional - for low-data reading)" value={formData.transcript} onChange={(e) => setFormData({ ...formData, transcript: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm min-h-[80px]" />
-          <textarea placeholder="Summary (optional - quick read for low bandwidth)" value={formData.summary} onChange={(e) => setFormData({ ...formData, summary: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm min-h-[60px]" />
-          <Select value={formData.visibility} onChange={(e) => setFormData({ ...formData, visibility: e.target.value })}>
-            {["class", "campus", "cross_campus"].map((v) => (
-              <option key={v} value={v}>{v.replace("_", " ").toUpperCase()}</option>
-            ))}
-          </Select>
-          <Button type="submit" variant="primary" className="w-full">Upload for Approval</Button>
-        </form>
-      </Modal>
-
-      {/* Video Player Modal */}
-      <Modal isOpen={!!playingVideo} onClose={() => setPlayingVideo(null)} title={playingVideo?.title || "Video"} className="max-w-4xl">
-        {playingVideo && (
-          <div className="space-y-4">
-            <div className="aspect-video bg-black rounded-lg overflow-hidden">
-              {isYouTubeUrl(playingVideo.video_url) ? (
-                <iframe
-                  src={`https://www.youtube.com/embed/${getYouTubeId(playingVideo.video_url)}?rel=0`}
-                  className="w-full h-full"
-                  allowFullScreen
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                />
-              ) : (
-                <video src={playingVideo.video_url} controls className="w-full h-full" />
+      {selectedVideo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSelectedVideo(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="aspect-video bg-black">
+              <iframe src={getEmbedUrl(selectedVideo.youtube_url)} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+            </div>
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-bdja-dark">{selectedVideo.title}</h2>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedVideo.subject && <span className="text-sm bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{selectedVideo.subject}</span>}
+                {selectedVideo.grade_level && <span className="text-sm bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{selectedVideo.grade_level}</span>}
+                {selectedVideo.duration_seconds && <span className="text-sm bg-gray-100 text-gray-700 px-2 py-0.5 rounded flex items-center gap-1"><Clock className="w-3 h-3" />{formatDuration(selectedVideo.duration_seconds)}</span>}
+              </div>
+              {selectedVideo.summary && (
+                <div className="mt-4">
+                  <h4 className="font-semibold text-sm text-bdja-dark mb-1">Summary</h4>
+                  <p className="text-sm text-gray-600">{selectedVideo.summary}</p>
+                </div>
               )}
+              {selectedVideo.tags && selectedVideo.tags.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="font-semibold text-sm text-bdja-dark mb-1">Tags</h4>
+                  <div className="flex flex-wrap gap-1">{selectedVideo.tags.map(t => <span key={t} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{t}</span>)}</div>
+                </div>
+              )}
+              <div className="mt-6 flex gap-3">
+                <Button onClick={() => toggleSave(selectedVideo)} variant="outline" className="flex items-center gap-2">
+                  {savedIds.has(selectedVideo.id) ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                  {savedIds.has(selectedVideo.id) ? "Saved" : "Save Video"}
+                </Button>
+                <Button onClick={() => setSelectedVideo(null)} variant="primary">Close</Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <a href={playingVideo.video_url} target="_blank" rel="noopener noreferrer" className="text-sm text-bdja-primary hover:underline flex items-center gap-1">
-                <ExternalLink className="w-4 h-4" /> Open Original
-              </a>
-            </div>
-            <p className="text-sm text-gray-600">{playingVideo.description}</p>
-            {(playingVideo.strand || playingVideo.sub_strand) && (
-              <div className="flex flex-wrap gap-2">
-                {playingVideo.strand && <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full">{playingVideo.strand}</span>}
-                {playingVideo.sub_strand && <span className="text-xs px-2 py-1 bg-green-50 text-green-700 rounded-full">{playingVideo.sub_strand}</span>}
-                {playingVideo.specific_learning_outcome && <span className="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded-full">{playingVideo.specific_learning_outcome}</span>}
-              </div>
-            )}
-            {playingVideo.transcript && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><FileText className="w-4 h-4" /> Transcript</h4>
-                <p className="text-xs text-gray-600 whitespace-pre-wrap">{playingVideo.transcript}</p>
-              </div>
-            )}
-            {playingVideo.summary && (
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="text-sm font-semibold mb-2 text-blue-800">Summary</h4>
-                <p className="text-xs text-blue-600">{playingVideo.summary}</p>
-              </div>
-            )}
           </div>
-        )}
-      </Modal>
+        </div>
+      )}
     </div>
   );
 }

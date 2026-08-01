@@ -1,5 +1,6 @@
-// Rate limiter with optional Upstash Redis support
-// Falls back to in-memory rate limiting if Upstash is not configured or installed
+// Pure in-memory rate limiter — no external dependencies
+// If you need Upstash Redis rate limiting later, install @upstash/ratelimit and @upstash/redis,
+// then replace this file with the Redis-backed version.
 
 const memoryStore = new Map<string, { count: number; resetTime: number }>();
 
@@ -20,41 +21,9 @@ function memoryRateLimit(identifier: string, limit: number, windowMs: number) {
   return { success: true, limit, remaining: limit - record.count, reset: record.resetTime };
 }
 
-let upstashLimiter: any = null;
-let upstashInitAttempted = false;
-
-async function getUpstashLimiter() {
-  if (upstashInitAttempted) return upstashLimiter;
-  upstashInitAttempted = true;
-
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-
-  try {
-    const { Ratelimit } = await import("@upstash/ratelimit");
-    const { Redis } = await import("@upstash/redis");
-    upstashLimiter = new Ratelimit({
-      redis: Redis.fromEnv(),
-      limiter: Ratelimit.slidingWindow(10, "1 m"),
-      analytics: true,
-    });
-    return upstashLimiter;
-  } catch {
-    // Upstash packages not installed — silently fall back to memory
-    return null;
-  }
-}
-
 export async function rateLimit(identifier: string, options?: { limit?: number; windowMs?: number }) {
   const limit = options?.limit ?? 10;
   const windowMs = options?.windowMs ?? 60000;
-
-  const limiter = await getUpstashLimiter();
-  if (limiter) {
-    return await limiter.limit(identifier);
-  }
-
   return memoryRateLimit(identifier, limit, windowMs);
 }
 

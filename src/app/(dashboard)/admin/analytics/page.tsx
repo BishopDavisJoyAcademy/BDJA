@@ -6,6 +6,9 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { BarChart3, Users, GraduationCap, DollarSign, TrendingUp } from "lucide-react";
 
+interface FeePayment { amount: number; }
+interface AttendanceRecord { status: string; }
+
 export default function AnalyticsPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -27,13 +30,16 @@ export default function AnalyticsPage() {
     const { count: students } = await supabase.from("students").select("*", { count: "exact", head: true });
     const { count: teachers } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "teacher");
     const { count: parents } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "parent");
-    const { data: fees } = await supabase.from("fee_payments").select("amount").eq("status", "verified");
-    const totalFees = fees?.reduce((s, f) => s + (f.amount || 0), 0) || 0;
+
+    const { data: feesRaw } = await supabase.from("fee_payments").select("amount").eq("status", "verified");
+    const fees = (feesRaw || []) as FeePayment[];
+    const totalFees = fees.reduce((s, f) => s + (f.amount || 0), 0);
 
     const today = new Date().toISOString().split("T")[0];
-    const { data: att } = await supabase.from("attendance").select("status").eq("date", today);
-    const presentCount = att?.filter((a) => a.status === "present").length || 0;
-    const avgAttendance = att && att.length > 0 ? Math.round((presentCount / att.length) * 100) : 0;
+    const { data: attRaw } = await supabase.from("attendance").select("status").eq("date", today);
+    const att = (attRaw || []) as AttendanceRecord[];
+    const presentCount = att.filter((a) => a.status === "present").length;
+    const avgAttendance = att.length > 0 ? Math.round((presentCount / att.length) * 100) : 0;
 
     setStats({ totalStudents: students || 0, totalTeachers: teachers || 0, totalParents: parents || 0, totalFees, avgAttendance });
     setLoading(false);

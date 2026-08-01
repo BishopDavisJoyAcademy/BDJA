@@ -38,7 +38,6 @@ export default function JoyChat() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [streaming, setStreaming] = useState(false);
   const [savedVideoIds, setSavedVideoIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -101,11 +100,6 @@ export default function JoyChat() {
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
-  const getEmbedUrl = (url: string) => {
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-    return match ? `https://www.youtube.com/embed/${match[1]}?rel=0&modestbranding=1` : url;
-  };
-
   if (!joyOpen) {
     return (
       <button onClick={() => setJoyOpen(true)} className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-bdja-secondary rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-transform" aria-label="Open Joy AI">
@@ -116,7 +110,6 @@ export default function JoyChat() {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
-      {/* Header */}
       <div className="bg-gradient-to-r from-bdja-primary to-bdja-accent px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center"><Bot className="w-5 h-5 text-white" /></div>
@@ -124,8 +117,6 @@ export default function JoyChat() {
         </div>
         <button onClick={() => setJoyOpen(false)} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
       </div>
-
-      {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map(msg => (
           <div key={msg.id} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -134,8 +125,6 @@ export default function JoyChat() {
             </div>
             <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${msg.role === "user" ? "bg-bdja-secondary text-white rounded-tr-sm" : "bg-gray-100 text-gray-800 rounded-tl-sm"}`}>
               <div className="whitespace-pre-wrap">{msg.content}</div>
-
-              {/* VORA Results */}
               {msg.voraResults && msg.voraResults.length > 0 && (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs font-semibold text-bdja-primary">Recommended from VORA:</p>
@@ -163,8 +152,6 @@ export default function JoyChat() {
                   ))}
                 </div>
               )}
-
-              {/* YouTube Fallback Results */}
               {msg.youtubeResults && msg.youtubeResults.length > 0 && (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs font-semibold text-gray-500">Found online:</p>
@@ -199,8 +186,6 @@ export default function JoyChat() {
           </div>
         )}
       </div>
-
-      {/* Input */}
       <div className="p-3 border-t border-gray-100 shrink-0">
         <form onSubmit={e => { e.preventDefault(); sendMessage(); }} className="flex gap-2">
           <Input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} placeholder="Ask Joy anything..." className="flex-1 text-sm" />

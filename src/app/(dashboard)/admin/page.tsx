@@ -13,6 +13,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+interface FeePayment { amount: number; }
+interface AdmissionRecord { id: string; first_name: string; last_name: string; grade_applied: string; status: string; created_at: string; }
+interface PaymentRecord { id: string; amount: number; status: string; created_at: string; students?: { admission_number: string }; }
+interface CalendarEvent { id: string; title: string; start_date: string; event_type: string; }
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -23,9 +28,9 @@ export default function AdminDashboard() {
     pendingAdmissions: 0,
     pendingFees: 0,
   });
-  const [recentAdmissions, setRecentAdmissions] = useState<any[]>([]);
-  const [recentPayments, setRecentPayments] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
+  const [recentAdmissions, setRecentAdmissions] = useState<AdmissionRecord[]>([]);
+  const [recentPayments, setRecentPayments] = useState<PaymentRecord[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,8 +47,9 @@ export default function AdminDashboard() {
       const { count: pendingAdm } = await supabase.from("admissions").select("*", { count: "exact", head: true }).eq("status", "received");
       const { count: pendingFee } = await supabase.from("fee_payments").select("*", { count: "exact", head: true }).eq("status", "pending");
 
-      const { data: fees } = await supabase.from("fee_payments").select("amount").eq("status", "verified");
-      const totalFees = fees?.reduce((sum, f) => sum + (f.amount || 0), 0) || 0;
+      const { data: feesRaw } = await supabase.from("fee_payments").select("amount").eq("status", "verified");
+      const fees = (feesRaw || []) as FeePayment[];
+      const totalFees = fees.reduce((sum, f) => sum + (f.amount || 0), 0);
 
       setStats({
         totalStudents: students || 0,
@@ -54,27 +60,14 @@ export default function AdminDashboard() {
         pendingFees: pendingFee || 0,
       });
 
-      const { data: adm } = await supabase
-        .from("admissions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      setRecentAdmissions(adm || []);
+      const { data: adm } = await supabase.from("admissions").select("*").order("created_at", { ascending: false }).limit(5);
+      setRecentAdmissions((adm || []) as AdmissionRecord[]);
 
-      const { data: pay } = await supabase
-        .from("fee_payments")
-        .select("*, students(admission_number)")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      setRecentPayments(pay || []);
+      const { data: pay } = await supabase.from("fee_payments").select("*, students(admission_number)").order("created_at", { ascending: false }).limit(5);
+      setRecentPayments((pay || []) as PaymentRecord[]);
 
-      const { data: ev } = await supabase
-        .from("calendar_events")
-        .select("*")
-        .gte("start_date", new Date().toISOString())
-        .order("start_date")
-        .limit(5);
-      setEvents(ev || []);
+      const { data: ev } = await supabase.from("calendar_events").select("*").gte("start_date", new Date().toISOString()).order("start_date").limit(5);
+      setEvents((ev || []) as CalendarEvent[]);
     } finally {
       setLoading(false);
     }
@@ -103,7 +96,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <Card className="card-hover">
           <CardContent className="p-4">
@@ -186,7 +178,6 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -223,7 +214,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Admissions */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -243,13 +233,9 @@ export default function AdminDashboard() {
                   <div key={adm.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
                       <p className="font-medium text-sm">{adm.first_name} {adm.last_name}</p>
-                      <p className="text-xs text-gray-500">Grade {adm.grade_applied} - {formatDate(adm.created_at)}</p>
+                      <p className="text-xs text-gray-500">Grade: {adm.grade_applied}</p>
                     </div>
-                    <Badge variant={
-                      adm.status === "accepted" ? "success" :
-                      adm.status === "rejected" ? "danger" :
-                      adm.status === "enrolled" ? "info" : "warning"
-                    }>{adm.status}</Badge>
+                    <Badge variant={adm.status === "received" ? "warning" : "success"}>{adm.status}</Badge>
                   </div>
                 ))}
               </div>
@@ -257,36 +243,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Recent Payments */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-bdja-primary" />
-              Recent Payments
-            </CardTitle>
-            <Link href="/fees" className="text-sm text-bdja-primary hover:underline">View All</Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {recentPayments.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-8">No payments yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {recentPayments.map((pay) => (
-                <div key={pay.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-sm">KES {pay.amount.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{pay.students?.admission_number} - {formatDate(pay.created_at)}</p>
-                  </div>
-                  <Badge variant={pay.status === "verified" ? "success" : "warning"}>{pay.status}</Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

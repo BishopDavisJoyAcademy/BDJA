@@ -2,13 +2,8 @@ import { supabaseAdmin } from "./supabase-server";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
-export const DEFAULT_PASSWORD = process.env.DEFAULT_PASSWORD;
-if (!DEFAULT_PASSWORD) {
-  throw new Error("DEFAULT_PASSWORD environment variable is required");
-}
-
 export function generateTempPassword(): string {
-  // 10-character alphanumeric temp password
+  // 10-character alphanumeric temp password (e.g., A3F9B2C1D8)
   return crypto.randomBytes(5).toString("hex").toUpperCase();
 }
 
@@ -52,7 +47,6 @@ export async function createUser(
   });
 
   if (profileError) {
-    // Rollback auth user if profile insert fails
     await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
     throw profileError;
   }
@@ -87,7 +81,6 @@ export async function createStudentWithParent(
     { temp_password_hash: hashedTemp }
   );
 
-  // Create student record
   const { error: studentError } = await supabaseAdmin.from("students").insert({
     profile_id: studentUser.id,
     admission_number: studentData.admission_number,
@@ -99,9 +92,6 @@ export async function createStudentWithParent(
 
   if (studentError) throw studentError;
 
-  let parentUserId: string | null = null;
-
-  // Create parent if provided
   if (parentData?.email) {
     const parentTempPassword = generateTempPassword();
     const parentHashedTemp = await hashPassword(parentTempPassword);
@@ -114,9 +104,7 @@ export async function createStudentWithParent(
       studentData.campus_id,
       { temp_password_hash: parentHashedTemp }
     );
-    parentUserId = parentUser.id;
 
-    // Link parent to student
     await supabaseAdmin.from("parent_children").insert({
       parent_id: parentUser.id,
       student_id: studentUser.id,

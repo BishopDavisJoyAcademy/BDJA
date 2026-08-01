@@ -1,7 +1,6 @@
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+// Rate limiter with optional Upstash Redis support
+// Falls back to in-memory rate limiting if Upstash is not configured or installed
 
-// In-memory fallback for development or when Upstash is not configured
 const memoryStore = new Map<string, { count: number; resetTime: number }>();
 
 function memoryRateLimit(identifier: string, limit: number, windowMs: number) {
@@ -21,22 +20,39 @@ function memoryRateLimit(identifier: string, limit: number, windowMs: number) {
   return { success: true, limit, remaining: limit - record.count, reset: record.resetTime };
 }
 
-let upstashLimiter: Ratelimit | null = null;
+let upstashLimiter: any = null;
+let upstashInitAttempted = false;
 
-if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-  upstashLimiter = new Ratelimit({
-    redis: Redis.fromEnv(),
-    limiter: Ratelimit.slidingWindow(10, "1 m"),
-    analytics: true,
-  });
+async function getUpstashLimiter() {
+  if (upstashInitAttempted) return upstashLimiter;
+  upstashInitAttempted = true;
+
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+
+  try {
+    const { Ratelimit } = await import("@upstash/ratelimit");
+    const { Redis } = await import("@upstash/redis");
+    upstashLimiter = new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(10, "1 m"),
+      analytics: true,
+    });
+    return upstashLimiter;
+  } catch {
+    // Upstash packages not installed — silently fall back to memory
+    return null;
+  }
 }
 
 export async function rateLimit(identifier: string, options?: { limit?: number; windowMs?: number }) {
   const limit = options?.limit ?? 10;
   const windowMs = options?.windowMs ?? 60000;
 
-  if (upstashLimiter) {
-    return await upstashLimiter.limit(identifier);
+  const limiter = await getUpstashLimiter();
+  if (limiter) {
+    return await limiter.limit(identifier);
   }
 
   return memoryRateLimit(identifier, limit, windowMs);

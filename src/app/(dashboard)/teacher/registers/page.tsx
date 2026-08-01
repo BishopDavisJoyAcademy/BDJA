@@ -296,7 +296,7 @@ export default function TeacherRegistersPage() {
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => setEditing(reg)}>Edit</Button>
                 <Button size="sm" variant="outline" onClick={() => useAsTemplate(reg)}>Use as Template</Button>
-                <Button size="sm" variant="destructive" onClick={() => deleteRegister(reg.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                <Button size="sm" variant="danger" onClick={() => deleteRegister(reg.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
               </div>
             </CardContent>
           </Card>

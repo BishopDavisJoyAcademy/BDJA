@@ -332,7 +332,7 @@ export default function TeacherMarksPage() {
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => setEditing(sheet)}>Edit</Button>
                 <Button size="sm" variant="outline" onClick={() => useAsTemplate(sheet)}>Use as Template</Button>
-                <Button size="sm" variant="destructive" onClick={() => deleteSheet(sheet.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                <Button size="sm" variant="danger" onClick={() => deleteSheet(sheet.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
               </div>
             </CardContent>
           </Card>

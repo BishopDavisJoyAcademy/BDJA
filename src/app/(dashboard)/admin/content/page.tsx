@@ -140,7 +140,7 @@ export default function ContentManagerPage() {
                   <Button size="sm" variant="outline" onClick={() => slide.id && toggleActive("homepage_carousel", slide.id, slide.is_active)}>
                     {slide.is_active ? <EyeOff className="w-3.5 h-3.5 mr-1" /> : <Eye className="w-3.5 h-3.5 mr-1" />}{slide.is_active ? "Hide" : "Show"}
                   </Button>
-                  {slide.id && <Button size="sm" variant="destructive" onClick={() => deleteItem("homepage_carousel", slide.id)}><Trash2 className="w-3.5 h-3.5" /></Button>}
+                  {slide.id && <Button size="sm" variant="danger" onClick={() => deleteItem("homepage_carousel", slide.id)}><Trash2 className="w-3.5 h-3.5" /></Button>}
                 </div>
               </div>
             ))}
@@ -171,7 +171,7 @@ export default function ContentManagerPage() {
                   <Button size="sm" variant="outline" onClick={() => notice.id && toggleActive("homepage_notices", notice.id, notice.is_active)}>
                     {notice.is_active ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </Button>
-                  {notice.id && <Button size="sm" variant="destructive" onClick={() => deleteItem("homepage_notices", notice.id)}><Trash2 className="w-3.5 h-3.5" /></Button>}
+                  {notice.id && <Button size="sm" variant="danger" onClick={() => deleteItem("homepage_notices", notice.id)}><Trash2 className="w-3.5 h-3.5" /></Button>}
                 </div>
               </div>
             ))}
@@ -202,7 +202,7 @@ export default function ContentManagerPage() {
                   <Button size="sm" variant="outline" onClick={() => item.id && toggleActive("homepage_news", item.id, item.is_active)}>
                     {item.is_active ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </Button>
-                  {item.id && <Button size="sm" variant="destructive" onClick={() => deleteItem("homepage_news", item.id)}><Trash2 className="w-3.5 h-3.5" /></Button>}
+                  {item.id && <Button size="sm" variant="danger" onClick={() => deleteItem("homepage_news", item.id)}><Trash2 className="w-3.5 h-3.5" /></Button>}
                 </div>
               </div>
             ))}
@@ -229,7 +229,7 @@ export default function ContentManagerPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={() => saveItem("homepage_stats", stat)}><Save className="w-3.5 h-3.5 mr-1" /> Save</Button>
-                  {stat.id && <Button size="sm" variant="destructive" onClick={() => deleteItem("homepage_stats", stat.id)}><Trash2 className="w-3.5 h-3.5" /></Button>}
+                  {stat.id && <Button size="sm" variant="danger" onClick={() => deleteItem("homepage_stats", stat.id)}><Trash2 className="w-3.5 h-3.5" /></Button>}
                 </div>
               </div>
             ))}
@@ -295,7 +295,7 @@ export default function ContentManagerPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={() => saveItem("homepage_quick_links", link)}><Save className="w-3.5 h-3.5 mr-1" /> Save</Button>
-                  {link.id && <Button size="sm" variant="destructive" onClick={() => deleteItem("homepage_quick_links", link.id)}><Trash2 className="w-3.5 h-3.5" /></Button>}
+                  {link.id && <Button size="sm" variant="danger" onClick={() => deleteItem("homepage_quick_links", link.id)}><Trash2 className="w-3.5 h-3.5" /></Button>}
                 </div>
               </div>
             ))}

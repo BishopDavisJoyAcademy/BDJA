@@ -3,6 +3,8 @@ import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase-server
 import { saveVideoSchema } from "@/lib/validation";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const identifier = getClientIdentifier(req) + ":saved-videos";

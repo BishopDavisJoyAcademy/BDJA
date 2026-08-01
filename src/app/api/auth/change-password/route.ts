@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { firstLoginPasswordSchema, changePasswordSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = createServerSupabaseClient();

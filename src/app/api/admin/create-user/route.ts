@@ -7,6 +7,8 @@ import { generateTempPassword, createUser, createStudentWithParent } from "@/lib
 import { logAudit } from "@/lib/audit";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     // Rate limiting

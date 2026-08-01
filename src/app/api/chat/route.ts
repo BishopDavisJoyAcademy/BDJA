@@ -5,6 +5,8 @@ import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 import { searchVoraContent } from "@/lib/vora";
 import { searchYouTubeAsVora } from "@/lib/youtube";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     // Rate limiting

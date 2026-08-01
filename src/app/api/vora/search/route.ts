@@ -5,6 +5,8 @@ import { searchVoraContent, loadAllVoraContent } from "@/lib/vora";
 import { searchYouTubeAsVora } from "@/lib/youtube";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const identifier = getClientIdentifier(req) + ":vora-search";

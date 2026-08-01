@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { loadAllVoraContent, getVoraByGrade, getVoraSubjects, getVoraCategories } from "@/lib/vora";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const identifier = getClientIdentifier(req) + ":vora-content";

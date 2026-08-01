@@ -30,7 +30,7 @@ interface VoraResult {
   tags?: string[];
 }
 
-export default function JoyChat() {
+function JoyChat() {
   const { user } = useAuth();
   const { joyOpen, setJoyOpen } = useAppStore();
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -195,3 +195,6 @@ export default function JoyChat() {
     </div>
   );
 }
+
+export default JoyChat;
+export { JoyChat };

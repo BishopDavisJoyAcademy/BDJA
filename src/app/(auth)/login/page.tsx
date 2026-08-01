@@ -8,6 +8,16 @@ import { Input } from "@/components/ui/Input";
 import { Eye, EyeOff, School } from "lucide-react";
 import toast from "react-hot-toast";
 
+interface Profile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  password_changed: boolean;
+  onboarding_completed: boolean;
+  is_active: boolean;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,7 +34,8 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       if (data.user) {
-        const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
+        const { data: profileData } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
+        const profile = profileData as Profile | null;
         if (!profile?.password_changed) { router.push("/reset-password?first=true"); return; }
         if (!profile?.onboarding_completed) { router.push("/onboarding"); return; }
         router.push("/");

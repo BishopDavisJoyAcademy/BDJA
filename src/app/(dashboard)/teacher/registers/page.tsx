@@ -290,7 +290,7 @@ export default function TeacherRegistersPage() {
                     <p className="text-xs text-gray-500">{reg.register_date}</p>
                   </div>
                 </div>
-                {reg.is_template && <Badge variant="secondary" className="text-xs">Template</Badge>}
+                {reg.is_template && <Badge variant="default" className="text-xs">Template</Badge>}
               </div>
               <p className="text-xs text-gray-500 mb-3">{reg.layout_config.students?.length || 0} students &middot; {reg.layout_config.columns?.length || 0} columns</p>
               <div className="flex gap-2">

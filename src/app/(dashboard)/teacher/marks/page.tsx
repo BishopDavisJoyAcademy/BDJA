@@ -326,7 +326,7 @@ export default function TeacherMarksPage() {
                     <p className="text-xs text-gray-500">{sheet.term} &middot; {sheet.academic_year}</p>
                   </div>
                 </div>
-                {sheet.is_template && <Badge variant="secondary" className="text-xs">Template</Badge>}
+                {sheet.is_template && <Badge variant="default" className="text-xs">Template</Badge>}
               </div>
               <p className="text-xs text-gray-500 mb-3">{sheet.layout_config.students?.length || 0} students &middot; {sheet.layout_config.columns?.length || 0} assessments</p>
               <div className="flex gap-2">

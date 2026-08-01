@@ -7,7 +7,8 @@ import { hasPermission } from "@/lib/permissions";
 import {
   LayoutDashboard, Users, GraduationCap, Calendar, BookOpen, MessageSquare,
   Settings, Shield, ChevronLeft, ChevronRight, Video, Library, Wallet,
-  ClipboardList, UserCheck, BarChart3, LogOut, School
+  ClipboardList, UserCheck, BarChart3, LogOut, School, FileText, MapPin,
+  Grid3X3, PenLine
 } from "lucide-react";
 
 const navItems = [
@@ -23,14 +24,29 @@ const navItems = [
   { label: "Messages", href: "/messages", icon: MessageSquare, perm: "viewMessages" },
   { label: "Admissions", href: "/admissions", icon: BookOpen, perm: "viewAdmissions" },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3, perm: "viewAnalytics" },
-  { label: "Admin", href: "/admin/users", icon: Shield, perm: "manageUsers" },
+  { label: "Admin", href: "/admin", icon: Shield, perm: "manageUsers" },
   { label: "Settings", href: "/settings", icon: Settings, perm: "viewDashboard" },
+];
+
+const teacherItems = [
+  { label: "My Timetables", href: "/teacher/timetables", icon: Grid3X3 },
+  { label: "Registers", href: "/teacher/registers", icon: ClipboardList },
+  { label: "Mark Sheets", href: "/teacher/marks", icon: PenLine },
+];
+
+const adminItems = [
+  { label: "Users", href: "/admin/users", icon: Users },
+  { label: "Content", href: "/admin/content", icon: FileText },
+  { label: "Campuses", href: "/admin/campuses", icon: MapPin },
+  { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ];
 
 export function Sidebar() {
   const { user, signOut } = useAuth();
   const { sidebarOpen, setSidebarOpen } = useAppStore();
   const role = user?.role || "student";
+  const isTeacher = role === "teacher" || role === "principal" || role === "super_admin";
+  const isAdmin = role === "principal" || role === "super_admin";
 
   const filteredNav = navItems.filter(item => hasPermission(role, item.perm as any));
 
@@ -50,6 +66,30 @@ export function Sidebar() {
               {sidebarOpen && <span className="truncate">{item.label}</span>}
             </a>
           ))}
+
+          {isTeacher && sidebarOpen && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <p className="px-3 text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Teacher Tools</p>
+              {teacherItems.map(item => (
+                <a key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-sm">
+                  <item.icon className="w-4 h-4 shrink-0 text-bdja-secondary" />
+                  <span className="truncate">{item.label}</span>
+                </a>
+              ))}
+            </div>
+          )}
+
+          {isAdmin && sidebarOpen && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <p className="px-3 text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Administration</p>
+              {adminItems.map(item => (
+                <a key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-sm">
+                  <item.icon className="w-4 h-4 shrink-0 text-bdja-secondary" />
+                  <span className="truncate">{item.label}</span>
+                </a>
+              ))}
+            </div>
+          )}
         </nav>
         <div className="p-2 border-t border-white/10 shrink-0">
           <button onClick={signOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors text-sm w-full text-left">
@@ -58,7 +98,6 @@ export function Sidebar() {
           </button>
         </div>
       </aside>
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}

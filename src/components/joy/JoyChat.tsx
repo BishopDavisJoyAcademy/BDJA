@@ -1,200 +1,227 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { useAppStore } from "@/hooks/useStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Send, X, Bot, User, Play, Clock, Bookmark, BookmarkCheck, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  MessageCircle, X, Send, Bot, User, Sparkles, Loader2,
+  BookOpen, Calendar, ClipboardList, BarChart3, Lightbulb
+} from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
-interface ChatMessage {
+interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  voraResults?: any[];
-  youtubeResults?: any[];
-  timestamp: string;
+  timestamp: Date;
 }
 
-interface VoraResult {
-  id: string;
-  title: string;
-  subject?: string;
-  grade_level?: string;
-  youtube_url: string;
-  summary?: string;
-  thumbnail_url?: string;
-  duration_seconds?: number;
-  difficulty?: string;
-  tags?: string[];
-}
+const TEACHING_PROMPTS = [
+  { label: "Create Timetable", icon: Calendar, prompt: "Help me create a weekly timetable for my class. I teach [subject] to [grade level]." },
+  { label: "Register Template", icon: ClipboardList, prompt: "Generate an attendance register template for my class with columns for present, absent, late, and notes." },
+  { label: "Mark Sheet", icon: BarChart3, prompt: "Help me design a mark sheet with assessments for [subject] covering [topics]." },
+  { label: "Lesson Plan", icon: BookOpen, prompt: "Create a lesson plan for [topic] suitable for [grade level] following CBC guidelines." },
+  { label: "Teaching Tips", icon: Lightbulb, prompt: "Give me 5 effective teaching strategies for [subject] at [grade level]." },
+];
 
-function JoyChat() {
+export function JoyChat() {
   const { user } = useAuth();
-  const { joyOpen, setJoyOpen } = useAppStore();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: "welcome", role: "assistant", content: "Hello! I'm Joy, your BDJA learning assistant. Ask me anything about your studies, school life, or faith!", timestamp: new Date().toISOString() }
-  ]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [savedVideoIds, setSavedVideoIds] = useState<Set<string>>(new Set());
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showPrompts, setShowPrompts] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
+  const isTeacher = user?.role === "teacher" || user?.role === "principal" || user?.role === "super_admin";
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg: ChatMessage = { id: Date.now().toString(), role: "user", content: input, timestamp: new Date().toISOString() };
-    setMessages(prev => [...prev, userMsg]);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      setMessages([{
+        id: "welcome",
+        role: "assistant",
+        content: isTeacher
+          ? `Hello ${user?.full_name?.split(" ")[0] || "there"}! I'm Joy, your AI teaching assistant. I can help you create timetables, design registers, build mark sheets, plan lessons, and more. How can I assist you today?`
+          : `Hello! I'm Joy, your AI learning companion. Ask me anything about your studies, homework, or school topics!`,
+        timestamp: new Date(),
+      }]);
+    }
+  }, [isOpen, user, isTeacher]);
+
+  const sendMessage = async (content: string) => {
+    if (!content.trim() || loading) return;
+    const userMsg: Message = { id: Date.now().toString(), role: "user", content, timestamp: new Date() };
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
+    setShowPrompts(false);
 
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: messages.filter(m => m.id !== "welcome").concat(userMsg).map(m => ({ role: m.role, content: m.content })),
-          context: { userName: user?.full_name, grade_level: (user as any)?.grade_level, userRole: user?.role },
-          stream: false,
+          messages: [
+            {
+              role: "system",
+              content: isTeacher
+                ? `You are Joy, an AI teaching assistant for Bishop Davis Joy Academy (BDJA). You help teachers with: creating timetables, designing student registers, building mark sheets, lesson planning, CBC curriculum guidance, teaching strategies, and classroom management. The school uses CBC (Competency Based Curriculum) for Playgroup through Grade 6. Be concise, practical, and professional. Always provide actionable, ready-to-use output when possible.`
+                : `You are Joy, a friendly AI learning companion for Bishop Davis Joy Academy students. You help with homework, explain concepts, and encourage learning. The school motto is "Prayer, commitment and hard work for success." Be encouraging, clear, and age-appropriate.`,
+            },
+            ...messages.map((m) => ({ role: m.role, content: m.content })),
+            { role: "user", content },
+          ],
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to get response");
 
-      const assistantMsg: ChatMessage = {
+      if (!response.ok) throw new Error("Failed to get response");
+      const data = await response.json();
+      const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.choices?.[0]?.message?.content || "I'm not sure about that. Could you rephrase?",
-        voraResults: data.vora_results || [],
-        youtubeResults: data.youtube_results || [],
-        timestamp: new Date().toISOString(),
+        content: data.content || data.message || "I'm sorry, I couldn't process that. Please try again.",
+        timestamp: new Date(),
       };
-      setMessages(prev => [...prev, assistantMsg]);
-    } catch (err: any) { toast.error(err.message); }
-    finally { setLoading(false); }
+      setMessages((prev) => [...prev, assistantMsg]);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to get response");
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "I'm having trouble connecting right now. Please try again in a moment.",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const saveVideo = async (video: VoraResult) => {
-    try {
-      const res = await fetch("/api/vora/saved-videos", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          video_id: video.id, title: video.title, subject: video.subject,
-          grade_level: video.grade_level, youtube_url: video.youtube_url,
-          summary: video.summary, thumbnail_url: video.thumbnail_url,
-          duration_seconds: video.duration_seconds, difficulty: video.difficulty,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to save");
-      setSavedVideoIds(prev => new Set(prev).add(video.id));
-      toast.success("Saved to your library!");
-    } catch (err: any) { toast.error(err.message); }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage(input);
   };
 
-  const formatDuration = (s?: number) => {
-    if (!s) return "";
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${sec.toString().padStart(2, "0")}`;
+  const handlePromptClick = (prompt: string) => {
+    sendMessage(prompt);
   };
-
-  if (!joyOpen) {
-    return (
-      <button onClick={() => setJoyOpen(true)} className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-bdja-secondary rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-transform" aria-label="Open Joy AI">
-        <Sparkles className="w-6 h-6 text-white" />
-      </button>
-    );
-  }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
-      <div className="bg-gradient-to-r from-bdja-primary to-bdja-accent px-4 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center"><Bot className="w-5 h-5 text-white" /></div>
-          <div><h3 className="text-white font-semibold text-sm">Joy AI</h3><p className="text-white/70 text-xs">BDJA Learning Assistant</p></div>
+    <>
+      {/* Toggle Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-6 right-6 z-[9999] w-14 h-14 bg-bdja-primary hover:bg-bdja-accent text-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-105"
+        aria-label="Toggle Joy AI"
+      >
+        {isOpen ? <X className="w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
+      </button>
+
+      {/* Chat Panel */}
+      {isOpen && (
+        <div className="fixed bottom-24 right-6 z-[9999] w-[380px] max-w-[calc(100vw-48px)] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-slide-in-right" style={{ height: "min(600px, calc(100vh - 140px))" }}>
+          {/* Header */}
+          <div className="bg-gradient-to-r from-bdja-primary to-bdja-accent p-4 flex items-center gap-3">
+            <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
+              <Bot className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-white font-semibold text-sm">Joy AI</h3>
+              <p className="text-white/70 text-xs">{isTeacher ? "Teaching Assistant" : "Learning Companion"}</p>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="text-white/70 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
+            {messages.map((msg) => (
+              <div key={msg.id} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "assistant" && (
+                  <div className="w-7 h-7 bg-bdja-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <Bot className="w-4 h-4 text-white" />
+                  </div>
+                )}
+                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                  msg.role === "user"
+                    ? "bg-bdja-primary text-white rounded-br-md"
+                    : "bg-white border border-gray-200 text-gray-700 rounded-bl-md shadow-sm"
+                }`}>
+                  {msg.role === "assistant" ? (
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p>{msg.content}</p>
+                  )}
+                </div>
+                {msg.role === "user" && (
+                  <div className="w-7 h-7 bg-bdja-secondary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                )}
+              </div>
+            ))}
+            {loading && (
+              <div className="flex gap-2 justify-start">
+                <div className="w-7 h-7 bg-bdja-primary rounded-full flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+                <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+                  <Loader2 className="w-4 h-4 animate-spin text-bdja-primary" />
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+
+            {/* Teaching Prompts */}
+            {showPrompts && isTeacher && messages.length <= 1 && (
+              <div className="pt-2">
+                <p className="text-xs text-gray-400 mb-2 font-medium">Quick Actions:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {TEACHING_PROMPTS.map((p) => (
+                    <button
+                      key={p.label}
+                      onClick={() => handlePromptClick(p.prompt)}
+                      className="flex items-center gap-2 p-2.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-bdja-primary hover:text-bdja-primary transition-all text-left"
+                    >
+                      <p.icon className="w-4 h-4 flex-shrink-0" />
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <form onSubmit={handleSubmit} className="p-3 border-t border-gray-100 bg-white">
+            <div className="flex gap-2">
+              <Input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={isTeacher ? "Ask Joy about timetables, registers, marks..." : "Ask Joy anything..."}
+                className="flex-1 text-sm"
+                disabled={loading}
+              />
+              <Button type="submit" size="sm" disabled={loading || !input.trim()} className="bg-bdja-primary hover:bg-bdja-accent">
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </form>
         </div>
-        <button onClick={() => setJoyOpen(false)} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
-      </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map(msg => (
-          <div key={msg.id} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${msg.role === "user" ? "bg-bdja-secondary" : "bg-bdja-primary"}`}>
-              {msg.role === "user" ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
-            </div>
-            <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${msg.role === "user" ? "bg-bdja-secondary text-white rounded-tr-sm" : "bg-gray-100 text-gray-800 rounded-tl-sm"}`}>
-              <div className="whitespace-pre-wrap">{msg.content}</div>
-              {msg.voraResults && msg.voraResults.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <p className="text-xs font-semibold text-bdja-primary">Recommended from VORA:</p>
-                  {msg.voraResults.map((v: VoraResult) => (
-                    <div key={v.id} className="bg-white rounded-lg p-2 border border-gray-200">
-                      <div className="flex gap-2">
-                        {v.thumbnail_url && <img src={v.thumbnail_url} alt="" className="w-20 h-14 object-cover rounded" />}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate">{v.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {v.duration_seconds && <span className="text-[10px] text-gray-500 flex items-center gap-0.5"><Clock className="w-3 h-3" />{formatDuration(v.duration_seconds)}</span>}
-                            {v.difficulty && <span className="text-[10px] bg-purple-50 text-purple-700 px-1 rounded capitalize">{v.difficulty}</span>}
-                          </div>
-                          {v.summary && <p className="text-[10px] text-gray-500 mt-1 line-clamp-2">{v.summary}</p>}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mt-2">
-                        <a href={`/vora?video=${v.id}`} target="_blank" className="text-[10px] bg-bdja-primary text-white px-2 py-1 rounded flex items-center gap-1 hover:bg-bdja-accent"><Play className="w-3 h-3" /> Watch</a>
-                        <button onClick={() => saveVideo(v)} className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded flex items-center gap-1 hover:bg-gray-200">
-                          {savedVideoIds.has(v.id) ? <BookmarkCheck className="w-3 h-3 text-bdja-secondary" /> : <Bookmark className="w-3 h-3" />}
-                          {savedVideoIds.has(v.id) ? "Saved" : "Save"}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {msg.youtubeResults && msg.youtubeResults.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <p className="text-xs font-semibold text-gray-500">Found online:</p>
-                  {msg.youtubeResults.map((v: VoraResult) => (
-                    <div key={v.id} className="bg-white rounded-lg p-2 border border-gray-200">
-                      <div className="flex gap-2">
-                        {v.thumbnail_url && <img src={v.thumbnail_url} alt="" className="w-20 h-14 object-cover rounded" />}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate">{v.title}</p>
-                          {v.summary && <p className="text-[10px] text-gray-500 mt-1 line-clamp-2">{v.summary}</p>}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mt-2">
-                        <button onClick={() => window.open(v.youtube_url, "_blank")} className="text-[10px] bg-red-50 text-red-700 px-2 py-1 rounded flex items-center gap-1"><Play className="w-3 h-3" /> Watch on YouTube</button>
-                        <button onClick={() => saveVideo(v)} className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded flex items-center gap-1">
-                          {savedVideoIds.has(v.id) ? <BookmarkCheck className="w-3 h-3 text-bdja-secondary" /> : <Bookmark className="w-3 h-3" />}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="flex gap-2">
-            <div className="w-7 h-7 rounded-full bg-bdja-primary flex items-center justify-center"><Bot className="w-4 h-4 text-white" /></div>
-            <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-3 py-2">
-              <div className="flex gap-1"><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" /><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" /><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" /></div>
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="p-3 border-t border-gray-100 shrink-0">
-        <form onSubmit={e => { e.preventDefault(); sendMessage(); }} className="flex gap-2">
-          <Input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} placeholder="Ask Joy anything..." className="flex-1 text-sm" />
-          <Button type="submit" variant="primary" size="sm" isLoading={loading} disabled={!input.trim()}><Send className="w-4 h-4" /></Button>
-        </form>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
-
-export default JoyChat;
-export { JoyChat };

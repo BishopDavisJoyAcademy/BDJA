@@ -28,10 +28,28 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession();
   const pathname = request.nextUrl.pathname;
-  const publicPaths = ["/login", "/reset-password", "/onboarding", "/api/onboarding/setup-super-admin"];
 
-  // Allow public paths
-  if (publicPaths.some((p) => pathname.startsWith(p))) {
+  // Fully public paths — no auth required
+  const publicPaths = [
+    "/", "/about", "/academics", "/admissions", "/students",
+    "/news-events", "/contact", "/notices", "/gallery",
+    "/policies", "/faqs", "/downloads",
+    "/login", "/reset-password", "/onboarding",
+    "/api/onboarding/setup-super-admin", "/api/health",
+  ];
+
+  // Static assets and API health
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/health") ||
+    pathname.startsWith("/grades/") ||
+    pathname.startsWith("/logo") ||
+    pathname.match(/\.(png|jpg|jpeg|svg|ico|css|js|json)$/)
+  ) {
+    return response;
+  }
+
+  if (publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     if (session && pathname === "/login") {
       return NextResponse.redirect(new URL("/", request.url));
     }
@@ -43,20 +61,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Check if user is active and get role
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, is_active, password_changed")
     .eq("id", session.user.id)
     .single();
 
-  // Account suspended or not found
   if (!profile || profile.is_active === false) {
     await supabase.auth.signOut();
     return NextResponse.redirect(new URL("/login?error=suspended", request.url));
   }
 
-  // Force password change on first login
   if (profile.password_changed === false && !pathname.startsWith("/reset-password")) {
     return NextResponse.redirect(new URL("/reset-password?first=true", request.url));
   }

@@ -313,3 +313,148 @@ export interface SavedVideo {
   difficulty?: string;
   saved_at: string;
 }
+
+
+// Homepage Content Types
+export interface CarouselSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  image_url: string | null;
+  button_text: string;
+  button_link: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+export interface DirectorMessage {
+  id: string;
+  director_name: string;
+  director_title: string;
+  message: string;
+  director_photo_url: string | null;
+  is_active: boolean;
+}
+
+export interface HomepageNotice {
+  id: string;
+  title: string;
+  content: string;
+  notice_date: string;
+  icon_type: string;
+  is_pinned: boolean;
+  is_active: boolean;
+}
+
+export interface HomepageNews {
+  id: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  image_url: string | null;
+  news_date: string;
+  category: string;
+  is_featured: boolean;
+  is_active: boolean;
+}
+
+export interface HomepageStat {
+  id: string;
+  label: string;
+  value: string;
+  icon_name: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+export interface HomepageGradeLevel {
+  id: string;
+  grade_key: string;
+  display_name: string;
+  icon_filename: string;
+  description: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+export interface HomepageQuickLink {
+  id: string;
+  label: string;
+  url: string;
+  icon_name: string;
+  target_audience: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+// Teacher Tools Types
+export interface TeacherTimetable {
+  id: string;
+  teacher_id: string;
+  class_id: string | null;
+  title: string;
+  description: string | null;
+  layout_config: {
+    rows: string[];
+    columns: string[];
+    slots: Array<{
+      rowIndex: number;
+      colIndex: number;
+      subject: string;
+      room: string;
+      notes: string;
+    }>;
+  };
+  is_template: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface TeacherRegister {
+  id: string;
+  teacher_id: string;
+  class_id: string;
+  title: string;
+  register_date: string;
+  layout_config: {
+    columns: Array<{ key: string; label: string; type: string }>;
+    students: Array<{ id: string; name: string; admission_number: string }>;
+  };
+  entries: Array<Record<string, any>>;
+  is_template: boolean;
+  template_name: string | null;
+  created_at: string;
+}
+
+export interface TeacherMarkSheet {
+  id: string;
+  teacher_id: string;
+  class_id: string;
+  subject_id: string | null;
+  title: string;
+  term: string;
+  academic_year: string;
+  layout_config: {
+    columns: Array<{ key: string; label: string; maxScore: number }>;
+    students: Array<{ id: string; name: string; admission_number: string }>;
+  };
+  entries: Array<Record<string, any>>;
+  max_score: number;
+  is_template: boolean;
+  template_name: string | null;
+  created_at: string;
+}
+
+export interface MarkSheetTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  grade_levels: string[];
+  layout_config: {
+    columns: Array<{ key: string; label: string; maxScore: number }>;
+  };
+  created_by: string;
+  is_active: boolean;
+  created_at: string;
+}

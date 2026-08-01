@@ -50,7 +50,15 @@ export default function LoginPage() {
         const profile = profileData as Profile | null;
         if (!profile?.password_changed) { router.push("/reset-password?first=true"); return; }
         if (!profile?.onboarding_completed) { router.push("/onboarding"); return; }
-        router.push("/");
+        // Redirect to role-specific dashboard
+        const role = profile?.role;
+        if (role === "student") router.push("/student");
+        else if (role === "parent") router.push("/parent");
+        else if (role === "teacher") router.push("/teacher");
+        else if (role === "principal" || role === "super_admin") router.push("/admin");
+        else if (role === "bursar") router.push("/bursar");
+        else if (role === "librarian") router.push("/librarian");
+        else router.push("/student");
       }
     } catch (error: any) {
       toast.error(error.message || "Invalid credentials");

@@ -11,6 +11,16 @@ import {
   Grid3X3, PenLine
 } from "lucide-react";
 
+const getDashboardHref = (role: string) => {
+  if (role === "student") return "/student";
+  if (role === "parent") return "/parent";
+  if (role === "teacher") return "/teacher";
+  if (role === "principal" || role === "super_admin") return "/admin";
+  if (role === "bursar") return "/bursar";
+  if (role === "librarian") return "/librarian";
+  return "/student";
+};
+
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, perm: "viewDashboard" },
   { label: "Students", href: "/student", icon: Users, perm: "viewStudents" },
@@ -61,7 +71,7 @@ export function Sidebar() {
         </div>
         <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-2">
           {filteredNav.map(item => (
-            <a key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors text-sm">
+            <a key={item.href} href={item.label === "Dashboard" ? getDashboardHref(role) : item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors text-sm">
               <item.icon className="w-5 h-5 shrink-0" />
               {sidebarOpen && <span className="truncate">{item.label}</span>}
             </a>

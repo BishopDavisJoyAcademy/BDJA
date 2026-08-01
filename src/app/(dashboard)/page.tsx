@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/Card";
 import { BookOpen, Users, Calendar, GraduationCap, MessageSquare, TrendingUp } from "lucide-react";

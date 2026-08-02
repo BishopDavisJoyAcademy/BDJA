@@ -1,23 +1,29 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-server";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const start = Date.now();
-  let dbStatus = "unknown";
+  const checks: Record<string, { ok: boolean; error?: string }> = {};
 
+  // Check env vars
+  const envVars = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
+  const missing = envVars.filter((v) => !process.env[v]);
+  checks.env = { ok: missing.length === 0, error: missing.length > 0 ? `Missing: ${missing.join(", ")}` : undefined };
+
+  // Check database connection
   try {
-    const { error } = await supabaseAdmin.from("profiles").select("id").limit(1);
-    dbStatus = error ? "error" : "ok";
-  } catch {
-    dbStatus = "error";
+    const admin = getSupabaseAdmin();
+    const { error } = await admin.from("profiles").select("id").limit(1);
+    checks.database = { ok: !error, error: error?.message };
+  } catch (e: any) {
+    checks.database = { ok: false, error: e.message };
   }
 
-  return NextResponse.json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    service: "BDJA Platform",
-    version: "2.0.0",
-    database: dbStatus,
-    response_time_ms: Date.now() - start,
-  });
+  const allOk = Object.values(checks).every((c) => c.ok);
+
+  return NextResponse.json(
+    { status: allOk ? "healthy" : "unhealthy", checks },
+    { status: allOk ? 200 : 500 }
+  );
 }

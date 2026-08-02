@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { supabaseAdmin } from "@/lib/supabase-server";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { firstLoginPasswordSchema, changePasswordSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });
       }
       // Verify current password
-      const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+      const { error: signInError } = await getSupabaseAdmin().auth.signInWithPassword({
         email: session.user.email!,
         password: parseResult.data.current_password,
       });
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Update password
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(session.user.id, {
+    const { error: updateError } = await getSupabaseAdmin().auth.admin.updateUserById(session.user.id, {
       password: newPassword,
     });
 
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Mark password as changed
-    await supabaseAdmin.from("profiles").update({
+    await getSupabaseAdmin().from("profiles").update({
       password_changed: true,
       temp_password_hash: null,
       last_password_change: new Date().toISOString(),

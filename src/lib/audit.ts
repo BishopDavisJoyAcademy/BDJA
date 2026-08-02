@@ -12,7 +12,7 @@ export interface AuditAction {
 
 export async function logAudit(action: AuditAction) {
   try {
-    await supabaseAdmin.from("audit_logs").insert({
+    await getSupabaseAdmin().from("audit_logs").insert({
       user_id: action.user_id,
       action: action.action,
       target_type: action.target_type || null,

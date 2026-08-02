@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin.from("saved_videos").insert({
+    const { error } = await getSupabaseAdmin().from("saved_videos").insert({
       user_id: session.user.id,
       ...parseResult.data,
     });

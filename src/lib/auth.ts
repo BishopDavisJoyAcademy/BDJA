@@ -23,7 +23,7 @@ export async function createUser(
   campusId?: string,
   extra?: Record<string, any>
 ) {
-  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+  const { data: authUser, error: authError } = await getSupabaseAdmin().auth.admin.createUser({
     email,
     password,
     email_confirm: true,
@@ -34,7 +34,7 @@ export async function createUser(
     throw authError || new Error("Failed to create user");
   }
 
-  const { error: profileError } = await supabaseAdmin.from("profiles").insert({
+  const { error: profileError } = await getSupabaseAdmin().from("profiles").insert({
     id: authUser.user.id,
     email,
     full_name: fullName,
@@ -47,7 +47,7 @@ export async function createUser(
   });
 
   if (profileError) {
-    await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+    await getSupabaseAdmin().auth.admin.deleteUser(authUser.user.id);
     throw profileError;
   }
 
@@ -81,7 +81,7 @@ export async function createStudentWithParent(
     { temp_password_hash: hashedTemp }
   );
 
-  const { error: studentError } = await supabaseAdmin.from("students").insert({
+  const { error: studentError } = await getSupabaseAdmin().from("students").insert({
     profile_id: studentUser.id,
     admission_number: studentData.admission_number,
     class_id: studentData.class_id,
@@ -105,7 +105,7 @@ export async function createStudentWithParent(
       { temp_password_hash: parentHashedTemp }
     );
 
-    await supabaseAdmin.from("parent_children").insert({
+    await getSupabaseAdmin().from("parent_children").insert({
       parent_id: parentUser.id,
       student_id: studentUser.id,
       relationship: "parent",
@@ -141,9 +141,9 @@ export async function createStudentWithParent(
 }
 
 export async function resetPassword(userId: string, newPassword: string) {
-  const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password: newPassword });
+  const { error } = await getSupabaseAdmin().auth.admin.updateUserById(userId, { password: newPassword });
   if (error) throw error;
-  await supabaseAdmin.from("profiles").update({
+  await getSupabaseAdmin().from("profiles").update({
     password_changed: true,
     temp_password_hash: null,
     last_password_change: new Date().toISOString(),
@@ -151,5 +151,5 @@ export async function resetPassword(userId: string, newPassword: string) {
 }
 
 export async function requirePasswordChange(userId: string) {
-  await supabaseAdmin.from("profiles").update({ password_changed: false }).eq("id", userId);
+  await getSupabaseAdmin().from("profiles").update({ password_changed: false }).eq("id", userId);
 }

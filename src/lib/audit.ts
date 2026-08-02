@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "./supabase-server";
+import { getSupabaseAdmin() } from "./supabase-server";
 
 export interface AuditAction {
   user_id: string;

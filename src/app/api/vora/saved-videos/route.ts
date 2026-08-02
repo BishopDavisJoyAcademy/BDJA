@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase-server";
+import { createServerSupabaseClient, getSupabaseAdmin() } from "@/lib/supabase-server";
 import { saveVideoSchema } from "@/lib/validation";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from("saved_videos")
       .select("*")
       .eq("user_id", session.user.id)
@@ -87,7 +87,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "ID required" }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await getSupabaseAdmin()
       .from("saved_videos")
       .delete()
       .eq("id", id)

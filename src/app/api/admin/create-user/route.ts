@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: adminProfile } = await supabaseAdmin
+    const { data: adminProfile } = await getSupabaseAdmin()
       .from("profiles")
       .select("role, campus_id")
       .eq("id", session.user.id)

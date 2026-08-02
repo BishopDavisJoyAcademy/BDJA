@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient, getSupabaseAdmin() } from "@/lib/supabase-server";
+import { createServerSupabaseClient, getSupabaseAdmin } from "@/lib/supabase-server";
 import { saveVideoSchema } from "@/lib/validation";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 

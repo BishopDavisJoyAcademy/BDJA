@@ -1,4 +1,4 @@
-import { getSupabaseAdmin() } from "./supabase-server";
+import { getSupabaseAdmin } from "./supabase-server";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 

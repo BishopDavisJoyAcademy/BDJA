@@ -152,11 +152,13 @@ body {
 
 /* ===== BUTTON STYLES ===== */
 .btn-primary {
-  @apply px-6 py-3 bg-bdja-primary text-white rounded-xl font-semibold transition-all duration-300;
+  @apply px-6 py-3 text-white rounded-xl font-semibold transition-all duration-300;
+  background-color: #1e3a5f;
 }
 
 .btn-primary:hover {
-  @apply bg-bdja-accent shadow-lg;
+  background-color: #2d5a87;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 
@@ -173,7 +175,7 @@ body {
 
 /* ===== FORM INPUTS ===== */
 .input-field {
-  @apply w-full px-4 py-3 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-bdja-gold focus:border-transparent transition-all;
+  @apply w-full px-4 py-3 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#d4a843] focus:border-transparent transition-all;
   background: rgba(255,255,255,0.05);
   color: white;
 }

@@ -4,6 +4,7 @@ import { getRequiredPermission, hasPermission } from "@/lib/permissions";
 import { UserRole } from "@/types";
 
 export async function middleware(request: NextRequest) {
+  // Create response once and reuse it
   let response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
@@ -13,13 +14,13 @@ export async function middleware(request: NextRequest) {
       cookies: {
         get(name: string) { return request.cookies.get(name)?.value; },
         set(name: string, value: string, options: CookieOptions) {
+          // Mutate request cookies for subsequent reads
           request.cookies.set({ name, value, ...options });
-          response = NextResponse.next({ request: { headers: request.headers } });
+          // Mutate response cookies for the final response
           response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: "", ...options });
-          response = NextResponse.next({ request: { headers: request.headers } });
           response.cookies.set({ name, value: "", ...options });
         },
       },
@@ -51,7 +52,6 @@ export async function middleware(request: NextRequest) {
   const isPublic = publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   if (isPublic) {
-    // If logged in and trying to access login, redirect to dashboard
     if (session && pathname === "/login") {
       return NextResponse.redirect(new URL("/student", request.url));
     }

@@ -161,3 +161,59 @@ body {
     display: block !important;
   }
 }
+
+
+/* ===== NEW ANIMATIONS ===== */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Gradient mesh background */
+.gradient-mesh {
+  background: 
+    radial-gradient(at 40% 20%, hsla(210,60%,30%,0.08) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsla(45,80%,50%,0.06) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsla(210,50%,40%,0.06) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, hsla(45,70%,50%,0.04) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(210,60%,30%,0.06) 0px, transparent 50%);
+}
+
+/* Prose styles for CMS content */
+.prose h1 { font-size: 1.875rem; font-weight: 700; margin-bottom: 1rem; color: var(--bdja-primary); }
+.prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: var(--bdja-primary); }
+.prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+.prose p { margin-bottom: 1rem; line-height: 1.75; }
+.prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+.prose ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
+.prose blockquote { border-left: 4px solid var(--bdja-secondary); padding-left: 1rem; font-style: italic; color: #6b7280; margin: 1rem 0; }
+.prose a { color: var(--bdja-accent); text-decoration: underline; }
+.prose img { border-radius: 0.75rem; margin: 1rem 0; max-width: 100%; }
+.prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+.prose th, .prose td { border: 1px solid #e5e7eb; padding: 0.5rem; text-align: left; }
+.prose th { background-color: #f9fafb; font-weight: 600; }
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

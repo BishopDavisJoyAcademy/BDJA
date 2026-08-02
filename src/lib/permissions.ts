@@ -30,10 +30,12 @@ export interface PermissionSet {
   broadcastAnnouncements: boolean;
   viewAuditLogs: boolean;
   crossCampusAccess: boolean;
+  editPages: boolean;
 }
 
 export const DEFAULT_PERMISSIONS: Record<UserRole, PermissionSet> = {
   student: {
+    editPages: false,
     viewDashboard: true, viewStudents: false, editStudents: false,
     viewGrades: true, editGrades: false, viewAttendance: true, editAttendance: false,
     viewTimetable: true, editTimetable: false, viewCalendar: true, editCalendar: false,
@@ -44,6 +46,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, PermissionSet> = {
     broadcastAnnouncements: false, viewAuditLogs: false, crossCampusAccess: false,
   },
   parent: {
+    editPages: false,
     viewDashboard: true, viewStudents: false, editStudents: false,
     viewGrades: true, editGrades: false, viewAttendance: true, editAttendance: false,
     viewTimetable: true, editTimetable: false, viewCalendar: true, editCalendar: false,
@@ -54,6 +57,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, PermissionSet> = {
     broadcastAnnouncements: false, viewAuditLogs: false, crossCampusAccess: false,
   },
   teacher: {
+    editPages: false,
     viewDashboard: true, viewStudents: true, editStudents: false,
     viewGrades: true, editGrades: true, viewAttendance: true, editAttendance: true,
     viewTimetable: true, editTimetable: true, viewCalendar: true, editCalendar: true,
@@ -64,6 +68,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, PermissionSet> = {
     broadcastAnnouncements: false, viewAuditLogs: false, crossCampusAccess: false,
   },
   class_prefect: {
+    editPages: false,
     viewDashboard: true, viewStudents: true, editStudents: false,
     viewGrades: false, editGrades: false, viewAttendance: true, editAttendance: true,
     viewTimetable: true, editTimetable: false, viewCalendar: true, editCalendar: false,
@@ -74,6 +79,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, PermissionSet> = {
     broadcastAnnouncements: false, viewAuditLogs: false, crossCampusAccess: false,
   },
   bursar: {
+    editPages: false,
     viewDashboard: true, viewStudents: false, editStudents: false,
     viewGrades: false, editGrades: false, viewAttendance: false, editAttendance: false,
     viewTimetable: false, editTimetable: false, viewCalendar: false, editCalendar: false,
@@ -84,6 +90,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, PermissionSet> = {
     broadcastAnnouncements: false, viewAuditLogs: false, crossCampusAccess: false,
   },
   librarian: {
+    editPages: false,
     viewDashboard: true, viewStudents: false, editStudents: false,
     viewGrades: false, editGrades: false, viewAttendance: false, editAttendance: false,
     viewTimetable: false, editTimetable: false, viewCalendar: false, editCalendar: false,
@@ -94,6 +101,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, PermissionSet> = {
     broadcastAnnouncements: false, viewAuditLogs: false, crossCampusAccess: false,
   },
   principal: {
+    editPages: true,
     viewDashboard: true, viewStudents: true, editStudents: true,
     viewGrades: true, editGrades: true, viewAttendance: true, editAttendance: true,
     viewTimetable: true, editTimetable: true, viewCalendar: true, editCalendar: true,
@@ -104,6 +112,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, PermissionSet> = {
     broadcastAnnouncements: true, viewAuditLogs: true, crossCampusAccess: false,
   },
   super_admin: {
+    editPages: true,
     viewDashboard: true, viewStudents: true, editStudents: true,
     viewGrades: true, editGrades: true, viewAttendance: true, editAttendance: true,
     viewTimetable: true, editTimetable: true, viewCalendar: true, editCalendar: true,
@@ -132,6 +141,9 @@ export const ROUTE_PERMISSIONS: Record<string, (keyof PermissionSet)[]> = {
   "/admin/analytics": ["viewAnalytics"],
   "/admin/audit": ["viewAuditLogs"],
   "/admin/subjects": ["manageRoles"],
+  "/admin/content": ["manageUsers"],
+  "/admin/campuses": ["manageUsers"],
+  "/admin/pages": ["editPages"],
   "/bursar": ["viewFees"],
   "/fees": ["viewFees"],
   "/librarian": ["editLibrary"],
@@ -142,6 +154,10 @@ export const ROUTE_PERMISSIONS: Record<string, (keyof PermissionSet)[]> = {
   "/timetable": ["viewTimetable"],
   "/assignments": ["viewAssignments"],
   "/admissions": ["viewAdmissions"],
+  "/manage/admissions": ["viewAdmissions"],
+  "/manage/calendar": ["viewCalendar"],
+  "/manage/library": ["viewLibrary"],
+  "/manage/vora": ["viewVora"],
   "/vora": ["viewVora"],
   "/calendar": ["viewCalendar"],
   "/messages": ["viewMessages"],

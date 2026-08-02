@@ -28,11 +28,11 @@ const navItems = [
   { label: "Attendance", href: "/attendance", icon: UserCheck, perm: "viewAttendance" },
   { label: "Timetable", href: "/timetable", icon: Calendar, perm: "viewTimetable" },
   { label: "Assignments", href: "/assignments", icon: ClipboardList, perm: "viewAssignments" },
-  { label: "VORA", href: "/vora", icon: Video, perm: "viewVora" },
-  { label: "Library", href: "/library", icon: Library, perm: "viewLibrary" },
+  { label: "VORA", href: "/manage/vora", icon: Video, perm: "viewVora" },
+  { label: "Library", href: "/manage/library", icon: Library, perm: "viewLibrary" },
   { label: "Fees", href: "/fees", icon: Wallet, perm: "viewFees" },
   { label: "Messages", href: "/messages", icon: MessageSquare, perm: "viewMessages" },
-  { label: "Admissions", href: "/admissions", icon: BookOpen, perm: "viewAdmissions" },
+  { label: "Admissions", href: "/manage/admissions", icon: BookOpen, perm: "viewAdmissions" },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3, perm: "viewAnalytics" },
   { label: "Admin", href: "/admin", icon: Shield, perm: "manageUsers" },
   { label: "Settings", href: "/settings", icon: Settings, perm: "viewDashboard" },
@@ -46,6 +46,7 @@ const teacherItems = [
 
 const adminItems = [
   { label: "Users", href: "/admin/users", icon: Users },
+  { label: "Pages", href: "/admin/pages", icon: FileText },
   { label: "Content", href: "/admin/content", icon: FileText },
   { label: "Campuses", href: "/admin/campuses", icon: MapPin },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },

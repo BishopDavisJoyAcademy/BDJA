@@ -29,30 +29,37 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession();
   const pathname = request.nextUrl.pathname;
 
-  // Fully public paths — no auth required
-  const publicPaths = [
-    "/", "/about", "/academics", "/admissions", "/students",
-    "/news-events", "/contact", "/notices", "/gallery",
-    "/policies", "/faqs", "/downloads",
-    "/login", "/reset-password", "/onboarding",
-    "/api/onboarding/setup-super-admin", "/api/health",
-  ];
-
-  // Static assets and API health
+  // Static assets - bypass everything
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/health") ||
-    pathname.startsWith("/grades/") ||
-    pathname.startsWith("/logo") ||
-    pathname.match(/\.(png|jpg|jpeg|svg|ico|css|js|json)$/)
+    pathname.match(/\.(png|jpg|jpeg|svg|ico|css|js|json|woff|woff2|ttf|eot)$/)
   ) {
     return response;
   }
 
-  if (publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+  // Public pages - no auth required
+  const publicPaths = [
+    "/", "/about", "/academics", "/admissions", "/students",
+    "/news-events", "/contact", "/notices", "/gallery",
+    "/policies", "/faqs", "/downloads", "/calendar",
+    "/library", "/help", "/vora",
+    "/login", "/reset-password", "/onboarding",
+    "/api/onboarding", "/api/health",
+  ];
+
+  const isPublic = publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"));
+
+  if (isPublic) {
+    // If logged in and trying to access login, redirect to dashboard
     if (session && pathname === "/login") {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/student", request.url));
     }
+    return response;
+  }
+
+  // API routes - let them handle their own auth
+  if (pathname.startsWith("/api/")) {
     return response;
   }
 
@@ -89,5 +96,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|logo|.*\.png|.*\.jpg|.*\.svg|.*\.css|.*\.js).*)"],
+  matcher: ["/((?!_next/static|_next/image|.*\.(?:png|jpg|jpeg|svg|ico|css|js|json|woff|woff2|ttf|eot)$).*)"],
 };

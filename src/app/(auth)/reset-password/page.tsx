@@ -33,7 +33,18 @@ export default function ResetPasswordPage() {
     if (!allValid) { toast.error("Please meet all password requirements"); return; }
     setLoading(true);
     try {
+      // ABSOLUTE FIX: @supabase/ssr v0.3.0 fails to persist sessions to cookies
+      // when the JWT exceeds 4KB (common with role metadata). The cookie store is
+      // completely empty on the server, so getSession() returns null.
+      // We pull the token from localStorage (set at login) as the reliable source.
+      let token: string | null = null;
+
       const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        token = session.access_token;
+      } else {
+        try { token = localStorage.getItem("bdja_auth_token"); } catch {}
+      }
 
       const body: any = {
         new_password: password,
@@ -46,7 +57,7 @@ export default function ResetPasswordPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": session ? `Bearer ${session.access_token}` : "",
+          "Authorization": token ? `Bearer ${token}` : "",
         },
         body: JSON.stringify(body),
         credentials: "include",
@@ -54,9 +65,17 @@ export default function ResetPasswordPage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update password");
+
+      // Clean up the temporary localStorage token
+      try { localStorage.removeItem("bdja_auth_token"); } catch {}
+
       toast.success("Password updated successfully!");
       router.push(isFirstLogin ? "/onboarding" : "/");
-    } catch (error: any) { toast.error(error.message); } finally { setLoading(false); }
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

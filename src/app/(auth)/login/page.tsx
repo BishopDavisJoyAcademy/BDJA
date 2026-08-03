@@ -28,6 +28,14 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       if (data.user) {
+        // ABSOLUTE FIX: @supabase/ssr v0.3.0 createBrowserClient silently fails to
+        // persist sessions to cookies when the token payload exceeds 4KB (known bug).
+        // We capture the access_token here and store it in localStorage so the
+        // reset-password page can reliably send it to the API route.
+        if (data.session?.access_token) {
+          try { localStorage.setItem("bdja_auth_token", data.session.access_token); } catch {}
+        }
+
         const { data: profileData } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
         const profile = profileData as any;
         if (!profile?.password_changed) { router.push("/reset-password?first=true"); return; }
@@ -50,19 +58,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-[#1e3a5f]">
-      {/* Background Logo */}
       <div className="absolute inset-0 z-0 flex items-center justify-center">
-        <Image
-          src="/logo.png"
-          alt="BDJA Logo"
-          width={600}
-          height={600}
-          className="object-contain opacity-10"
-          priority
-        />
+        <Image src="/logo.png" alt="BDJA Logo" width={600} height={600} className="object-contain opacity-10" priority />
       </div>
       <div className="absolute inset-0 bg-gradient-to-br from-[#1e3a5f]/95 via-[#2d5a87]/90 to-[#1e3a5f]/95 z-[1]" />
-
       <div className="relative z-10 w-full max-w-md px-4">
         <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-8 border border-white/20">
           <div className="text-center mb-8">

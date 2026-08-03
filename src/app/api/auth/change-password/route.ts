@@ -34,6 +34,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // ABSOLUTE FIX: @supabase/ssr v0.3.0 silently fails to write auth cookies
+    // when the session payload exceeds 4KB (common with custom user_metadata).
+    // The server cookie jar is completely empty — getSession() always returns null.
+    // We accept the access_token from the client via Authorization header and
+    // validate it directly with Supabase Auth using getUser(token).
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
@@ -52,6 +57,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Fallback to cookie-based session (for backward compatibility / other callers)
     if (!userId) {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {

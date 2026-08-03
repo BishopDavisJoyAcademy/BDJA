@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
@@ -57,6 +57,15 @@ function getDashboardPath(role: string | null): string {
   return "/student";
 }
 
+function setAuthCookie(token: string) {
+  try {
+    const maxAge = 60 * 60 * 24 * 7;
+    document.cookie = `bdja_auth_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+  } catch (e) {
+    console.error("[onboarding] Failed to set auth cookie:", e);
+  }
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { setIsOnboarding } = useAppStore();
@@ -69,8 +78,6 @@ export default function OnboardingPage() {
   const finishOnboarding = async () => {
     setCompleting(true);
     try {
-      // REAL FIX: We need the user's role to redirect to the correct dashboard.
-      // Fetch the profile first, then update onboarding_completed, then redirect.
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Session lost. Please log in again.");
@@ -88,6 +95,13 @@ export default function OnboardingPage() {
       const dashboard = getDashboardPath(role);
 
       await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
+
+      // Refresh session and write custom cookie so middleware can auth on next request
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      if (refreshData.session?.access_token) {
+        setAuthCookie(refreshData.session.access_token);
+      }
+
       setIsOnboarding(false);
       toast.success("Welcome to BDJA! Let's get started.");
       router.push(dashboard);

@@ -8,6 +8,15 @@ import { Input } from "@/components/ui/Input";
 import { Eye, EyeOff, Shield, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
 
+function setAuthCookie(token: string) {
+  try {
+    const maxAge = 60 * 60 * 24 * 7;
+    document.cookie = `bdja_auth_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+  } catch (e) {
+    console.error("[reset-password] Failed to set auth cookie:", e);
+  }
+}
+
 export default function ResetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -18,19 +27,15 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // REAL FIX: Listen for auth state changes as soon as the component mounts.
-  // createBrowserClient v0.3.0 may emit the SIGNED_IN event after this page
-  // hydrates (especially on soft navigation). We capture the token immediately
-  // and store it in sessionStorage so handleReset can use it later.
   useEffect(() => {
     const saveToken = (token: string) => {
       try {
         sessionStorage.setItem("bdja_auth_token", token);
         localStorage.setItem("bdja_auth_token", token);
+        setAuthCookie(token);
       } catch {}
     };
 
-    // 1. Try to get session immediately on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) {
         saveToken(session.access_token);
@@ -38,7 +43,6 @@ export default function ResetPasswordPage() {
       }
     });
 
-    // 2. Listen for auth state changes (catches late-emitted SIGNED_IN events)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.access_token) {
         saveToken(session.access_token);
@@ -64,30 +68,20 @@ export default function ResetPasswordPage() {
     if (!allValid) { toast.error("Please meet all password requirements"); return; }
     setLoading(true);
     try {
-      // REAL FIX: Triple-redundant token retrieval.
-      // 1. Try createBrowserClient getSession() (may work if cookies are small)
-      // 2. Try sessionStorage (set by login page or useEffect above)
-      // 3. Try localStorage (fallback across tabs)
       let token: string | null = null;
 
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
         token = session.access_token;
-        console.log("[reset-password] Token from getSession");
       }
-
       if (!token) {
         try { token = sessionStorage.getItem("bdja_auth_token"); } catch {}
-        if (token) console.log("[reset-password] Token from sessionStorage");
       }
-
       if (!token) {
         try { token = localStorage.getItem("bdja_auth_token"); } catch {}
-        if (token) console.log("[reset-password] Token from localStorage");
       }
 
       if (!token) {
-        console.error("[reset-password] CRITICAL: No token found anywhere. Session lost.");
         toast.error("Session expired. Please log in again.");
         router.push("/login");
         setLoading(false);
@@ -114,7 +108,16 @@ export default function ResetPasswordPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update password");
 
-      // Clean up stashed tokens
+      // After password change, refresh the session so the new token is captured
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      if (refreshData.session?.access_token) {
+        setAuthCookie(refreshData.session.access_token);
+        try {
+          sessionStorage.setItem("bdja_auth_token", refreshData.session.access_token);
+          localStorage.setItem("bdja_auth_token", refreshData.session.access_token);
+        } catch {}
+      }
+
       try { sessionStorage.removeItem("bdja_auth_token"); } catch {}
       try { localStorage.removeItem("bdja_auth_token"); } catch {}
 

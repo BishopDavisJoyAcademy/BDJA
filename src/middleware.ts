@@ -17,25 +17,53 @@ export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } });
   const pathname = request.nextUrl.pathname;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) { return request.cookies.get(name)?.value; },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options });
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: "", ...options });
-          response.cookies.set({ name, value: "", ...options });
-        },
-      },
-    }
-  );
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      get(name: string) { return request.cookies.get(name)?.value; },
+      set(name: string, value: string, options: CookieOptions) {
+        request.cookies.set({ name, value, ...options });
+        response.cookies.set({ name, value, ...options });
+      },
+      remove(name: string, options: CookieOptions) {
+        request.cookies.set({ name, value: "", ...options });
+        response.cookies.set({ name, value: "", ...options });
+      },
+    },
+  });
+
+  let session = null;
+  let user = null;
+
+  // REAL FIX: @supabase/ssr v0.3.0 silently fails to write auth cookies when
+  // the JWT exceeds 4KB. The server cookie jar is empty, so getSession()
+  // returns null even though the user is logged in.
+  // We use a custom cookie (bdja_auth_token) set by the login page, and
+  // validate it with supabase.auth.getUser(token) which works over HTTP.
+  const customToken = request.cookies.get("bdja_auth_token")?.value;
+  if (customToken) {
+    try {
+      const { data, error } = await supabase.auth.getUser(customToken);
+      if (!error && data.user) {
+        user = data.user;
+        console.log("[middleware] Authenticated via custom cookie for user:", user.id);
+      }
+    } catch (e) {
+      console.error("[middleware] Custom token validation failed:", e);
+    }
+  }
+
+  // Fallback to standard cookie-based session
+  if (!user) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    session = sessionData.session;
+    if (session?.user) {
+      user = session.user;
+      console.log("[middleware] Authenticated via standard cookie for user:", user.id);
+    }
+  }
 
   // Public pages - no auth required
   const publicPaths = [
@@ -49,29 +77,23 @@ export async function middleware(request: NextRequest) {
   const isPublic = publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   if (isPublic) {
-    // REAL FIX: When a logged-in user hits /login, redirect them to their
-    // role-appropriate dashboard instead of hardcoding /student.
-    if (session && pathname === "/login") {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
-        .single();
-      const dashboard = getDashboardPath(profile?.role as string | null);
-      return NextResponse.redirect(new URL(dashboard, request.url));
-    }
+    // REAL FIX: Do NOT redirect away from /login in middleware.
+    // The login page handles client-side redirect for logged-in users.
+    // This prevents the ERR_TOO_MANY_REDIRECTS loop caused by middleware
+    // and client-side redirects fighting each other.
     return response;
   }
 
   // Not logged in -> redirect to login
-  if (!session) {
+  if (!user) {
+    console.log("[middleware] No auth on protected route:", pathname);
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, is_active, password_changed")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (!profile || profile.is_active === false) {
@@ -95,9 +117,6 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-// CRITICAL: Exclude API routes from middleware entirely.
-// This prevents the session refresh race condition where middleware
-// invalidates the refresh token before the API route can use it.
 export const config = {
   matcher: [
     "/((?!api/|_next/static|_next/image|.*\\.(?:png|jpg|jpeg|svg|ico|css|js|json|woff|woff2|ttf|eot)$).*)",

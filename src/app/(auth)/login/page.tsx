@@ -10,6 +10,28 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import Link from "next/link";
 
+function getDashboardPath(role: string | null): string {
+  if (role === "student") return "/student";
+  if (role === "parent") return "/parent";
+  if (role === "teacher") return "/teacher";
+  if (role === "principal" || role === "super_admin") return "/admin";
+  if (role === "bursar") return "/bursar";
+  if (role === "librarian") return "/librarian";
+  return "/student";
+}
+
+function setAuthCookie(token: string) {
+  // Set a custom cookie that middleware can read.
+  // @supabase/ssr v0.3.0 fails to write its own auth cookies when JWT > 4KB.
+  // We write a minimal cookie ourselves so middleware can validate the user.
+  try {
+    const maxAge = 60 * 60 * 24 * 7; // 7 days
+    document.cookie = `bdja_auth_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+  } catch (e) {
+    console.error("[login] Failed to set auth cookie:", e);
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -20,6 +42,40 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // REAL FIX: On mount, check if user is already logged in.
+  // If yes, redirect to their dashboard immediately.
+  // This prevents the middleware redirect loop because we never
+  // let a logged-in user sit on /login.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (cancelled) return;
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, password_changed, onboarding_completed")
+          .eq("id", session.user.id)
+          .single();
+        if (!profile?.password_changed) {
+          router.replace("/reset-password?first=true");
+          return;
+        }
+        if (!profile?.onboarding_completed) {
+          router.replace("/onboarding");
+          return;
+        }
+        const dashboard = getDashboardPath(profile?.role as string | null);
+        router.replace(dashboard);
+      } else {
+        setCheckingSession(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setCheckingSession(false);
+    });
+    return () => { cancelled = true; };
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,39 +84,21 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       if (data.user) {
-        // REAL FIX: @supabase/ssr v0.3.0 createBrowserClient stores the session
-        // in cookies. When the JWT payload exceeds 4KB (common with role metadata
-        // in user_metadata), the browser silently rejects the cookie. The session
-        // exists in memory on THIS page's supabase instance, but the reset-password
-        // page gets a FRESH createBrowserClient instance that only reads from cookies.
-        // Since cookies are empty, getSession() returns null there. We MUST capture
-        // the access_token here and stash it in both sessionStorage and localStorage
-        // so the reset page can reliably retrieve it.
-        const token = data.session?.access_token;
-        if (token) {
+        // Write our custom auth cookie so middleware can see the session
+        if (data.session?.access_token) {
+          setAuthCookie(data.session.access_token);
           try {
-            sessionStorage.setItem("bdja_auth_token", token);
-            localStorage.setItem("bdja_auth_token", token);
-            console.log("[login] Token stashed for reset-password page");
-          } catch (e) {
-            console.error("[login] Failed to stash token:", e);
-          }
-        } else {
-          console.warn("[login] No access_token in sign-in response");
+            sessionStorage.setItem("bdja_auth_token", data.session.access_token);
+            localStorage.setItem("bdja_auth_token", data.session.access_token);
+          } catch {}
         }
 
         const { data: profileData } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
         const profile = profileData as any;
         if (!profile?.password_changed) { router.push("/reset-password?first=true"); return; }
         if (!profile?.onboarding_completed) { router.push("/onboarding"); return; }
-        const role = profile?.role;
-        if (role === "student") router.push("/student");
-        else if (role === "parent") router.push("/parent");
-        else if (role === "teacher") router.push("/teacher");
-        else if (role === "principal" || role === "super_admin") router.push("/admin");
-        else if (role === "bursar") router.push("/bursar");
-        else if (role === "librarian") router.push("/librarian");
-        else router.push("/student");
+        const dashboard = getDashboardPath(profile?.role);
+        router.push(dashboard);
       }
     } catch (error: any) {
       toast.error(error.message || "Invalid credentials");
@@ -68,6 +106,14 @@ export default function LoginPage() {
   };
 
   const portalLabel = portal === "student" ? "Student Portal" : portal === "staff" ? "Staff Portal" : "BDJA Platform";
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#1e3a5f]">
+        <div className="text-white text-sm animate-pulse">Checking session...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-[#1e3a5f]">

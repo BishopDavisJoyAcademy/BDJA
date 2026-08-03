@@ -28,12 +28,25 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       if (data.user) {
-        // ABSOLUTE FIX: @supabase/ssr v0.3.0 createBrowserClient silently fails to
-        // persist sessions to cookies when the token payload exceeds 4KB (known bug).
-        // We capture the access_token here and store it in localStorage so the
-        // reset-password page can reliably send it to the API route.
-        if (data.session?.access_token) {
-          try { localStorage.setItem("bdja_auth_token", data.session.access_token); } catch {}
+        // REAL FIX: @supabase/ssr v0.3.0 createBrowserClient stores the session
+        // in cookies. When the JWT payload exceeds 4KB (common with role metadata
+        // in user_metadata), the browser silently rejects the cookie. The session
+        // exists in memory on THIS page's supabase instance, but the reset-password
+        // page gets a FRESH createBrowserClient instance that only reads from cookies.
+        // Since cookies are empty, getSession() returns null there. We MUST capture
+        // the access_token here and stash it in both sessionStorage and localStorage
+        // so the reset page can reliably retrieve it.
+        const token = data.session?.access_token;
+        if (token) {
+          try {
+            sessionStorage.setItem("bdja_auth_token", token);
+            localStorage.setItem("bdja_auth_token", token);
+            console.log("[login] Token stashed for reset-password page");
+          } catch (e) {
+            console.error("[login] Failed to stash token:", e);
+          }
+        } else {
+          console.warn("[login] No access_token in sign-in response");
         }
 
         const { data: profileData } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();

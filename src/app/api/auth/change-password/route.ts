@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // ABSOLUTE FIX: @supabase/ssr v0.3.0 silently fails to write auth cookies
+    // REAL FIX: @supabase/ssr v0.3.0 silently fails to write auth cookies
     // when the session payload exceeds 4KB (common with custom user_metadata).
     // The server cookie jar is completely empty — getSession() always returns null.
     // We accept the access_token from the client via Authorization header and

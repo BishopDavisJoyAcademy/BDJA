@@ -3,14 +3,19 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getRequiredPermission, hasPermission } from "@/lib/permissions";
 import { UserRole } from "@/types";
 
+const AUTH_COOKIE_NAME = "bdja_auth_token";
+
 function getDashboardPath(role: string | null): string {
-  if (role === "student") return "/student";
-  if (role === "parent") return "/parent";
-  if (role === "teacher") return "/teacher";
-  if (role === "principal" || role === "super_admin") return "/admin";
-  if (role === "bursar") return "/bursar";
-  if (role === "librarian") return "/librarian";
-  return "/student";
+  switch (role) {
+    case "student": return "/student";
+    case "parent": return "/parent";
+    case "teacher": return "/teacher";
+    case "principal":
+    case "super_admin": return "/admin";
+    case "bursar": return "/bursar";
+    case "librarian": return "/librarian";
+    default: return "/student";
+  }
 }
 
 export async function middleware(request: NextRequest) {
@@ -34,38 +39,42 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  let session = null;
-  let user = null;
+  // ============================================================
+  // AUTHENTICATION: Try custom cookie first, fallback to Supabase SSR
+  // ============================================================
+  let userId: string | null = null;
+  let userEmail: string | null = null;
 
-  // REAL FIX: @supabase/ssr v0.3.0 silently fails to write auth cookies when
-  // the JWT exceeds 4KB. The server cookie jar is empty, so getSession()
-  // returns null even though the user is logged in.
-  // We use a custom cookie (bdja_auth_token) set by the login page, and
-  // validate it with supabase.auth.getUser(token) which works over HTTP.
-  const customToken = request.cookies.get("bdja_auth_token")?.value;
+  // 1. Custom cookie (reliable, bypasses @supabase/ssr v0.3.0 bugs)
+  const customToken = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   if (customToken) {
     try {
       const { data, error } = await supabase.auth.getUser(customToken);
       if (!error && data.user) {
-        user = data.user;
-        console.log("[middleware] Authenticated via custom cookie for user:", user.id);
+        userId = data.user.id;
+        userEmail = data.user.email ?? null;
       }
-    } catch (e) {
-      console.error("[middleware] Custom token validation failed:", e);
+    } catch {
+      // Token invalid — will fall through to standard session check
     }
   }
 
-  // Fallback to standard cookie-based session
-  if (!user) {
-    const { data: sessionData } = await supabase.auth.getSession();
-    session = sessionData.session;
-    if (session?.user) {
-      user = session.user;
-      console.log("[middleware] Authenticated via standard cookie for user:", user.id);
+  // 2. Standard Supabase cookie session (for backward compatibility)
+  if (!userId) {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.user) {
+        userId = sessionData.session.user.id;
+        userEmail = sessionData.session.user.email ?? null;
+      }
+    } catch {
+      // Session check failed
     }
   }
 
-  // Public pages - no auth required
+  // ============================================================
+  // PUBLIC ROUTES: No auth required
+  // ============================================================
   const publicPaths = [
     "/", "/about", "/academics", "/admissions", "/students",
     "/news-events", "/contact", "/notices", "/gallery",
@@ -74,41 +83,47 @@ export async function middleware(request: NextRequest) {
     "/login", "/reset-password", "/onboarding",
   ];
 
-  const isPublic = publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const isPublic = publicPaths.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
 
   if (isPublic) {
-    // REAL FIX: Do NOT redirect away from /login in middleware.
+    // CRITICAL: Never redirect away from /login in middleware.
     // The login page handles client-side redirect for logged-in users.
-    // This prevents the ERR_TOO_MANY_REDIRECTS loop caused by middleware
-    // and client-side redirects fighting each other.
+    // This prevents the ERR_TOO_MANY_REDIRECTS loop.
     return response;
   }
 
-  // Not logged in -> redirect to login
-  if (!user) {
-    console.log("[middleware] No auth on protected route:", pathname);
+  // ============================================================
+  // PROTECTED ROUTES: Must be authenticated
+  // ============================================================
+  if (!userId) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Fetch profile for this user
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, is_active, password_changed")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
+  // Account suspended
   if (!profile || profile.is_active === false) {
-    await supabase.auth.signOut();
     return NextResponse.redirect(new URL("/login?error=suspended", request.url));
   }
 
+  // Must reset password first
   if (profile.password_changed === false && !pathname.startsWith("/reset-password")) {
     return NextResponse.redirect(new URL("/reset-password?first=true", request.url));
   }
 
-  // Role-based route protection
+  // Role-based access control
   const requiredPerms = getRequiredPermission(pathname);
   if (requiredPerms && requiredPerms.length > 0) {
-    const hasAccess = requiredPerms.some(perm => hasPermission(profile.role as UserRole, perm as any));
+    const hasAccess = requiredPerms.some((perm) =>
+      hasPermission(profile.role as UserRole, perm as any)
+    );
     if (!hasAccess) {
       return NextResponse.redirect(new URL("/", request.url));
     }

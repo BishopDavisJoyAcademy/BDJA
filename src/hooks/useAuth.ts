@@ -1,68 +1,178 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Profile } from "@/types";
-import { useAppStore } from "./useStore";
+import { setAuthToken, clearAuthToken, getDashboardPath } from "@/lib/auth-utils";
+import { useAppStore } from "@/hooks/useStore";
+import toast from "react-hot-toast";
 
-export function useAuth() {
-  const { user, setUser, clearUser } = useAppStore();
+export interface AuthUser {
+  id: string;
+  email: string | null;
+  role: string | null;
+  fullName: string | null;
+  passwordChanged: boolean;
+  onboardingCompleted: boolean;
+  isActive: boolean;
+}
+
+export interface UseAuthReturn {
+  user: AuthUser | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+}
+
+/**
+ * useAuth — The single source of truth for authentication state.
+ * 
+ * Every protected page should call this hook on mount.
+ * It:
+ * 1. Checks for a valid session
+ * 2. Fetches the user's profile
+ * 3. Redirects if password not changed or onboarding not completed
+ * 4. Keeps the custom auth cookie in sync
+ * 5. Provides signOut that clears everything
+ */
+export function useAuth(requireAuth: boolean = true): UseAuthReturn {
+  const router = useRouter();
+  const { user: storedUser, setUser, clearUser } = useAppStore();
   const [loading, setLoading] = useState(true);
+  const [user, setLocalUser] = useState<AuthUser | null>(null);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        clearAuthToken();
+        clearUser();
+        setLocalUser(null);
+        if (requireAuth) {
+          router.replace("/login");
+        }
+        return;
+      }
+
+      // Sync token to custom cookie
+      if (session.access_token) {
+        setAuthToken(session.access_token);
+      }
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("role, full_name, password_changed, onboarding_completed, is_active")
+        .eq("id", session.user.id)
+        .single();
+
+      if (error || !profile) {
+        console.error("[useAuth] Profile fetch failed:", error);
+        clearAuthToken();
+        clearUser();
+        setLocalUser(null);
+        if (requireAuth) {
+          toast.error("Failed to load profile");
+          router.replace("/login");
+        }
+        return;
+      }
+
+      if (profile.is_active === false) {
+        clearAuthToken();
+        await supabase.auth.signOut();
+        clearUser();
+        setLocalUser(null);
+        toast.error("Your account has been suspended");
+        router.replace("/login?error=suspended");
+        return;
+      }
+
+      const authUser: AuthUser = {
+        id: session.user.id,
+        email: session.user.email ?? null,
+        role: profile.role,
+        fullName: profile.full_name,
+        passwordChanged: profile.password_changed ?? false,
+        onboardingCompleted: profile.onboarding_completed ?? false,
+        isActive: profile.is_active ?? true,
+      };
+
+      setLocalUser(authUser);
+      setUser(authUser as any);
+
+      // Redirect if still needs password reset or onboarding
+      if (!authUser.passwordChanged) {
+        router.replace("/reset-password?first=true");
+        return;
+      }
+      if (!authUser.onboardingCompleted) {
+        router.replace("/onboarding");
+        return;
+      }
+    } catch (error) {
+      console.error("[useAuth] Unexpected error:", error);
+      clearAuthToken();
+      clearUser();
+      setLocalUser(null);
+      if (requireAuth) {
+        router.replace("/login");
+      }
+    }
+  }, [router, requireAuth, clearUser, setUser]);
 
   useEffect(() => {
-    let mounted = true;
+    let cancelled = false;
 
-    const getUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && mounted) {
-          const { data: profile, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-
-          if (!error && profile) {
-            setUser(profile as Profile);
-          }
-        }
-      } catch (err) {
-        console.error("Auth init error:", err);
-      } finally {
-        if (mounted) setLoading(false);
+    const init = async () => {
+      if (!cancelled) {
+        await refreshUser();
+        if (!cancelled) setLoading(false);
       }
     };
 
-    getUser();
+    init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (cancelled) return;
 
-      if (event === "SIGNED_IN" && session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-        setUser(profile as Profile);
-      } else if (event === "SIGNED_OUT") {
-        clearUser();
+        if (event === "SIGNED_OUT") {
+          clearAuthToken();
+          clearUser();
+          setLocalUser(null);
+          setLoading(false);
+          router.replace("/login");
+          return;
+        }
+
+        if (session?.access_token) {
+          setAuthToken(session.access_token);
+        }
+
+        // Re-fetch profile on any auth state change
+        await refreshUser();
       }
-    });
+    );
 
     return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
+      cancelled = true;
+      subscription.unsubscribe();
     };
-  }, [setUser, clearUser]);
+  }, [refreshUser, router, clearUser]);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    clearUser();
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
+  const signOut = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("[useAuth] Sign out error:", e);
     }
-  };
+    clearAuthToken();
+    clearUser();
+    setLocalUser(null);
+    router.replace("/login");
+  }, [router, clearUser]);
 
-  return { user, loading, signOut };
+  return { user, loading, signOut, refreshUser };
 }

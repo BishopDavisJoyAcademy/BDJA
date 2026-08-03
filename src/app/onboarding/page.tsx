@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { setAuthToken, getDashboardPath } from "@/lib/auth-utils";
 import { Button } from "@/components/ui/Button";
 import { useAppStore } from "@/hooks/useStore";
 import { BookOpen, Calendar, MessageCircle, GraduationCap, Award, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
@@ -11,7 +12,7 @@ import toast from "react-hot-toast";
 const steps = [
   {
     title: "Welcome to BDJA!",
-    description: "Your journey with Bishop Davis Joy Academy starts here. Let us show you around.",
+    description: "Your journey with Bishop Davis Joy Academy starts here.",
     icon: Sparkles,
     content: "BDJA Platform is your all-in-one hub for learning, communication, and growth. Everything you need is right here.",
   },
@@ -19,95 +20,127 @@ const steps = [
     title: "Your Dashboard",
     description: "Your personal command center",
     icon: BookOpen,
-    content: "From your dashboard, you can view your timetable, check assignments, see your grades, and access VORA learning content. Everything is organized just for you.",
+    content: "From your dashboard, you can view your timetable, check assignments, see your grades, and access VORA learning content.",
   },
   {
     title: "Stay Organized",
     description: "Calendar & Timetable",
     icon: Calendar,
-    content: "Your class timetable and school events are always up to date. Check the calendar for exams, sports days, meetings, and devotion themes.",
+    content: "Your class timetable and school events are always up to date. Check the calendar for exams, sports days, and meetings.",
   },
   {
     title: "Connect",
     description: "Messages & Collaboration",
     icon: MessageCircle,
-    content: "Send messages to teachers, chat with classmates, and stay connected with your school community — all within the platform.",
+    content: "Send messages to teachers, chat with classmates, and stay connected with your school community.",
   },
   {
     title: "Track Progress",
     description: "Grades & Character",
     icon: GraduationCap,
-    content: "View your CBC assessment results, character reports, and values badges. See how you're growing academically and personally.",
+    content: "View your CBC assessment results, character reports, and values badges.",
   },
   {
     title: "Meet Joy",
     description: "Your AI Assistant",
     icon: Award,
-    content: "Joy is always here to help! Ask questions about your homework, get study tips, or just chat. Joy knows your classes and can guide you anytime.",
+    content: "Joy is always here to help! Ask questions about your homework, get study tips, or just chat.",
   },
 ];
-
-function getDashboardPath(role: string | null): string {
-  if (role === "student") return "/student";
-  if (role === "parent") return "/parent";
-  if (role === "teacher") return "/teacher";
-  if (role === "principal" || role === "super_admin") return "/admin";
-  if (role === "bursar") return "/bursar";
-  if (role === "librarian") return "/librarian";
-  return "/student";
-}
-
-function setAuthCookie(token: string) {
-  try {
-    const maxAge = 60 * 60 * 24 * 7;
-    document.cookie = `bdja_auth_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
-  } catch (e) {
-    console.error("[onboarding] Failed to set auth cookie:", e);
-  }
-}
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { setIsOnboarding } = useAppStore();
   const [currentStep, setCurrentStep] = useState(0);
   const [completing, setCompleting] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  /**
+   * On mount: verify session exists.
+   * If not → redirect to login.
+   * If yes → store token and let user proceed.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+
+      if (!session?.user) {
+        toast.error("Please log in first");
+        router.replace("/login");
+        return;
+      }
+
+      if (session.access_token) {
+        setAuthToken(session.access_token);
+      }
+
+      setChecking(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [router]);
 
   const step = steps[currentStep];
   const Icon = step.icon;
 
   const finishOnboarding = async () => {
     setCompleting(true);
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.user) {
         toast.error("Session lost. Please log in again.");
         router.push("/login");
         return;
       }
 
-      const { data: profile } = await supabase
+      // Fetch role for dashboard routing
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", user.id)
+        .eq("id", session.user.id)
         .single();
 
-      const role = profile?.role as string | null;
-      const dashboard = getDashboardPath(role);
+      if (profileError || !profile) {
+        console.error("[onboarding] Profile fetch failed:", profileError);
+        toast.error("Could not load profile. Please try again.");
+        setCompleting(false);
+        return;
+      }
 
-      await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
+      // Mark onboarding as completed
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true })
+        .eq("id", session.user.id);
 
-      // Refresh session and write custom cookie so middleware can auth on next request
+      if (updateError) {
+        console.error("[onboarding] Profile update failed:", updateError);
+        toast.error("Failed to complete onboarding. Please try again.");
+        setCompleting(false);
+        return;
+      }
+
+      // Refresh session to ensure token is still valid
       const { data: refreshData } = await supabase.auth.refreshSession();
       if (refreshData.session?.access_token) {
-        setAuthCookie(refreshData.session.access_token);
+        setAuthToken(refreshData.session.access_token);
       }
 
       setIsOnboarding(false);
       toast.success("Welcome to BDJA! Let's get started.");
+
+      // Route to role-appropriate dashboard
+      const dashboard = getDashboardPath(profile.role);
       router.push(dashboard);
-    } catch {
-      toast.error("Something went wrong, but you're all set!");
-      router.push("/");
+    } catch (error: any) {
+      console.error("[onboarding] Error:", error);
+      toast.error("Something went wrong. Please try again.");
+      setCompleting(false);
     }
   };
 
@@ -122,6 +155,14 @@ export default function OnboardingPage() {
   const handleSkip = async () => {
     await finishOnboarding();
   };
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-bdja-primary via-bdja-accent to-bdja-dark">
+        <div className="text-white text-sm animate-pulse">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-bdja-primary via-bdja-accent to-bdja-dark p-4">

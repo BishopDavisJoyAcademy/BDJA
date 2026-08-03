@@ -24,6 +24,17 @@ export interface UseAuthReturn {
   refreshUser: () => Promise<void>;
 }
 
+async function fetchProfile(token: string) {
+  const res = await fetch("/api/auth/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to load profile");
+  }
+  return res.json();
+}
+
 export function useAuth(requireAuth: boolean = true): UseAuthReturn {
   const router = useRouter();
   const { setUser, clearUser } = useAppStore();
@@ -41,21 +52,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
         return;
       }
 
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("role, full_name, password_changed, onboarding_completed, is_active")
-        .eq("id", session.user.id)
-        .single();
-
-      if (error || !profile) {
-        clearUser();
-        setLocalUser(null);
-        if (requireAuth) {
-          toast.error("Failed to load profile");
-          router.replace("/login");
-        }
-        return;
-      }
+      const { profile } = await fetchProfile(session.access_token);
 
       if (profile.is_active === false) {
         await supabase.auth.signOut();
@@ -87,7 +84,8 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
         router.replace("/onboarding");
         return;
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("[useAuth] Error:", error);
       clearUser();
       setLocalUser(null);
       if (requireAuth) router.replace("/login");

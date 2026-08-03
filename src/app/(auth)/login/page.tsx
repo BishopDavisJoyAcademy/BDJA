@@ -23,6 +23,17 @@ function getDashboardPath(role: string | null): string {
   }
 }
 
+async function fetchProfile(token: string) {
+  const res = await fetch("/api/auth/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to load user profile");
+  }
+  return res.json();
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -35,10 +46,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
-  /**
-   * On mount: if already logged in, redirect immediately.
-   * Prevents middleware redirect loops.
-   */
   useEffect(() => {
     let cancelled = false;
 
@@ -48,27 +55,20 @@ export default function LoginPage() {
         return;
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role, password_changed, onboarding_completed")
-        .eq("id", session.user.id)
-        .single();
-
-      if (!profile) {
+      try {
+        const { profile } = await fetchProfile(session.access_token);
+        if (!profile.password_changed) {
+          router.replace("/reset-password?first=true");
+          return;
+        }
+        if (!profile.onboarding_completed) {
+          router.replace("/onboarding");
+          return;
+        }
+        router.replace(getDashboardPath(profile.role));
+      } catch {
         setChecking(false);
-        return;
       }
-
-      if (!profile.password_changed) {
-        router.replace("/reset-password?first=true");
-        return;
-      }
-      if (!profile.onboarding_completed) {
-        router.replace("/onboarding");
-        return;
-      }
-
-      router.replace(getDashboardPath(profile.role));
     });
 
     return () => { cancelled = true; };
@@ -89,18 +89,7 @@ export default function LoginPage() {
         throw new Error("Login succeeded but no session returned");
       }
 
-      // v0.12.4: Session is automatically stored in cookies.
-      // No manual cookie handling needed.
-
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role, password_changed, onboarding_completed")
-        .eq("id", data.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        throw new Error("Failed to load user profile");
-      }
+      const { profile } = await fetchProfile(data.session.access_token);
 
       if (!profile.password_changed) {
         router.push("/reset-password?first=true");

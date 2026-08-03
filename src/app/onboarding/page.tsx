@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
@@ -47,6 +47,16 @@ const steps = [
   },
 ];
 
+function getDashboardPath(role: string | null): string {
+  if (role === "student") return "/student";
+  if (role === "parent") return "/parent";
+  if (role === "teacher") return "/teacher";
+  if (role === "principal" || role === "super_admin") return "/admin";
+  if (role === "bursar") return "/bursar";
+  if (role === "librarian") return "/librarian";
+  return "/student";
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { setIsOnboarding } = useAppStore();
@@ -56,37 +66,47 @@ export default function OnboardingPage() {
   const step = steps[currentStep];
   const Icon = step.icon;
 
+  const finishOnboarding = async () => {
+    setCompleting(true);
+    try {
+      // REAL FIX: We need the user's role to redirect to the correct dashboard.
+      // Fetch the profile first, then update onboarding_completed, then redirect.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Session lost. Please log in again.");
+        router.push("/login");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      const role = profile?.role as string | null;
+      const dashboard = getDashboardPath(role);
+
+      await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
+      setIsOnboarding(false);
+      toast.success("Welcome to BDJA! Let's get started.");
+      router.push(dashboard);
+    } catch {
+      toast.error("Something went wrong, but you're all set!");
+      router.push("/");
+    }
+  };
+
   const handleNext = async () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      setCompleting(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
-        }
-        setIsOnboarding(false);
-        toast.success("Welcome to BDJA! Let's get started.");
-        router.push("/");
-      } catch {
-        toast.error("Something went wrong, but you're all set!");
-        router.push("/");
-      }
+      await finishOnboarding();
     }
   };
 
   const handleSkip = async () => {
-    setCompleting(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
-      }
-      router.push("/");
-    } catch {
-      router.push("/");
-    }
+    await finishOnboarding();
   };
 
   return (

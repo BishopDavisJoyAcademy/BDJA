@@ -4,37 +4,8 @@ import { getRequiredPermission, hasPermission } from "@/lib/permissions";
 import { UserRole } from "@/types";
 
 export async function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-
-  // ── 1. STATIC ASSETS — bypass everything ──
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/health") ||
-    pathname.match(/\.(png|jpg|jpeg|svg|ico|css|js|json|woff|woff2|ttf|eot)$/)
-  ) {
-    return NextResponse.next({ request: { headers: request.headers } });
-  }
-
-  // ── 2. API ROUTES — bypass session refresh to avoid token-invalidation race ──
-  // API routes handle their own auth. If middleware refreshes the session here,
-  // the old refresh token becomes invalid, and the API route can't getSession().
-  if (pathname.startsWith("/api/")) {
-    return NextResponse.next({ request: { headers: request.headers } });
-  }
-
-  // ── 3. PUBLIC PAGES — no auth required ──
-  const publicPaths = [
-    "/", "/about", "/academics", "/admissions", "/students",
-    "/news-events", "/contact", "/notices", "/gallery",
-    "/policies", "/faqs", "/downloads", "/calendar",
-    "/library", "/help", "/vora",
-    "/login", "/reset-password", "/onboarding",
-  ];
-
-  const isPublic = publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"));
-
-  // Create response once and reuse it
   let response = NextResponse.next({ request: { headers: request.headers } });
+  const pathname = request.nextUrl.pathname;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -56,6 +27,17 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession();
 
+  // Public pages - no auth required
+  const publicPaths = [
+    "/", "/about", "/academics", "/admissions", "/students",
+    "/news-events", "/contact", "/notices", "/gallery",
+    "/policies", "/faqs", "/downloads", "/calendar",
+    "/library", "/help", "/vora",
+    "/login", "/reset-password", "/onboarding",
+  ];
+
+  const isPublic = publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"));
+
   if (isPublic) {
     if (session && pathname === "/login") {
       return NextResponse.redirect(new URL("/student", request.url));
@@ -63,7 +45,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // ── 4. PROTECTED ROUTES — require auth ──
+  // Not logged in -> redirect to login
   if (!session) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -95,6 +77,11 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
+// CRITICAL: Exclude API routes from middleware entirely.
+// This prevents the session refresh race condition where middleware
+// invalidates the refresh token before the API route can use it.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|.*\.(?:png|jpg|jpeg|svg|ico|css|js|json|woff|woff2|ttf|eot)$).*)"],
+  matcher: [
+    "/((?!api/|_next/static|_next/image|.*\.(?:png|jpg|jpeg|svg|ico|css|js|json|woff|woff2|ttf|eot)$).*)",
+  ],
 };

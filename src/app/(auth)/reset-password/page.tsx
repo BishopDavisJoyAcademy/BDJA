@@ -34,7 +34,12 @@ export default function ResetPasswordPage() {
     try {
       const body: any = { new_password: password, confirm_password: confirmPassword, is_first_login: isFirstLogin };
       if (!isFirstLogin) body.current_password = currentPassword;
-      const res = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        credentials: "include",
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update password");
       toast.success("Password updated successfully!");

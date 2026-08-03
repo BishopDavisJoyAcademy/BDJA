@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { firstLoginPasswordSchema, changePasswordSchema } from "@/lib/validation";
@@ -6,38 +7,48 @@ import { logAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
-function createRouteSupabaseClient(request: NextRequest, response: NextResponse) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-  return createServerClient(supabaseUrl, supabaseKey, {
-    cookies: {
-      get(name: string) {
-        return request.cookies.get(name)?.value;
-      },
-      set(name: string, value: string, options: CookieOptions) {
-        request.cookies.set({ name, value, ...options });
-        response.cookies.set({ name, value, ...options });
-      },
-      remove(name: string, options: CookieOptions) {
-        request.cookies.set({ name, value: "", ...options });
-        response.cookies.set({ name, value: "", ...options });
-      },
-    },
-  });
-}
-
 export async function POST(req: NextRequest) {
-  // Build response early so Supabase SSR can attach refreshed cookies if needed
-  let res = NextResponse.next({ request: { headers: req.headers } });
-
   try {
-    const supabase = createRouteSupabaseClient(req, res);
-    const { data: { session } } = await supabase.auth.getSession();
+    const cookieStore = cookies();
+    const allCookies = cookieStore.getAll();
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Debug: log all cookie names (values hidden for security)
+    console.log("[change-password] Cookie names:", allCookies.map((c) => c.name));
+    console.log("[change-password] Cookie count:", allCookies.length);
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+      cookies: {
+        get(name: string) {
+          const cookie = cookieStore.get(name);
+          console.log(`[change-password] getCookie("${name}") => ${cookie ? "found" : "missing"}`);
+          return cookie?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          cookieStore.set({ name, value: "", ...options });
+        },
+      },
+    });
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      console.error("[change-password] getSession error:", sessionError);
     }
+    if (!session) {
+      console.error("[change-password] No session found. Cookies present:", allCookies.map((c) => c.name));
+      return NextResponse.json(
+        { error: "Unauthorized", debug: "No active session. Please log in again." },
+        { status: 401 }
+      );
+    }
+
+    console.log("[change-password] Session found for user:", session.user.id);
 
     const body = await req.json();
     const isFirstLogin = body.is_first_login === true;
@@ -61,7 +72,6 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      // Verify current password
       const { error: signInError } = await getSupabaseAdmin().auth.signInWithPassword({
         email: session.user.email!,
         password: parseResult.data.current_password,
@@ -75,17 +85,16 @@ export async function POST(req: NextRequest) {
       newPassword = parseResult.data.new_password;
     }
 
-    // Update password via admin API
     const { error: updateError } = await getSupabaseAdmin().auth.admin.updateUserById(
       session.user.id,
       { password: newPassword }
     );
 
     if (updateError) {
+      console.error("[change-password] Admin update error:", updateError);
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // Mark password as changed
     await getSupabaseAdmin()
       .from("profiles")
       .update({
@@ -107,16 +116,7 @@ export async function POST(req: NextRequest) {
       console.error("[change-password] Audit log failed (non-critical):", e);
     });
 
-    // Return success, forwarding any cookie updates from Supabase SSR
-    const successRes = NextResponse.json({
-      success: true,
-      message: "Password updated successfully",
-    });
-    // Copy over any cookies that Supabase SSR may have refreshed
-    res.cookies.getAll().forEach((cookie) => {
-      successRes.cookies.set(cookie);
-    });
-    return successRes;
+    return NextResponse.json({ success: true, message: "Password updated successfully" });
 
   } catch (error: any) {
     console.error("[change-password] Unhandled error:", error);

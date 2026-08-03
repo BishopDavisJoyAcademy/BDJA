@@ -30,6 +30,25 @@ function getDashboardPath(role: string | null): string {
   }
 }
 
+/**
+ * Complete onboarding via server API.
+ * This bypasses the RLS/cookie sync race condition.
+ */
+async function completeOnboarding(token: string) {
+  const res = await fetch("/api/auth/onboarding", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to complete onboarding");
+  }
+  return res.json();
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { setIsOnboarding } = useAppStore();
@@ -56,6 +75,7 @@ export default function OnboardingPage() {
 
   const finishOnboarding = async () => {
     setCompleting(true);
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
@@ -64,34 +84,14 @@ export default function OnboardingPage() {
         return;
       }
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        toast.error("Could not load profile. Please try again.");
-        setCompleting(false);
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ onboarding_completed: true })
-        .eq("id", session.user.id);
-
-      if (updateError) {
-        toast.error("Failed to complete onboarding. Please try again.");
-        setCompleting(false);
-        return;
-      }
+      const { profile } = await completeOnboarding(session.access_token);
 
       setIsOnboarding(false);
       toast.success("Welcome to BDJA!");
       router.push(getDashboardPath(profile.role));
     } catch (error: any) {
-      toast.error("Something went wrong. Please try again.");
+      console.error("[onboarding] Error:", error);
+      toast.error(error.message || "Could not complete onboarding. Please try again.");
       setCompleting(false);
     }
   };
@@ -101,7 +101,9 @@ export default function OnboardingPage() {
     else await finishOnboarding();
   };
 
-  const handleSkip = async () => { await finishOnboarding(); };
+  const handleSkip = async () => {
+    await finishOnboarding();
+  };
 
   if (checking) {
     return (

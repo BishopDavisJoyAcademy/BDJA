@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { setAuthToken, clearAuthToken, getDashboardPath } from "@/lib/auth-utils";
 import { useAppStore } from "@/hooks/useStore";
+import { UserRole } from "@/types";
 import toast from "react-hot-toast";
 
 export interface AuthUser {
   id: string;
   email: string | null;
-  role: string | null;
+  role: UserRole | null;
   full_name: string | null;
   password_changed: boolean;
   onboarding_completed: boolean;
@@ -24,17 +25,6 @@ export interface UseAuthReturn {
   refreshUser: () => Promise<void>;
 }
 
-/**
- * useAuth — The single source of truth for authentication state.
- * 
- * Every protected page should call this hook on mount.
- * It:
- * 1. Checks for a valid session
- * 2. Fetches the user's profile
- * 3. Redirects if password not changed or onboarding not completed
- * 4. Keeps the custom auth cookie in sync
- * 5. Provides signOut that clears everything
- */
 export function useAuth(requireAuth: boolean = true): UseAuthReturn {
   const router = useRouter();
   const { user: storedUser, setUser, clearUser } = useAppStore();
@@ -55,7 +45,6 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
         return;
       }
 
-      // Sync token to custom cookie
       if (session.access_token) {
         setAuthToken(session.access_token);
       }
@@ -91,8 +80,8 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
       const authUser: AuthUser = {
         id: session.user.id,
         email: session.user.email ?? null,
-        role: profile.role,
-        full_name: profile.full_name,
+        role: (profile.role as UserRole) ?? null,
+        full_name: profile.full_name ?? null,
         password_changed: profile.password_changed ?? false,
         onboarding_completed: profile.onboarding_completed ?? false,
         is_active: profile.is_active ?? true,
@@ -101,7 +90,6 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
       setLocalUser(authUser);
       setUser(authUser as any);
 
-      // Redirect if still needs password reset or onboarding
       if (!authUser.password_changed) {
         router.replace("/reset-password?first=true");
         return;
@@ -133,7 +121,6 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
 
     init();
 
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (cancelled) return;

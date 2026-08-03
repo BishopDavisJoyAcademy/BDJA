@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { setAuthToken, clearAuthToken, getDashboardPath } from "@/lib/auth-utils";
 import { useAppStore } from "@/hooks/useStore";
 import { UserRole } from "@/types";
 import toast from "react-hot-toast";
@@ -27,7 +26,7 @@ export interface UseAuthReturn {
 
 export function useAuth(requireAuth: boolean = true): UseAuthReturn {
   const router = useRouter();
-  const { user: storedUser, setUser, clearUser } = useAppStore();
+  const { setUser, clearUser } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [user, setLocalUser] = useState<AuthUser | null>(null);
 
@@ -36,17 +35,10 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.user) {
-        clearAuthToken();
         clearUser();
         setLocalUser(null);
-        if (requireAuth) {
-          router.replace("/login");
-        }
+        if (requireAuth) router.replace("/login");
         return;
-      }
-
-      if (session.access_token) {
-        setAuthToken(session.access_token);
       }
 
       const { data: profile, error } = await supabase
@@ -56,8 +48,6 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
         .single();
 
       if (error || !profile) {
-        console.error("[useAuth] Profile fetch failed:", error);
-        clearAuthToken();
         clearUser();
         setLocalUser(null);
         if (requireAuth) {
@@ -68,7 +58,6 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
       }
 
       if (profile.is_active === false) {
-        clearAuthToken();
         await supabase.auth.signOut();
         clearUser();
         setLocalUser(null);
@@ -99,13 +88,9 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
         return;
       }
     } catch (error) {
-      console.error("[useAuth] Unexpected error:", error);
-      clearAuthToken();
       clearUser();
       setLocalUser(null);
-      if (requireAuth) {
-        router.replace("/login");
-      }
+      if (requireAuth) router.replace("/login");
     }
   }, [router, requireAuth, clearUser, setUser]);
 
@@ -124,20 +109,13 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (cancelled) return;
-
         if (event === "SIGNED_OUT") {
-          clearAuthToken();
           clearUser();
           setLocalUser(null);
           setLoading(false);
           router.replace("/login");
           return;
         }
-
-        if (session?.access_token) {
-          setAuthToken(session.access_token);
-        }
-
         await refreshUser();
       }
     );
@@ -149,12 +127,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
   }, [refreshUser, router, clearUser]);
 
   const signOut = useCallback(async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.error("[useAuth] Sign out error:", e);
-    }
-    clearAuthToken();
+    try { await supabase.auth.signOut(); } catch {}
     clearUser();
     setLocalUser(null);
     router.replace("/login");

@@ -3,13 +3,25 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { setAuthToken, getDashboardPath } from "@/lib/auth-utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Eye, EyeOff, School, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import Link from "next/link";
+
+function getDashboardPath(role: string | null): string {
+  switch (role) {
+    case "student": return "/student";
+    case "parent": return "/parent";
+    case "teacher": return "/teacher";
+    case "principal":
+    case "super_admin": return "/admin";
+    case "bursar": return "/bursar";
+    case "librarian": return "/librarian";
+    default: return "/student";
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,40 +36,29 @@ export default function LoginPage() {
   const [checking, setChecking] = useState(true);
 
   /**
-   * On mount: check if user is already logged in.
-   * If yes → redirect to their dashboard immediately.
-   * This prevents the middleware redirect loop because we NEVER
-   * let a logged-in user sit on /login.
+   * On mount: if already logged in, redirect immediately.
+   * Prevents middleware redirect loops.
    */
   useEffect(() => {
     let cancelled = false;
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (cancelled) return;
-
-      if (!session?.user) {
+      if (cancelled || !session?.user) {
         setChecking(false);
         return;
       }
 
-      // Already logged in — determine where to go
-      const { data: profile, error } = await supabase
+      const { data: profile } = await supabase
         .from("profiles")
         .select("role, password_changed, onboarding_completed")
         .eq("id", session.user.id)
         .single();
 
-      if (error || !profile) {
+      if (!profile) {
         setChecking(false);
         return;
       }
 
-      // Ensure custom cookie is set so middleware works on next request
-      if (session.access_token) {
-        setAuthToken(session.access_token);
-      }
-
-      // Route based on profile state
       if (!profile.password_changed) {
         router.replace("/reset-password?first=true");
         return;
@@ -67,8 +68,7 @@ export default function LoginPage() {
         return;
       }
 
-      const dashboard = getDashboardPath(profile.role);
-      router.replace(dashboard);
+      router.replace(getDashboardPath(profile.role));
     });
 
     return () => { cancelled = true; };
@@ -79,7 +79,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Step 1: Authenticate with Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -90,12 +89,9 @@ export default function LoginPage() {
         throw new Error("Login succeeded but no session returned");
       }
 
-      // Step 2: Write custom auth cookie IMMEDIATELY
-      // This is CRITICAL — without this cookie, middleware cannot
-      // authenticate the user on the next request.
-      setAuthToken(data.session.access_token);
+      // v0.12.4: Session is automatically stored in cookies.
+      // No manual cookie handling needed.
 
-      // Step 3: Fetch profile to determine next step
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role, password_changed, onboarding_completed")
@@ -106,19 +102,16 @@ export default function LoginPage() {
         throw new Error("Failed to load user profile");
       }
 
-      // Step 4: Route based on profile state
       if (!profile.password_changed) {
         router.push("/reset-password?first=true");
         return;
       }
-
       if (!profile.onboarding_completed) {
         router.push("/onboarding");
         return;
       }
 
-      const dashboard = getDashboardPath(profile.role);
-      router.push(dashboard);
+      router.push(getDashboardPath(profile.role));
     } catch (error: any) {
       console.error("[login] Error:", error);
       toast.error(error.message || "Invalid credentials");
@@ -145,23 +138,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-[#1e3a5f]">
       <div className="absolute inset-0 z-0 flex items-center justify-center">
-        <Image
-          src="/logo.png"
-          alt="BDJA Logo"
-          width={600}
-          height={600}
-          className="object-contain opacity-10"
-          priority
-        />
+        <Image src="/logo.png" alt="BDJA Logo" width={600} height={600} className="object-contain opacity-10" priority />
       </div>
       <div className="absolute inset-0 bg-gradient-to-br from-[#1e3a5f]/95 via-[#2d5a87]/90 to-[#1e3a5f]/95 z-[1]" />
       <div className="relative z-10 w-full max-w-md px-4">
         <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-8 border border-white/20">
           <div className="text-center mb-8">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[#1e3a5f] mb-4 transition-colors"
-            >
+            <Link href="/" className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[#1e3a5f] mb-4 transition-colors">
               <ArrowLeft className="w-3 h-3" /> Back to Home
             </Link>
             <div className="w-20 h-20 mx-auto mb-4 bg-[#1e3a5f] rounded-xl flex items-center justify-center shadow-lg">
@@ -169,71 +152,34 @@ export default function LoginPage() {
             </div>
             <h1 className="text-2xl font-bold text-[#1e3a5f]">{portalLabel}</h1>
             <p className="text-sm text-gray-500 mt-1">Bishop Davis Joy Academy</p>
-            <p className="text-xs text-[#c9a227] mt-2 font-medium">
-              &ldquo;Prayer, Commitment and Hard Work for Success&rdquo;
-            </p>
+            <p className="text-xs text-[#c9a227] mt-2 font-medium">&ldquo;Prayer, Commitment and Hard Work for Success&rdquo;</p>
             {errorParam === "suspended" && (
-              <p className="mt-3 text-sm text-red-600 bg-red-50 p-2 rounded-lg">
-                Your account has been suspended. Contact the administrator.
-              </p>
+              <p className="mt-3 text-sm text-red-600 bg-red-50 p-2 rounded-lg">Your account has been suspended. Contact the administrator.</p>
             )}
           </div>
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Email Address
-              </label>
-              <Input
-                type="email"
-                placeholder="you@bdja.ac.ke"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+              <Input type="email" placeholder="you@bdja.ac.ke" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Password
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
               <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
+                <Input type={showPassword ? "text" : "password"} placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full pr-10" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-[#1e3a5f] hover:bg-[#2d5a87] text-white font-medium rounded-xl transition-all"
-            >
+            <Button type="submit" disabled={loading} className="w-full py-3 bg-[#1e3a5f] hover:bg-[#2d5a87] text-white font-medium rounded-xl transition-all">
               {loading ? "Signing in..." : `Sign In to ${portalLabel}`}
             </Button>
           </form>
           <div className="mt-6 text-center">
-            <p className="text-xs text-gray-400">
-              Need help?{" "}
-              <Link href="/contact" className="text-[#c9a227] hover:underline">
-                Contact us
-              </Link>
-            </p>
+            <p className="text-xs text-gray-400">Need help? <Link href="/contact" className="text-[#c9a227] hover:underline">Contact us</Link></p>
           </div>
           <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-            <p className="text-xs text-gray-400">
-              &copy; 2026 Bishop Davis Joy Academy. All rights reserved.
-            </p>
+            <p className="text-xs text-gray-400">&copy; 2026 Bishop Davis Joy Academy. All rights reserved.</p>
           </div>
         </div>
       </div>

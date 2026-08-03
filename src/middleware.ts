@@ -1,9 +1,7 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getRequiredPermission, hasPermission } from "@/lib/permissions";
 import { UserRole } from "@/types";
-
-const AUTH_COOKIE_NAME = "bdja_auth_token";
 
 function getDashboardPath(role: string | null): string {
   switch (role) {
@@ -19,62 +17,39 @@ function getDashboardPath(role: string | null): string {
 }
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request: { headers: request.headers } });
+  let response = NextResponse.next({ request });
   const pathname = request.nextUrl.pathname;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-  const supabase = createServerClient(supabaseUrl, supabaseKey, {
-    cookies: {
-      get(name: string) { return request.cookies.get(name)?.value; },
-      set(name: string, value: string, options: CookieOptions) {
-        request.cookies.set({ name, value, ...options });
-        response.cookies.set({ name, value, ...options });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet, headers) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+          Object.entries(headers).forEach(([key, value]) =>
+            response.headers.set(key, value)
+          );
+        },
       },
-      remove(name: string, options: CookieOptions) {
-        request.cookies.set({ name, value: "", ...options });
-        response.cookies.set({ name, value: "", ...options });
-      },
-    },
-  });
-
-  // ============================================================
-  // AUTHENTICATION: Try custom cookie first, fallback to Supabase SSR
-  // ============================================================
-  let userId: string | null = null;
-  let userEmail: string | null = null;
-
-  // 1. Custom cookie (reliable, bypasses @supabase/ssr v0.3.0 bugs)
-  const customToken = request.cookies.get(AUTH_COOKIE_NAME)?.value;
-  if (customToken) {
-    try {
-      const { data, error } = await supabase.auth.getUser(customToken);
-      if (!error && data.user) {
-        userId = data.user.id;
-        userEmail = data.user.email ?? null;
-      }
-    } catch {
-      // Token invalid — will fall through to standard session check
     }
-  }
+  );
 
-  // 2. Standard Supabase cookie session (for backward compatibility)
-  if (!userId) {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session?.user) {
-        userId = sessionData.session.user.id;
-        userEmail = sessionData.session.user.email ?? null;
-      }
-    } catch {
-      // Session check failed
-    }
-  }
+  // CRITICAL: Call getClaims() to refresh session and sync cookies.
+  // Do NOT run code between createServerClient and getClaims().
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims;
 
-  // ============================================================
-  // PUBLIC ROUTES: No auth required
-  // ============================================================
+  // Public pages — no auth required
   const publicPaths = [
     "/", "/about", "/academics", "/admissions", "/students",
     "/news-events", "/contact", "/notices", "/gallery",
@@ -88,37 +63,32 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isPublic) {
-    // CRITICAL: Never redirect away from /login in middleware.
-    // The login page handles client-side redirect for logged-in users.
-    // This prevents the ERR_TOO_MANY_REDIRECTS loop.
+    // If logged-in user hits /login, let the login page handle redirect.
+    // Do NOT redirect here to avoid loop.
     return response;
   }
 
-  // ============================================================
-  // PROTECTED ROUTES: Must be authenticated
-  // ============================================================
-  if (!userId) {
+  // Protected route but no user — redirect to login
+  if (!user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Fetch profile for this user
+  // Fetch profile for state checks and role-based access
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, is_active, password_changed")
-    .eq("id", userId)
+    .eq("id", user.sub)
     .single();
 
-  // Account suspended
   if (!profile || profile.is_active === false) {
     return NextResponse.redirect(new URL("/login?error=suspended", request.url));
   }
 
-  // Must reset password first
   if (profile.password_changed === false && !pathname.startsWith("/reset-password")) {
     return NextResponse.redirect(new URL("/reset-password?first=true", request.url));
   }
 
-  // Role-based access control
+  // Role-based route protection
   const requiredPerms = getRequiredPermission(pathname);
   if (requiredPerms && requiredPerms.length > 0) {
     const hasAccess = requiredPerms.some((perm) =>

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { setAuthToken, getDashboardPath } from "@/lib/auth-utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Eye, EyeOff, Shield, Check, X } from "lucide-react";
@@ -21,27 +20,16 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
-  /**
-   * On mount: verify the user actually has a valid session.
-   * If not, redirect to login. This prevents orphaned page loads.
-   * Also capture and store the token in our custom cookie system.
-   */
   useEffect(() => {
     let cancelled = false;
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return;
-
       if (!session?.user) {
         toast.error("Please log in first");
         router.replace("/login");
         return;
       }
-
-      if (session.access_token) {
-        setAuthToken(session.access_token);
-      }
-
       setChecking(false);
     });
 
@@ -67,7 +55,6 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      // Get the current session token to send to the API
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
@@ -84,7 +71,6 @@ export default function ResetPasswordPage() {
       };
       if (!isFirstLogin) body.current_password = currentPassword;
 
-      // Call the change-password API with the token in the header
       const res = await fetch("/api/auth/change-password", {
         method: "POST",
         headers: {
@@ -92,41 +78,13 @@ export default function ResetPasswordPage() {
           "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(body),
-        credentials: "include",
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update password");
 
-      // CRITICAL: After password change, Supabase may invalidate the old token.
-      // We MUST refresh the session to get a new valid token.
-      const { data: refreshData, error: refreshError } =
-        await supabase.auth.refreshSession();
-
-      if (refreshError || !refreshData.session) {
-        console.error("[reset-password] Session refresh failed:", refreshError);
-        toast.error("Password updated, but session expired. Please log in again.");
-        router.push("/login");
-        return;
-      }
-
-      // Store the NEW token so middleware can auth the next request
-      setAuthToken(refreshData.session.access_token);
-
       toast.success("Password updated successfully!");
-
-      // Route based on whether this was first login or not
-      if (isFirstLogin) {
-        router.push("/onboarding");
-      } else {
-        // For normal password change, go to dashboard
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", refreshData.session.user.id)
-          .single();
-        router.push(getDashboardPath(profile?.role as string | null));
-      }
+      router.push(isFirstLogin ? "/onboarding" : "/");
     } catch (error: any) {
       console.error("[reset-password] Error:", error);
       toast.error(error.message || "Failed to update password");
@@ -155,98 +113,38 @@ export default function ResetPasswordPage() {
               {isFirstLogin ? "Set Your Password" : "Change Password"}
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              {isFirstLogin
-                ? "Create a strong password to secure your account"
-                : "Update your password for security"}
+              {isFirstLogin ? "Create a strong password to secure your account" : "Update your password for security"}
             </p>
           </div>
-
           <form onSubmit={handleReset} className="space-y-5">
             {!isFirstLogin && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Current Password
-                </label>
-                <Input
-                  type="password"
-                  placeholder="Your current password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required
-                  className="w-full"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Current Password</label>
+                <Input type="password" placeholder="Your current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="w-full" />
               </div>
             )}
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                New Password
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">New Password</label>
               <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Minimum 8 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
+                <Input type={showPassword ? "text" : "password"} placeholder="Minimum 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full pr-10" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Confirm Password
-              </label>
-              <Input
-                type="password"
-                placeholder="Re-enter new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                className="w-full"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
+              <Input type="password" placeholder="Re-enter new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full" />
             </div>
-
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                {checks.length ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}
-                <span className={checks.length ? "text-green-600" : "text-gray-500"}>At least 8 characters</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {checks.upper ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}
-                <span className={checks.upper ? "text-green-600" : "text-gray-500"}>One uppercase letter</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {checks.lower ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}
-                <span className={checks.lower ? "text-green-600" : "text-gray-500"}>One lowercase letter</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {checks.number ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}
-                <span className={checks.number ? "text-green-600" : "text-gray-500"}>One number</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {checks.special ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}
-                <span className={checks.special ? "text-green-600" : "text-gray-500"}>One special character</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {checks.match ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}
-                <span className={checks.match ? "text-green-600" : "text-gray-500"}>Passwords match</span>
-              </div>
+              <div className="flex items-center gap-2">{checks.length ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.length ? "text-green-600" : "text-gray-500"}>At least 8 characters</span></div>
+              <div className="flex items-center gap-2">{checks.upper ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.upper ? "text-green-600" : "text-gray-500"}>One uppercase letter</span></div>
+              <div className="flex items-center gap-2">{checks.lower ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.lower ? "text-green-600" : "text-gray-500"}>One lowercase letter</span></div>
+              <div className="flex items-center gap-2">{checks.number ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.number ? "text-green-600" : "text-gray-500"}>One number</span></div>
+              <div className="flex items-center gap-2">{checks.special ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.special ? "text-green-600" : "text-gray-500"}>One special character</span></div>
+              <div className="flex items-center gap-2">{checks.match ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.match ? "text-green-600" : "text-gray-500"}>Passwords match</span></div>
             </div>
-
-            <Button
-              type="submit"
-              disabled={loading || !allValid}
-              className="w-full py-3 bg-bdja-secondary hover:bg-bdja-accent text-white font-medium rounded-xl transition-all"
-            >
+            <Button type="submit" disabled={loading || !allValid} className="w-full py-3 bg-bdja-secondary hover:bg-bdja-accent text-white font-medium rounded-xl transition-all">
               {loading ? "Updating..." : isFirstLogin ? "Set Password" : "Update Password"}
             </Button>
           </form>

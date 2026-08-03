@@ -11,10 +11,10 @@ export interface AuthUser {
   id: string;
   email: string | null;
   role: string | null;
-  fullName: string | null;
-  passwordChanged: boolean;
-  onboardingCompleted: boolean;
-  isActive: boolean;
+  full_name: string | null;
+  password_changed: boolean;
+  onboarding_completed: boolean;
+  is_active: boolean;
 }
 
 export interface UseAuthReturn {
@@ -92,21 +92,21 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
         id: session.user.id,
         email: session.user.email ?? null,
         role: profile.role,
-        fullName: profile.full_name,
-        passwordChanged: profile.password_changed ?? false,
-        onboardingCompleted: profile.onboarding_completed ?? false,
-        isActive: profile.is_active ?? true,
+        full_name: profile.full_name,
+        password_changed: profile.password_changed ?? false,
+        onboarding_completed: profile.onboarding_completed ?? false,
+        is_active: profile.is_active ?? true,
       };
 
       setLocalUser(authUser);
       setUser(authUser as any);
 
       // Redirect if still needs password reset or onboarding
-      if (!authUser.passwordChanged) {
+      if (!authUser.password_changed) {
         router.replace("/reset-password?first=true");
         return;
       }
-      if (!authUser.onboardingCompleted) {
+      if (!authUser.onboarding_completed) {
         router.replace("/onboarding");
         return;
       }
@@ -151,7 +151,6 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
           setAuthToken(session.access_token);
         }
 
-        // Re-fetch profile on any auth state change
         await refreshUser();
       }
     );

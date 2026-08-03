@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient, getSupabaseAdmin } from "@/lib/supabase-server";
+import { createClient, getSupabaseAdmin } from "@/lib/supabase-server";
 import { saveVideoSchema } from "@/lib/validation";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,16 +13,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const supabase = createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    // Auth check — v0.12.4: use async createClient with getAll/setAll
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { data, error } = await getSupabaseAdmin()
       .from("saved_videos")
       .select("*")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .order("saved_at", { ascending: false });
 
     if (error) throw error;
@@ -42,9 +43,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const supabase = createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    // Auth check — v0.12.4: use async createClient with getAll/setAll
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -55,7 +57,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { error } = await getSupabaseAdmin().from("saved_videos").insert({
-      user_id: session.user.id,
+      user_id: user.id,
       ...parseResult.data,
     });
 
@@ -75,9 +77,10 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const supabase = createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    // Auth check — v0.12.4: use async createClient with getAll/setAll
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -91,7 +94,7 @@ export async function DELETE(req: NextRequest) {
       .from("saved_videos")
       .delete()
       .eq("id", id)
-      .eq("user_id", session.user.id);
+      .eq("user_id", user.id);
 
     if (error) throw error;
 

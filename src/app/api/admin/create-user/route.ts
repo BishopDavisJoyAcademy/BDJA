@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createClient, getSupabaseAdmin } from "@/lib/supabase-server";
 import { hasPermission } from "@/lib/permissions";
 import { createUserSchema } from "@/lib/validation";
 import { generateTempPassword, createUser, createStudentWithParent } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,17 +17,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    // Auth check
-    const supabase = createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    // Auth check — v0.12.4: use async createClient with getAll/setAll
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { data: adminProfile } = await getSupabaseAdmin()
       .from("profiles")
       .select("role, campus_id")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (!adminProfile || !hasPermission(adminProfile.role, "manageUsers")) {
@@ -68,7 +67,7 @@ export async function POST(req: NextRequest) {
       );
 
       await logAudit({
-        user_id: session.user.id,
+        user_id: user.id,
         action: "STUDENT_CREATED",
         target_type: "student",
         target_id: result.student.id,
@@ -86,7 +85,7 @@ export async function POST(req: NextRequest) {
 
     // Staff/Other user creation
     const tempPassword = generateTempPassword();
-    const user = await createUser(
+    const newUser = await createUser(
       data.email,
       tempPassword,
       data.full_name,
@@ -96,10 +95,10 @@ export async function POST(req: NextRequest) {
     );
 
     await logAudit({
-      user_id: session.user.id,
+      user_id: user.id,
       action: "USER_CREATED",
       target_type: "profile",
-      target_id: user.id,
+      target_id: newUser.id,
       metadata: { role: data.role, email: data.email },
       ip_address: req.headers.get("x-forwarded-for") || undefined,
       user_agent: req.headers.get("user-agent") || undefined,
@@ -107,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      userId: user.id,
+      userId: newUser.id,
       email: data.email,
       name: data.full_name,
       role: data.role,

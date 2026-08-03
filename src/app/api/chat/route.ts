@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createClient } from "@/lib/supabase-server";
 import { chatMessageSchema } from "@/lib/validation";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 import { searchVoraContent } from "@/lib/vora";
 import { searchYouTubeAsVora } from "@/lib/youtube";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,10 +16,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    // Auth check
-    const supabase = createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    // Auth check — v0.12.4: use async createClient with getAll/setAll
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

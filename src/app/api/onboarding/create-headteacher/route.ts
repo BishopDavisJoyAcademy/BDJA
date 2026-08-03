@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createClient, getSupabaseAdmin } from "@/lib/supabase-server";
 import { hasPermission } from "@/lib/permissions";
 import { createUserSchema } from "@/lib/validation";
 import { generateTempPassword, createUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,17 +17,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    // Auth check
-    const supabase = createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    // Auth check — v0.12.4: use async createClient with getAll/setAll
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { data: profile } = await getSupabaseAdmin()
       .from("profiles")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (!profile || !hasPermission(profile.role, "manageUsers")) {
@@ -45,13 +44,13 @@ export async function POST(req: NextRequest) {
     const { email, full_name, campus_id, phone } = parseResult.data;
     const tempPassword = generateTempPassword();
 
-    const user = await createUser(email, tempPassword, full_name, "principal", campus_id, { phone: phone || null });
+    const newUser = await createUser(email, tempPassword, full_name, "principal", campus_id, { phone: phone || null });
 
     await logAudit({
-      user_id: session.user.id,
+      user_id: user.id,
       action: "HEADTEACHER_CREATED",
       target_type: "profile",
-      target_id: user.id,
+      target_id: newUser.id,
       metadata: { email, full_name, campus_id },
       ip_address: req.headers.get("x-forwarded-for") || undefined,
       user_agent: req.headers.get("user-agent") || undefined,
@@ -59,10 +58,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      userId: user.id,
+      userId: newUser.id,
       email,
+      name: full_name,
+      role: "principal",
       temp_password: tempPassword,
-      message: "Headteacher created. Share the temporary password securely.",
     });
   } catch (error: any) {
     console.error("Create headteacher error:", error);

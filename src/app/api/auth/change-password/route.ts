@@ -12,7 +12,6 @@ export async function POST(req: NextRequest) {
     const cookieStore = cookies();
     const allCookies = cookieStore.getAll();
 
-    // Debug: log all cookie names (values hidden for security)
     console.log("[change-password] Cookie names:", allCookies.map((c) => c.name));
     console.log("[change-password] Cookie count:", allCookies.length);
 
@@ -35,20 +34,40 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-    if (sessionError) {
-      console.error("[change-password] getSession error:", sessionError);
-    }
-    if (!session) {
-      console.error("[change-password] No session found. Cookies present:", allCookies.map((c) => c.name));
-      return NextResponse.json(
-        { error: "Unauthorized", debug: "No active session. Please log in again." },
-        { status: 401 }
-      );
+    let userId: string | null = null;
+    let userEmail: string | null = null;
+
+    if (token) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      if (userError) {
+        console.error("[change-password] getUser error:", userError);
+      }
+      if (user) {
+        userId = user.id;
+        userEmail = user.email ?? null;
+        console.log("[change-password] Authenticated via Authorization header for user:", userId);
+      }
     }
 
-    console.log("[change-password] Session found for user:", session.user.id);
+    if (!userId) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error("[change-password] getSession error:", sessionError);
+      }
+      if (!session) {
+        console.error("[change-password] No session found. Cookies present:", allCookies.map((c) => c.name));
+        return NextResponse.json(
+          { error: "Unauthorized", debug: "No active session. Please log in again." },
+          { status: 401 }
+        );
+      }
+      userId = session.user.id;
+      userEmail = session.user.email ?? null;
+      console.log("[change-password] Authenticated via cookie session for user:", userId);
+    }
 
     const body = await req.json();
     const isFirstLogin = body.is_first_login === true;
@@ -73,7 +92,7 @@ export async function POST(req: NextRequest) {
         );
       }
       const { error: signInError } = await getSupabaseAdmin().auth.signInWithPassword({
-        email: session.user.email!,
+        email: userEmail!,
         password: parseResult.data.current_password,
       });
       if (signInError) {
@@ -86,7 +105,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { error: updateError } = await getSupabaseAdmin().auth.admin.updateUserById(
-      session.user.id,
+      userId,
       { password: newPassword }
     );
 
@@ -102,13 +121,13 @@ export async function POST(req: NextRequest) {
         temp_password_hash: null,
         last_password_change: new Date().toISOString(),
       })
-      .eq("id", session.user.id);
+      .eq("id", userId);
 
     await logAudit({
-      user_id: session.user.id,
+      user_id: userId,
       action: "PASSWORD_CHANGED",
       target_type: "profile",
-      target_id: session.user.id,
+      target_id: userId,
       metadata: { is_first_login: isFirstLogin },
       ip_address: req.headers.get("x-forwarded-for") || undefined,
       user_agent: req.headers.get("user-agent") || undefined,

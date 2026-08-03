@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Eye, EyeOff, Shield, Check, X } from "lucide-react";
@@ -32,14 +33,25 @@ export default function ResetPasswordPage() {
     if (!allValid) { toast.error("Please meet all password requirements"); return; }
     setLoading(true);
     try {
-      const body: any = { new_password: password, confirm_password: confirmPassword, is_first_login: isFirstLogin };
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const body: any = {
+        new_password: password,
+        confirm_password: confirmPassword,
+        is_first_login: isFirstLogin,
+      };
       if (!isFirstLogin) body.current_password = currentPassword;
+
       const res = await fetch("/api/auth/change-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": session ? `Bearer ${session.access_token}` : "",
+        },
         body: JSON.stringify(body),
         credentials: "include",
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update password");
       toast.success("Password updated successfully!");
@@ -75,14 +87,16 @@ export default function ResetPasswordPage() {
               <Input type="password" placeholder="Re-enter new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full" />
             </div>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">{checks.length ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-gray-300" />}<span className={checks.length ? "text-green-600" : "text-gray-400"}>At least 8 characters</span></div>
-              <div className="flex items-center gap-2">{checks.upper ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-gray-300" />}<span className={checks.upper ? "text-green-600" : "text-gray-400"}>One uppercase letter</span></div>
-              <div className="flex items-center gap-2">{checks.lower ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-gray-300" />}<span className={checks.lower ? "text-green-600" : "text-gray-400"}>One lowercase letter</span></div>
-              <div className="flex items-center gap-2">{checks.number ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-gray-300" />}<span className={checks.number ? "text-green-600" : "text-gray-400"}>One number</span></div>
-              <div className="flex items-center gap-2">{checks.special ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-gray-300" />}<span className={checks.special ? "text-green-600" : "text-gray-400"}>One special character</span></div>
-              <div className="flex items-center gap-2">{checks.match ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-gray-300" />}<span className={checks.match ? "text-green-600" : "text-gray-400"}>Passwords match</span></div>
+              <div className="flex items-center gap-2">{checks.length ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.length ? "text-green-600" : "text-gray-500"}>At least 8 characters</span></div>
+              <div className="flex items-center gap-2">{checks.upper ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.upper ? "text-green-600" : "text-gray-500"}>One uppercase letter</span></div>
+              <div className="flex items-center gap-2">{checks.lower ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.lower ? "text-green-600" : "text-gray-500"}>One lowercase letter</span></div>
+              <div className="flex items-center gap-2">{checks.number ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.number ? "text-green-600" : "text-gray-500"}>One number</span></div>
+              <div className="flex items-center gap-2">{checks.special ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.special ? "text-green-600" : "text-gray-500"}>One special character</span></div>
+              <div className="flex items-center gap-2">{checks.match ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.match ? "text-green-600" : "text-gray-500"}>Passwords match</span></div>
             </div>
-            <Button type="submit" variant="primary" size="lg" isLoading={loading} disabled={!allValid} className="w-full">{isFirstLogin ? "Set Password & Continue" : "Update Password"}</Button>
+            <Button type="submit" disabled={loading || !allValid} className="w-full py-3 bg-bdja-secondary hover:bg-bdja-accent text-white font-medium rounded-xl transition-all">
+              {loading ? "Updating..." : isFirstLogin ? "Set Password" : "Update Password"}
+            </Button>
           </form>
         </div>
       </div>

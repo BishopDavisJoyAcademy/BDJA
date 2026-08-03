@@ -52,7 +52,17 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
         return;
       }
 
-      const { profile } = await fetchProfile(session.access_token);
+      let profileData = await fetchProfile(session.access_token);
+      let profile = profileData.profile;
+
+      // CRITICAL FIX: If onboarding_completed is false, wait 1 second
+      // and retry once. This handles Supabase read-replica lag where
+      // the replica hasn't caught up with the primary write yet.
+      if (!profile.onboarding_completed) {
+        await new Promise((r) => setTimeout(r, 1000));
+        profileData = await fetchProfile(session.access_token);
+        profile = profileData.profile;
+      }
 
       if (profile.is_active === false) {
         await supabase.auth.signOut();

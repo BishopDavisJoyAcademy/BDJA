@@ -7,9 +7,11 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/auth/onboarding
  *
- * Marks the user's onboarding as completed and returns their role.
- * Accepts token via Authorization header (no cookie dependency).
- * Uses admin client to update profile, bypassing RLS entirely.
+ * Marks onboarding as completed and returns the updated profile.
+ * CRITICAL FIX: Uses .update().select().single() instead of
+ * separate .update() then .select() calls. This ensures the read
+ * happens on the SAME database connection as the write, avoiding
+ * the read-replica lag that caused the onboarding loop.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -32,30 +34,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    // Update profile: mark onboarding completed
-    const { error: updateError } = await getSupabaseAdmin()
+    // CRITICAL FIX: Chain .select() to .update() so the read happens
+    // on the primary database connection, not a lagging read replica.
+    const { data: profile, error } = await getSupabaseAdmin()
       .from("profiles")
       .update({ onboarding_completed: true })
-      .eq("id", user.id);
-
-    if (updateError) {
-      console.error("[auth/onboarding] Update failed:", updateError);
-      return NextResponse.json(
-        { error: "Failed to complete onboarding" },
-        { status: 500 }
-      );
-    }
-
-    // Fetch updated profile to get role for dashboard redirect
-    const { data: profile, error: profileError } = await getSupabaseAdmin()
-      .from("profiles")
-      .select("role, password_changed, onboarding_completed, is_active")
       .eq("id", user.id)
+      .select("role, password_changed, onboarding_completed, is_active")
       .single();
 
-    if (profileError || !profile) {
+    if (error || !profile) {
+      console.error("[auth/onboarding] Update/select failed:", error);
       return NextResponse.json(
-        { error: "Profile not found after update" },
+        { error: "Failed to complete onboarding" },
         { status: 500 }
       );
     }

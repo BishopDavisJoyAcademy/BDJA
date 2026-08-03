@@ -11,7 +11,7 @@ import toast from "react-hot-toast";
 export interface AuthUser {
   id: string;
   email: string | null;
-  role: UserRole | null;
+  role: UserRole;
   full_name: string | null;
   password_changed: boolean;
   onboarding_completed: boolean;
@@ -80,7 +80,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
       const authUser: AuthUser = {
         id: session.user.id,
         email: session.user.email ?? null,
-        role: (profile.role as UserRole) ?? null,
+        role: (profile.role as UserRole) || "student",
         full_name: profile.full_name ?? null,
         password_changed: profile.password_changed ?? false,
         onboarding_completed: profile.onboarding_completed ?? false,

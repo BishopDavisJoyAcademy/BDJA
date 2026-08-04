@@ -24,14 +24,37 @@ function getDashboardPath(role: string | null): string {
 }
 
 async function fetchProfile(token: string) {
-  const res = await fetch("/api/auth/me", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to load user profile");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to load user profile");
+    }
+    return res.json();
+  } catch (e: any) {
+    clearTimeout(timeout);
+    if (e.name === "AbortError") throw new Error("Profile fetch timed out");
+    throw e;
   }
-  return res.json();
+}
+
+/**
+ * Safe getSession with timeout.
+ * If Supabase hangs trying to refresh an expired token, we bail out.
+ */
+async function getSessionWithTimeout(ms: number = 5000) {
+  return Promise.race([
+    supabase.auth.getSession(),
+    new Promise<{ data: { session: null } }>((_, reject) =>
+      setTimeout(() => reject(new Error("Session check timed out")), ms)
+    ),
+  ]);
 }
 
 export default function LoginPage() {
@@ -49,14 +72,21 @@ export default function LoginPage() {
   useEffect(() => {
     let cancelled = false;
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (cancelled || !session?.user) {
-        setChecking(false);
-        return;
-      }
-
+    const checkSession = async () => {
       try {
+        const { data: { session } } = await getSessionWithTimeout(5000);
+
+        if (cancelled) return;
+
+        if (!session?.user) {
+          setChecking(false);
+          return;
+        }
+
         const { profile } = await fetchProfile(session.access_token);
+
+        if (cancelled) return;
+
         if (!profile.password_changed) {
           router.replace("/reset-password?first=true");
           return;
@@ -66,11 +96,16 @@ export default function LoginPage() {
           return;
         }
         router.replace(getDashboardPath(profile.role));
-      } catch {
+      } catch (error: any) {
+        console.error("[login] Session check failed:", error);
+        if (cancelled) return;
+        // CRITICAL: Clear stale session cookies so we don't loop
+        await supabase.auth.signOut().catch(() => {});
         setChecking(false);
       }
-    });
+    };
 
+    checkSession();
     return () => { cancelled = true; };
   }, [router]);
 

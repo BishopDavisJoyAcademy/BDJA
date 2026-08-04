@@ -5,12 +5,16 @@ import { TopBar } from "@/components/dashboard/TopBar";
 import { JoyChat } from "@/components/joy/JoyChat";
 import { QueryProvider } from "@/components/shared/QueryProvider";
 import { useAuth } from "@/hooks/useAuth";
+import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+
+  // Auto-logout after 10 minutes of inactivity
+  useInactivityLogout();
 
   useEffect(() => {
     if (!loading && !user) {

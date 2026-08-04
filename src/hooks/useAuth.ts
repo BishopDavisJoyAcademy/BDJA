@@ -25,14 +25,33 @@ export interface UseAuthReturn {
 }
 
 async function fetchProfile(token: string) {
-  const res = await fetch("/api/auth/me", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to load profile");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to load profile");
+    }
+    return res.json();
+  } catch (e: any) {
+    clearTimeout(timeout);
+    if (e.name === "AbortError") throw new Error("Profile fetch timed out");
+    throw e;
   }
-  return res.json();
+}
+
+async function getSessionWithTimeout(ms: number = 5000) {
+  return Promise.race([
+    supabase.auth.getSession(),
+    new Promise<{ data: { session: null } }>((_, reject) =>
+      setTimeout(() => reject(new Error("Session check timed out")), ms)
+    ),
+  ]);
 }
 
 export function useAuth(requireAuth: boolean = true): UseAuthReturn {
@@ -43,7 +62,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
 
   const refreshUser = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getSessionWithTimeout(5000);
 
       if (!session?.user) {
         clearUser();
@@ -55,9 +74,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
       let profileData = await fetchProfile(session.access_token);
       let profile = profileData.profile;
 
-      // CRITICAL FIX: If onboarding_completed is false, wait 1 second
-      // and retry once. This handles Supabase read-replica lag where
-      // the replica hasn't caught up with the primary write yet.
+      // Retry once for replica lag
       if (!profile.onboarding_completed) {
         await new Promise((r) => setTimeout(r, 1000));
         profileData = await fetchProfile(session.access_token);
@@ -96,6 +113,8 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
       }
     } catch (error: any) {
       console.error("[useAuth] Error:", error);
+      // Clear stale session on any failure
+      await supabase.auth.signOut().catch(() => {});
       clearUser();
       setLocalUser(null);
       if (requireAuth) router.replace("/login");

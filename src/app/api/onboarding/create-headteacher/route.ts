@@ -1,71 +1,102 @@
+/**
+ * POST /api/onboarding/create-headteacher
+ *
+ * Creates the first headteacher/principal account during platform onboarding.
+ * This route is typically called once during initial setup.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, getSupabaseAdmin } from "@/lib/supabase-server";
-import { hasPermission } from "@/lib/permissions";
-import { createUserSchema } from "@/lib/validation";
-import { generateTempPassword, createUser } from "@/lib/auth";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { createUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
+const headteacherSchema = z.object({
+  email: z.string().email(),
+  full_name: z.string().min(2).max(100),
+  phone: z.string().optional(),
+  campus_id: z.string().uuid().optional(),
+});
+
 export async function POST(req: NextRequest) {
   try {
-    // Rate limiting
-    const identifier = getClientIdentifier(req) + ":create-headteacher";
-    const { success } = await rateLimit(identifier, { limit: 5, windowMs: 60000 });
-    if (!success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-    }
-
-    // Auth check — v0.12.4: use async createClient with getAll/setAll
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data: profile } = await getSupabaseAdmin()
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || !hasPermission(profile.role, "manageUsers")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Validation
     const body = await req.json();
-    const parseResult = createUserSchema.safeParse({ ...body, role: "principal" });
+    const parseResult = headteacherSchema.safeParse(body);
     if (!parseResult.success) {
-      return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid input", details: parseResult.error.flatten() },
+        { status: 400 }
+      );
     }
 
-    const { email, full_name, campus_id, phone } = parseResult.data;
-    const tempPassword = generateTempPassword();
+    const { email, full_name, phone, campus_id } = parseResult.data;
+    const admin = getSupabaseAdmin();
 
-    const newUser = await createUser(email, tempPassword, full_name, "principal", campus_id, { phone: phone || null });
+    // Check if any principal/headteacher already exists
+    const { data: existingPrincipals, error: countError } = await admin
+      .from("profiles")
+      .select("id")
+      .in("role", ["principal", "super_admin"])
+      .limit(1);
+
+    if (countError) {
+      console.error("[create-headteacher] Error checking existing principals:", countError);
+      return NextResponse.json(
+        { error: "Failed to verify existing accounts", code: "CHECK_FAILED" },
+        { status: 500 }
+      );
+    }
+
+    if (existingPrincipals && existingPrincipals.length > 0) {
+      return NextResponse.json(
+        { error: "A headteacher/principal account already exists. Use the admin panel to create additional accounts.", code: "ALREADY_EXISTS" },
+        { status: 409 }
+      );
+    }
+
+    // Generate a temporary password
+    const tempPassword = Math.random().toString(36).slice(2, 10).toUpperCase() + "!" + Math.floor(Math.random() * 100);
+
+    // Create the headteacher using the new CreateUserOptions signature
+    const newUser = await createUser({
+      email,
+      password: tempPassword,
+      fullName: full_name,
+      role: "principal",
+      campusId: campus_id,
+      phone: phone || undefined,
+    });
 
     await logAudit({
-      user_id: user.id,
+      user_id: newUser.userId,
       action: "HEADTEACHER_CREATED",
       target_type: "profile",
-      target_id: newUser.id,
-      metadata: { email, full_name, campus_id },
-      ip_address: req.headers.get("x-forwarded-for") || undefined,
-      user_agent: req.headers.get("user-agent") || undefined,
-    });
+      target_id: newUser.userId,
+      metadata: { email, full_name, role: "principal", campus_id },
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,
-      userId: newUser.id,
-      email,
-      name: full_name,
-      role: "principal",
+      message: "Headteacher account created successfully",
+      userId: newUser.userId,
+      email: newUser.email,
       temp_password: tempPassword,
+      login_url: process.env.NEXT_PUBLIC_APP_URL || "https://bdja.ac.ke",
+      note: "Please share the temporary password securely and require a password change on first login.",
     });
   } catch (error: any) {
-    console.error("Create headteacher error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[create-headteacher] Error:", error);
+    if (error.message?.includes("already been registered")) {
+      return NextResponse.json(
+        { error: "This email is already registered", code: "EMAIL_EXISTS" },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json(
+      { error: error.message || "Internal server error", code: "SERVER_ERROR" },
+      { status: 500 }
+    );
   }
 }

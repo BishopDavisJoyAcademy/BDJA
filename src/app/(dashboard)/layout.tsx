@@ -10,17 +10,23 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, error } = useAuth();
   const router = useRouter();
-
-  // Auto-logout after 10 minutes of inactivity
   useInactivityLogout();
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login");
+      if (error?.type === "account_suspended") {
+        router.push("/login?error=suspended");
+      } else if (error?.type === "profile_missing") {
+        router.push("/login?error=profile_missing");
+      } else if (error?.type === "account_locked") {
+        router.push("/login?error=account_locked");
+      } else {
+        router.push("/login");
+      }
     }
-  }, [user, loading, router]);
+  }, [user, loading, error, router]);
 
   if (loading) {
     return (

@@ -1,81 +1,77 @@
+/**
+ * POST /api/admin/create-user
+ */
+
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, getSupabaseAdmin } from "@/lib/supabase-server";
-import { hasPermission } from "@/lib/permissions";
+import { validateSession, requireRole } from "@/lib/session";
 import { createUserSchema } from "@/lib/validation";
-import { generateTempPassword, createUser, createStudentWithParent } from "@/lib/auth";
+import { createUser, createStudentWithParent } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
+import { getClientIP, extractDeviceInfo } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limiting
     const identifier = getClientIdentifier(req) + ":create-user";
     const { success } = await rateLimit(identifier, { limit: 10, windowMs: 60000 });
     if (!success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      return NextResponse.json({ error: "Too many requests", code: "RATE_LIMITED" }, { status: 429 });
     }
 
-    // Auth check — v0.12.4: use async createClient with getAll/setAll
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await validateSession(req);
+    if (session.error || !session.session) {
+      return NextResponse.json(
+        { error: session.error?.message || "Unauthorized", code: session.error?.code },
+        { status: 401 }
+      );
     }
 
-    const { data: adminProfile } = await getSupabaseAdmin()
-      .from("profiles")
-      .select("role, campus_id")
-      .eq("id", user.id)
-      .single();
+    requireRole(session.session, ["principal", "super_admin"]);
+    const adminId = session.session.userId;
+    const adminRole = session.session.role;
 
-    if (!adminProfile || !hasPermission(adminProfile.role, "manageUsers")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Validation
     const body = await req.json();
     const parseResult = createUserSchema.safeParse(body);
     if (!parseResult.success) {
-      return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid input", details: parseResult.error.flatten(), code: "VALIDATION_ERROR" },
+        { status: 400 }
+      );
     }
 
     const data = parseResult.data;
     const loginUrl = process.env.NEXT_PUBLIC_APP_URL || "https://bdja.ac.ke";
 
-    // Student creation with parent
     if (data.role === "student") {
       if (!data.admission_number || !data.class_id || !data.grade_level) {
-        return NextResponse.json({ error: "Student requires admission_number, class_id, and grade_level" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Student requires admission_number, class_id, and grade_level", code: "MISSING_FIELDS" },
+          { status: 400 }
+        );
       }
-
       const result = await createStudentWithParent(
         {
           email: data.email,
           full_name: data.full_name,
           admission_number: data.admission_number,
           class_id: data.class_id,
-          campus_id: data.campus_id || adminProfile.campus_id || "",
+          campus_id: data.campus_id || session.session.campusId || "",
           grade_level: data.grade_level,
         },
-        data.parent_email ? {
-          name: data.parent_name || "Parent",
-          email: data.parent_email,
-          phone: data.parent_phone,
-        } : undefined
+        data.parent_email ? { name: data.parent_name || "Parent", email: data.parent_email, phone: data.parent_phone } : undefined,
+        adminId
       );
-
       await logAudit({
-        user_id: user.id,
+        user_id: adminId,
         action: "STUDENT_CREATED",
         target_type: "student",
         target_id: result.student.id,
-        metadata: { admission_number: data.admission_number, has_parent: !!result.parent },
-        ip_address: req.headers.get("x-forwarded-for") || undefined,
+        metadata: { admission_number: data.admission_number, has_parent: !!result.parent, created_by_role: adminRole },
+        ip_address: getClientIP(req),
         user_agent: req.headers.get("user-agent") || undefined,
       });
-
       return NextResponse.json({
         success: true,
         student: { ...result.student, login_url: loginUrl },
@@ -83,38 +79,55 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Staff/Other user creation
-    const tempPassword = generateTempPassword();
-    const newUser = await createUser(
-      data.email,
-      tempPassword,
-      data.full_name,
-      data.role,
-      data.campus_id || adminProfile.campus_id || undefined,
-      { phone: data.phone || null }
-    );
+    const newUser = await createUser({
+      email: data.email,
+      password: generateTempPassword(),
+      fullName: data.full_name,
+      role: data.role,
+      campusId: data.campus_id || session.session.campusId || undefined,
+      phone: data.phone,
+      createdBy: adminId,
+    });
 
     await logAudit({
-      user_id: user.id,
+      user_id: adminId,
       action: "USER_CREATED",
       target_type: "profile",
-      target_id: newUser.id,
-      metadata: { role: data.role, email: data.email },
-      ip_address: req.headers.get("x-forwarded-for") || undefined,
+      target_id: newUser.userId,
+      metadata: { role: data.role, email: data.email, created_by_role: adminRole },
+      ip_address: getClientIP(req),
       user_agent: req.headers.get("user-agent") || undefined,
     });
 
     return NextResponse.json({
       success: true,
-      userId: newUser.id,
+      userId: newUser.userId,
       email: data.email,
       name: data.full_name,
       role: data.role,
-      temp_password: tempPassword,
+      temp_password: newUser.tempPassword,
       login_url: loginUrl,
     });
   } catch (error: any) {
-    console.error("Create user error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[create-user] Error:", error);
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.statusCode }
+      );
+    }
+    return NextResponse.json(
+      { error: error.message || "Internal server error", code: "SERVER_ERROR" },
+      { status: 500 }
+    );
   }
+}
+
+function generateTempPassword(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
+  for (let i = 0; i < 10; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 }

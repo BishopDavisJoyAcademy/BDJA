@@ -1,64 +1,47 @@
+/**
+ * GET /api/auth/me
+ */
+
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { validateSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/auth/me
- *
- * Returns the current user's profile + auth info.
- * Accepts token via Authorization header (no cookie dependency).
- * Uses admin client to fetch profile, bypassing RLS entirely.
- * This eliminates the "failed to fetch profile" race condition.
- */
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("Authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { cookies: { getAll() { return []; }, setAll() {} } }
-    );
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-    }
-
-    const { data: profile, error: profileError } = await getSupabaseAdmin()
-      .from("profiles")
-      .select("role, full_name, password_changed, onboarding_completed, is_active, campus_id")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || !profile) {
-      console.error("[auth/me] Profile fetch failed:", profileError);
+    const { session, error } = await validateSession(req);
+    if (error || !session) {
+      const statusCode =
+        error?.code === "NO_SESSION" || error?.code === "INVALID_TOKEN" ? 401 :
+        error?.code === "ACCOUNT_LOCKED" ? 403 :
+        error?.code === "PROFILE_INACTIVE" ? 403 :
+        error?.code === "PROFILE_MISSING" ? 404 :
+        error?.code === "RATE_LIMITED" ? 429 : 500;
       return NextResponse.json(
-        { error: "Profile not found", debug: profileError?.message },
-        { status: 404 }
+        {
+          error: error?.message || "Unauthorized",
+          code: error?.code || "UNKNOWN",
+          details: error?.details,
+          retryAfter: error?.retryAfter,
+        },
+        { status: statusCode }
       );
     }
-
     return NextResponse.json({
-      user: {
-        id: user.id,
-        email: user.email,
+      user: { id: session.userId, email: session.email },
+      profile: {
+        role: session.role,
+        full_name: session.fullName,
+        campus_id: session.campusId,
+        is_active: session.isActive,
+        password_changed: session.passwordChanged,
+        onboarding_completed: session.onboardingCompleted,
       },
-      profile,
     });
-
   } catch (error: any) {
-    console.error("[auth/me] Error:", error);
+    console.error("[auth/me] Unexpected error:", error);
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: "Internal server error", code: "SERVER_ERROR", details: error.message },
       { status: 500 }
     );
   }

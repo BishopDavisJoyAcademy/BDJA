@@ -1,68 +1,55 @@
-# BDJA Platform - Security & Access Control
+# BDJA Platform v3.0 - Security Architecture Documentation
 
-## Authentication Flow
+## Overview
 
-1. **Login**: User enters email + password → Supabase Auth validates → JWT cookie set
-2. **Middleware Check**: Every request checks session validity via `src/middleware.ts`
-3. **Role Redirect**: On dashboard load, user is redirected to their role-appropriate portal
-4. **Password Policy**: Default password `BDJA2026!` forces immediate change on first login
-5. **Onboarding**: New users get a 6-step guided tour before accessing the platform
+This document describes the authentication and authorization security architecture implemented in BDJA v3.0.
 
-## Access Revocation
+## Key Security Features
 
-### When a Teacher Leaves:
-1. Admin goes to **Admin Portal → Users**
-2. Click the red **UserX** button next to the teacher's name
-3. This sets `profiles.is_active = false`
-4. The teacher is immediately locked out — middleware rejects their session
-5. All their class assignments remain in database for records, but they cannot log in
+### 1. Auto-Profile Creation
+- Database trigger `auto_create_profile_trigger` automatically creates a `profiles` row whenever a new `auth.users` row is inserted
+- Prevents the missing-profile bug that caused the `?error=suspended` redirect
 
-### When a Student Leaves/Transfers:
-1. Admin goes to **Admin Portal → Users** or **Admissions**
-2. Set student status to `transferred` or `graduated` in the `students` table
-3. Their parent links are preserved for record-keeping
-4. If the student has a profile account, deactivate `profiles.is_active = false`
+### 2. Account Lockout
+- After 5 failed login attempts, account is locked for 30 minutes
+- Lockout duration doubles exponentially with each subsequent lockout
+- Admin can unlock accounts via `/api/admin/recover`
 
-### When a Parent Should Lose Access:
-1. Deactivate their `profiles.is_active`
-2. All `parent_children` links remain for audit trail
+### 3. Session Tracking
+- All sessions tracked server-side in `user_sessions` table
+- Sessions can be revoked individually or all at once
+- Password changes invalidate all other sessions
 
-## Permission System
+### 4. Password History
+- Last 5 passwords stored in `password_history`
+- Prevents password reuse
 
-- Each role has a `DEFAULT_PERMISSIONS` map in `src/lib/permissions.ts`
-- Admin can create custom `staff_roles` entries with overridden permissions
-- The `hasPermission()` function checks both role defaults AND custom overrides
-- Frontend UI elements are conditionally rendered based on `hasPermission()`
-- API routes should also verify permissions server-side (currently client-gated via UI)
+### 5. Audit Logging
+- All login attempts, password changes, account locks/unlocks logged
+- IP address and user agent tracked
 
-## Audit Logging
+### 6. Emergency Recovery
+- `/api/admin/recover` supports:
+  - `restore_own_profile` - Self-service profile recovery
+  - `unlock_account` - Admin unlocks locked account
+  - `force_logout` - Admin revokes all sessions
+  - `restore_profile` - Admin restores missing profile
 
-Every significant action is logged to `audit_logs` table:
-- Grade changes (with reason required)
-- Fee payment verifications
-- User activations/deactivations
-- Admission status changes
-- Timetable modifications
+## Error Codes
 
-## Data Security
+| Code | HTTP | Meaning |
+|------|------|---------|
+| NO_SESSION | 401 | No valid session found |
+| INVALID_TOKEN | 401 | Token expired or invalid |
+| PROFILE_MISSING | 404 | Profile row missing |
+| ACCOUNT_LOCKED | 403 | Account temporarily locked |
+| PROFILE_INACTIVE | 403 | Account suspended |
+| RATE_LIMITED | 429 | Too many requests |
 
-- **Supabase RLS** is enabled on all tables with basic policies
-- **Service Role Key** is server-only, never exposed to browser
-- **Anon Key** is public-safe, used for client-side queries
-- **Environment variables** for secrets (Aevibron key, Supabase keys) are never in source code
-- **Passwords** are hashed by Supabase Auth (bcrypt) — we never store plain text
+## Deployment Checklist
 
-## Best Practices for School Admins
-
-1. **Never share super_admin credentials** — create separate principal accounts per campus
-2. **Deactivate, don't delete** — always set `is_active = false` instead of deleting users
-3. **Review audit logs weekly** — check the Audit Logs page for suspicious activity
-4. **Change default passwords immediately** — all new users must change `BDJA2026!` on first login
-5. **Assign staff roles carefully** — use the Staff Roles system to grant only needed permissions
-
-## Joy AI Security
-
-- Joy connects to Aevibron Gateway via server-side API route (`/api/chat`)
-- The Aevibron API key is stored in server environment variables only
-- Joy has a system prompt that enforces BDJA Christian values and prevents harmful content
-- Joy receives user context (name, role, campus) but never sees passwords or payment data
+- [ ] Run `007_auth_security_overhaul.sql` in Supabase SQL Editor
+- [ ] Set `NEXT_PUBLIC_APP_URL` environment variable
+- [ ] Verify `auto_create_profile_trigger` is active
+- [ ] Test login flow with existing users
+- [ ] Test account lockout with 5 failed attempts

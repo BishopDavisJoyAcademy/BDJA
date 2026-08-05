@@ -5,7 +5,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSession, requireRole } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { restoreMissingProfile, unlockAccount, revokeAllSessions } from "@/lib/auth";
+import { restoreMissingProfile } from "@/lib/auth";
+import { unlockAccount, revokeAllSessions } from "@/lib/security";
 import { logAudit } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
 import { z } from "zod";

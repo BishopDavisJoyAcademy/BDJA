@@ -7,7 +7,8 @@ import { validateSession } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { firstLoginPasswordSchema, changePasswordSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
-import { hashPassword, isPasswordReused, addPasswordToHistory } from "@/lib/security";
+import { hashPassword } from "@/lib/auth";
+import { isPasswordReused, addPasswordToHistory } from "@/lib/security";
 import { getClientIP, extractDeviceInfo } from "@/lib/security";
 
 export const dynamic = "force-dynamic";

@@ -204,7 +204,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
         if (recovered) {
           const retryResult = await fetchProfileWithRetry(session.access_token, 1);
           if (retryResult.profile) {
-            return processValidProfile(retryResult.profile, session.user.id, session.user.email);
+            return processValidProfile(retryResult.profile, session.user.id, session.user.email ?? null);
           }
         }
         handleAuthError({
@@ -214,7 +214,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
         });
         return;
       }
-      return processValidProfile(profile, session.user.id, session.user.email);
+      return processValidProfile(profile, session.user.id, session.user.email ?? null);
     } catch (unexpectedError: any) {
       console.error("[useAuth] Unexpected error:", unexpectedError);
       handleAuthError({ type: "unknown", message: "An unexpected error occurred. Please try again.", recoverable: true });

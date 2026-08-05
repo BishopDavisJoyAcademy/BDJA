@@ -104,17 +104,17 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
     }
 
     const passwordHash = await hashPassword(password);
-    await addPasswordToHistory(authUserId, passwordHash);
+    await addPasswordToHistory(authUserId!, passwordHash);
 
     await logAudit({
-      user_id: createdBy || authUserId,
+      user_id: createdBy || authUserId!,
       action: "USER_CREATED",
       target_type: "profile",
-      target_id: authUserId,
+      target_id: authUserId!,
       metadata: { role, email, campus_id: campusId },
     }).catch(() => {});
 
-    return { userId: authUserId, email, tempPassword: password };
+    return { userId: authUserId!, email, tempPassword: password };
   } catch (error: any) {
     if (authUserId) {
       await admin.auth.admin.deleteUser(authUserId).catch((err) => {

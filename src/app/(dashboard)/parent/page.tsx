@@ -1,207 +1,190 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { getGradeLabel, formatDate } from "@/lib/utils";
-import { DollarSign, Calendar, AlertCircle, Copy } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import {
+  GraduationCap, DollarSign, Calendar, Bell, Users, BookOpen,
+  ChevronRight, Loader2, AlertCircle
+} from "lucide-react";
 import toast from "react-hot-toast";
+import Link from "next/link";
+
+interface Child {
+  id: string;
+  full_name: string;
+  email: string;
+  students?: {
+    admission_number?: string;
+    grade_level?: string;
+    status?: string;
+  }[];
+}
+
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  audience: string[];
+}
 
 export default function ParentDashboard() {
-  const { user } = useAuth();
-  const [children, setChildren] = useState<any[]>([]);
-  const [selectedChild, setSelectedChild] = useState<any>(null);
-  const [fees, setFees] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-    loadData();
-  }, [user]);
+    fetchData();
+  }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const fetchData = async () => {
     try {
-      const { data: pc } = await supabase
-        .from("parent_children")
-        .select("*, students(*, classes(name, grade_level, stream), campuses(name))")
-        .eq("parent_id", user!.id);
-      setChildren(pc || []);
+      const [childrenRes, annRes] = await Promise.all([
+        fetch("/api/parent/children"),
+        fetch("/api/parent/announcements"),
+      ]);
+      const childrenData = await childrenRes.json();
+      const annData = await annRes.json();
 
-      if (pc && pc.length > 0) {
-        setSelectedChild(pc[0]);
-        const studentIds = pc.map((c) => c.student_id);
-
-        const { data: feeData } = await supabase
-          .from("fee_payments")
-          .select("*, fee_structures(*), students(admission_number)")
-          .in("student_id", studentIds)
-          .order("created_at", { ascending: false })
-          .limit(10);
-        setFees(feeData || []);
-
-        const { data: ev } = await supabase
-          .from("calendar_events")
-          .select("*")
-          .or("target_audience.eq.all,target_audience.eq.parents")
-          .gte("start_date", new Date().toISOString())
-          .order("start_date")
-          .limit(5);
-        setEvents(ev || []);
+      if (childrenRes.ok) {
+        setChildren(childrenData.children || []);
+        if (childrenData.children?.length > 0) {
+          setSelectedChild(childrenData.children[0]);
+        }
       }
+      if (annRes.ok) setAnnouncements(annData.announcements || []);
+    } catch (err: any) {
+      toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
   };
 
-  const copyPaybill = (childName: string) => {
-    const text = `MWITI22#${childName}`;
-    navigator.clipboard.writeText(text);
-    toast.success("Account number copied!");
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-10 h-10 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (children.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-gray-600">No children linked</h2>
-        <p className="text-gray-400 mt-2">Please contact the school administration.</p>
+        <Loader2 className="w-8 h-8 animate-spin text-bdja-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="bg-gradient-to-r from-bdja-primary to-bdja-accent rounded-2xl p-6 text-white">
-        <h1 className="text-2xl font-bold">Parent Portal</h1>
-        <p className="text-white/80 mt-1">Welcome back, {user?.full_name}</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Parent Portal</h1>
+        <p className="text-sm text-gray-500">Monitor your child&apos;s academic progress and school updates</p>
       </div>
+
+      {children.length === 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-amber-800">No Children Linked</h3>
+            <p className="text-sm text-amber-700 mt-1">
+              Your account is not linked to any students. Please contact the school administration to link your child.
+            </p>
+          </div>
+        </div>
+      )}
 
       {children.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {children.map((c) => (
+          {children.map((child) => (
             <button
-              key={c.student_id}
-              onClick={() => setSelectedChild(c)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                selectedChild?.student_id === c.student_id
+              key={child.id}
+              onClick={() => setSelectedChild(child)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                selectedChild?.id === child.id
                   ? "bg-bdja-primary text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              {c.students.classes.name}
+              {child.full_name}
             </button>
           ))}
         </div>
       )}
 
       {selectedChild && (
-        <>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-bdja-dark">{selectedChild.students.classes.name}</h2>
-                  <p className="text-gray-500">{getGradeLabel(selectedChild.students.classes.grade_level)} - {selectedChild.students.campuses.name}</p>
-                  <p className="text-sm text-gray-400 mt-1">Admission: {selectedChild.students.admission_number}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link href={`/parent/grades?child=${selectedChild.id}`}>
+            <Card className="p-5 hover:shadow-md transition-shadow cursor-pointer group">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <GraduationCap className="w-5 h-5 text-blue-600" />
                 </div>
-                <div className="text-right">
-                  <div className="bg-green-50 rounded-xl px-4 py-2">
-                    <p className="text-xs text-green-600 font-medium">Status</p>
-                    <p className="text-sm font-semibold text-green-700 capitalize">{selectedChild.students.status}</p>
-                  </div>
-                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-bdja-primary transition-colors" />
               </div>
-            </CardContent>
-          </Card>
+              <h3 className="font-semibold text-gray-900 mt-3">Academic Reports</h3>
+              <p className="text-xs text-gray-500 mt-1">View grades and progress</p>
+            </Card>
+          </Link>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-bdja-primary" />
-                Fee Payment
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                <p className="text-sm font-medium text-gray-700">HFC Bank Paybill</p>
-                <div className="flex items-center justify-between mt-2">
-                  <div>
-                    <p className="text-2xl font-bold text-bdja-dark">100400</p>
-                    <p className="text-xs text-gray-500">Account: MWITI22#{selectedChild.students.classes.name.replace(/\s/g, "")}</p>
-                  </div>
-                  <button
-                    onClick={() => copyPaybill(selectedChild.students.classes.name.replace(/\s/g, ""))}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-bdja-primary text-white rounded-lg text-sm hover:bg-bdja-accent transition-colors"
-                  >
-                    <Copy className="w-4 h-4" /> Copy
-                  </button>
+          <Link href={`/parent/fees?child=${selectedChild.id}`}>
+            <Card className="p-5 hover:shadow-md transition-shadow cursor-pointer group">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <DollarSign className="w-5 h-5 text-green-600" />
                 </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-bdja-primary transition-colors" />
               </div>
+              <h3 className="font-semibold text-gray-900 mt-3">Fee Balance</h3>
+              <p className="text-xs text-gray-500 mt-1">Check payments and dues</p>
+            </Card>
+          </Link>
 
-              <div className="bg-blue-50 rounded-xl p-4">
-                <p className="text-sm font-medium text-blue-800">M-Pesa STK Push</p>
-                <p className="text-xs text-blue-600 mt-1">Coming Soon - Notify me when available</p>
-              </div>
-
-              {fees.filter((f) => f.student_id === selectedChild.student_id).length > 0 && (
-                <div className="mt-4">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Payment History</p>
-                  <div className="space-y-2">
-                    {fees
-                      .filter((f) => f.student_id === selectedChild.student_id)
-                      .map((fee) => (
-                        <div key={fee.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="text-sm font-medium">KES {fee.amount.toLocaleString()}</p>
-                            <p className="text-xs text-gray-500">{formatDate(fee.created_at)}</p>
-                          </div>
-                          <Badge variant={fee.status === "verified" ? "success" : fee.status === "pending" ? "warning" : "danger"}>
-                            {fee.status}
-                          </Badge>
-                        </div>
-                      ))}
-                  </div>
+          <Link href={`/parent/attendance?child=${selectedChild.id}`}>
+            <Card className="p-5 hover:shadow-md transition-shadow cursor-pointer group">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-5 h-5 text-purple-600" />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-bdja-primary transition-colors" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mt-3">Attendance</h3>
+              <p className="text-xs text-gray-500 mt-1">Daily attendance records</p>
+            </Card>
+          </Link>
+
+          <Link href={`/parent/timetable?child=${selectedChild.id}`}>
+            <Card className="p-5 hover:shadow-md transition-shadow cursor-pointer group">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-orange-600" />
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-bdja-primary transition-colors" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mt-3">Timetable</h3>
+              <p className="text-xs text-gray-500 mt-1">Class schedule</p>
+            </Card>
+          </Link>
+        </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-bdja-primary" />
-            School Events
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {events.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-8">No upcoming events.</p>
-          ) : (
-            <div className="space-y-3">
-              {events.map((event) => (
-                <div key={event.id} className="p-3 border border-gray-100 rounded-lg">
-                  <p className="font-medium text-sm">{event.title}</p>
-                  <p className="text-xs text-gray-500 mt-1">{formatDate(event.start_date)}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Announcements */}
+      <div className="bg-white rounded-xl border p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Bell className="w-5 h-5 text-bdja-primary" />
+          <h2 className="text-lg font-semibold text-gray-900">School Announcements</h2>
+        </div>
+        {announcements.length === 0 ? (
+          <p className="text-sm text-gray-500">No announcements at this time.</p>
+        ) : (
+          <div className="space-y-3">
+            {announcements.slice(0, 5).map((ann) => (
+              <div key={ann.id} className="p-3 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900 text-sm">{ann.title}</h4>
+                <p className="text-xs text-gray-500 mt-1 line-clamp-2">{ann.content}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {new Date(ann.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

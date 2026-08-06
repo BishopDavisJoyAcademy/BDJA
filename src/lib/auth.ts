@@ -1,15 +1,21 @@
 /**
- * BDJA Authentication Utilities v3.0
+ * BDJA Authentication Utilities v4.0
  */
 
 import { getSupabaseAdmin } from "./supabase-server";
 import { logAudit } from "./audit";
 import { addPasswordToHistory, SECURITY_CONFIG } from "./security";
+import { grantPermissions } from "./permissions";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
 export function generateTempPassword(): string {
-  return crypto.randomBytes(5).toString("hex").toUpperCase();
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
+  let pwd = "";
+  for (let i = 0; i < 12; i++) {
+    pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pwd;
 }
 
 export function generateResetToken(): string {
@@ -29,6 +35,7 @@ export interface CreateUserOptions {
   password: string;
   fullName: string;
   role: string;
+  userCategory: string;
   campusId?: string;
   phone?: string;
   metadata?: Record<string, any>;
@@ -43,7 +50,7 @@ export interface CreateUserResult {
 
 export async function createUser(options: CreateUserOptions): Promise<CreateUserResult> {
   const admin = getSupabaseAdmin();
-  const { email, password, fullName, role, campusId, phone, metadata = {}, createdBy } = options;
+  const { email, password, fullName, role, userCategory, campusId, phone, metadata = {}, createdBy } = options;
   let authUserId: string | null = null;
 
   try {
@@ -54,6 +61,7 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
       user_metadata: {
         full_name: fullName,
         role,
+        user_category: userCategory,
         campus_id: campusId,
         ...metadata,
       },
@@ -78,6 +86,7 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
         .update({
           full_name: fullName,
           role,
+          user_category: userCategory,
           campus_id: campusId || null,
           phone: phone || null,
           is_active: true,
@@ -93,6 +102,7 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
         email,
         full_name: fullName,
         role,
+        user_category: userCategory,
         campus_id: campusId || null,
         phone: phone || null,
         is_active: true,
@@ -115,7 +125,7 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
       action: "USER_CREATED",
       target_type: "profile",
       target_id: authUserId,
-      metadata: { role, email, campus_id: campusId },
+      metadata: { role, user_category: userCategory, email, campus_id: campusId },
     }).catch(() => {});
 
     return { userId: authUserId, email, tempPassword: password };
@@ -130,175 +140,176 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
   }
 }
 
-export interface StudentData {
+export interface CreateStaffOptions {
   email: string;
-  full_name: string;
-  admission_number: string;
-  class_id: string;
-  campus_id: string;
-  grade_level: string;
-}
-
-export interface ParentData {
-  name: string;
-  email: string;
+  fullName: string;
   phone?: string;
+  department?: string;
+  designation?: string;
+  campusId?: string;
+  permissionIds: string[];
+  createdBy: string;
 }
 
-export interface CreateStudentResult {
-  student: { id: string; email: string; name: string; admission_number: string; temp_password: string };
-  parent: { id: string; email: string; name: string; temp_password: string } | null;
+export interface CreateStaffResult extends CreateUserResult {
+  staffId: string;
 }
 
-export async function createStudentWithParent(
-  studentData: StudentData,
-  parentData?: ParentData,
-  createdBy?: string
-): Promise<CreateStudentResult> {
-  const admin = getSupabaseAdmin();
+export async function createStaff(options: CreateStaffOptions): Promise<CreateStaffResult> {
   const tempPassword = generateTempPassword();
-  const studentResult = await createUser({
-    email: studentData.email,
+  const userResult = await createUser({
+    email: options.email,
     password: tempPassword,
-    fullName: studentData.full_name,
-    role: "student",
-    campusId: studentData.campus_id,
-    metadata: { temp_password_hash: await hashPassword(tempPassword) },
-    createdBy,
+    fullName: options.fullName,
+    role: "teacher",
+    userCategory: "staff",
+    campusId: options.campusId,
+    phone: options.phone,
+    createdBy: options.createdBy,
   });
 
-  const { error: studentError } = await admin.from("students").insert({
-    profile_id: studentResult.userId,
-    admission_number: studentData.admission_number,
-    class_id: studentData.class_id,
-    campus_id: studentData.campus_id,
-    enrollment_date: new Date().toISOString(),
+  const admin = getSupabaseAdmin();
+
+  // Create staff record
+  const { error: staffError } = await admin.from("staff").insert({
+    id: userResult.userId,
+    employee_id: options.email.split("@")[0].toUpperCase() + "-" + Date.now().toString().slice(-4),
+    department: options.department || "General",
+    designation: options.designation || "Staff",
     status: "active",
   });
+  if (staffError) console.error("[auth] Staff record creation failed:", staffError);
 
-  if (studentError) {
-    await admin.auth.admin.deleteUser(studentResult.userId).catch(() => {});
-    throw studentError;
+  // Grant permissions
+  if (options.permissionIds.length > 0) {
+    await grantPermissions(userResult.userId, options.permissionIds, options.createdBy);
   }
 
-  let parentResult: CreateStudentResult["parent"] = null;
-  if (parentData?.email) {
-    const parentTempPassword = generateTempPassword();
-    const parentUser = await createUser({
-      email: parentData.email,
-      password: parentTempPassword,
-      fullName: parentData.name,
-      role: "parent",
-      campusId: studentData.campus_id,
-      phone: parentData.phone,
-      createdBy,
-    });
-    await admin.from("parent_children").insert({
-      parent_id: parentUser.userId,
-      student_id: studentResult.userId,
-      relationship: "parent",
-    });
-    parentResult = {
-      id: parentUser.userId,
-      email: parentData.email,
-      name: parentData.name,
-      temp_password: parentTempPassword,
-    };
-  }
+  await logAudit({
+    user_id: options.createdBy,
+    action: "STAFF_CREATED",
+    target_type: "staff",
+    target_id: userResult.userId,
+    metadata: { department: options.department, designation: options.designation, permissions: options.permissionIds },
+  }).catch(() => {});
 
-  return {
-    student: {
-      id: studentResult.userId,
-      email: studentData.email,
-      name: studentData.full_name,
-      admission_number: studentData.admission_number,
-      temp_password: tempPassword,
+  return { ...userResult, staffId: userResult.userId };
+}
+
+export interface CreateStudentOptions {
+  email: string;
+  fullName: string;
+  phone?: string;
+  admissionNumber: string;
+  gradeLevel: string;
+  classId?: string;
+  campusId?: string;
+  parentId?: string;
+  createdBy: string;
+}
+
+export interface CreateStudentResult extends CreateUserResult {
+  studentId: string;
+}
+
+export async function createStudent(options: CreateStudentOptions): Promise<CreateStudentResult> {
+  const tempPassword = generateTempPassword();
+  const userResult = await createUser({
+    email: options.email,
+    password: tempPassword,
+    fullName: options.fullName,
+    role: "student",
+    userCategory: "student",
+    campusId: options.campusId,
+    phone: options.phone,
+    createdBy: options.createdBy,
+    metadata: {
+      admission_number: options.admissionNumber,
+      grade_level: options.gradeLevel,
     },
-    parent: parentResult,
-  };
-}
-
-export async function resetPassword(
-  userId: string,
-  newPassword: string,
-  options?: { isFirstLogin?: boolean; changedBy?: string; ipAddress?: string; userAgent?: string }
-): Promise<void> {
-  const admin = getSupabaseAdmin();
-  const { isFirstLogin = false, changedBy, ipAddress, userAgent } = options || {};
-
-  const { error: updateError } = await admin.auth.admin.updateUserById(userId, {
-    password: newPassword,
   });
-  if (updateError) throw updateError;
 
-  const passwordHash = await hashPassword(newPassword);
-  await addPasswordToHistory(userId, passwordHash);
+  const admin = getSupabaseAdmin();
 
-  const { error: profileError } = await admin
-    .from("profiles")
-    .update({
-      password_changed: true,
-      temp_password_hash: null,
-      last_password_change: new Date().toISOString(),
-    })
-    .eq("id", userId);
-  if (profileError) console.error("[auth] Profile update after password reset failed:", profileError);
+  // Create student record
+  const { error: studentError } = await admin.from("students").insert({
+    id: userResult.userId,
+    admission_number: options.admissionNumber,
+    grade_level: options.gradeLevel,
+    class_id: options.classId || null,
+    enrollment_date: new Date().toISOString().split("T")[0],
+    status: "active",
+  });
+  if (studentError) console.error("[auth] Student record creation failed:", studentError);
 
-  await admin.from("account_lockouts").delete().eq("user_id", userId).catch(() => {});
+  // Link parent if provided
+  if (options.parentId) {
+    const { error: linkError } = await admin.from("parent_students").insert({
+      parent_id: options.parentId,
+      student_id: userResult.userId,
+      relationship: "parent",
+      is_primary: true,
+    });
+    if (linkError) console.error("[auth] Parent link failed:", linkError);
+  }
 
   await logAudit({
-    user_id: changedBy || userId,
-    action: "PASSWORD_CHANGED",
-    target_type: "profile",
-    target_id: userId,
-    metadata: { is_first_login: isFirstLogin },
-    ip_address: ipAddress,
-    user_agent: userAgent,
+    user_id: options.createdBy,
+    action: "STUDENT_CREATED",
+    target_type: "student",
+    target_id: userResult.userId,
+    metadata: { admission_number: options.admissionNumber, grade_level: options.gradeLevel },
   }).catch(() => {});
+
+  return { ...userResult, studentId: userResult.userId };
 }
 
-export async function requirePasswordChange(userId: string, adminId?: string): Promise<void> {
-  const admin = getSupabaseAdmin();
-  const { error } = await admin.from("profiles").update({ password_changed: false }).eq("id", userId);
-  if (error) throw error;
-  await logAudit({
-    user_id: adminId || userId,
-    action: "PASSWORD_CHANGE_REQUIRED",
-    target_type: "profile",
-    target_id: userId,
-  }).catch(() => {});
+export interface CreateParentOptions {
+  email: string;
+  fullName: string;
+  phone?: string;
+  studentId?: string;
+  createdBy: string;
 }
 
-export async function suspendUser(userId: string, adminId: string, reason: string): Promise<void> {
-  const admin = getSupabaseAdmin();
-  const { error } = await admin.from("profiles").update({ is_active: false }).eq("id", userId);
-  if (error) throw error;
-  await admin
-    .from("user_sessions")
-    .update({ revoked_at: new Date().toISOString(), revoked_reason: "account_suspended" })
-    .eq("user_id", userId)
-    .is("revoked_at", null);
-  await logAudit({
-    user_id: adminId,
-    action: "ACCOUNT_SUSPENDED",
-    target_type: "profile",
-    target_id: userId,
-    metadata: { reason },
-  }).catch(() => {});
+export interface CreateParentResult extends CreateUserResult {
+  parentId: string;
 }
 
-export async function reactivateUser(userId: string, adminId: string, reason: string): Promise<void> {
+export async function createParent(options: CreateParentOptions): Promise<CreateParentResult> {
+  const tempPassword = generateTempPassword();
+  const userResult = await createUser({
+    email: options.email,
+    password: tempPassword,
+    fullName: options.fullName,
+    role: "parent",
+    userCategory: "parent",
+    phone: options.phone,
+    createdBy: options.createdBy,
+  });
+
   const admin = getSupabaseAdmin();
-  const { error } = await admin.from("profiles").update({ is_active: true }).eq("id", userId);
-  if (error) throw error;
-  await admin.from("account_lockouts").delete().eq("user_id", userId).catch(() => {});
+
+  // Link to student if provided
+  if (options.studentId) {
+    const { error: linkError } = await admin.from("parent_students").insert({
+      parent_id: userResult.userId,
+      student_id: options.studentId,
+      relationship: "parent",
+      is_primary: true,
+    });
+    if (linkError) console.error("[auth] Student link failed:", linkError);
+  }
+
   await logAudit({
-    user_id: adminId,
-    action: "ACCOUNT_REACTIVATED",
-    target_type: "profile",
-    target_id: userId,
-    metadata: { reason },
+    user_id: options.createdBy,
+    action: "PARENT_CREATED",
+    target_type: "parent",
+    target_id: userResult.userId,
+    metadata: { student_id: options.studentId },
   }).catch(() => {});
+
+  return { ...userResult, parentId: userResult.userId };
 }
 
 export async function restoreMissingProfile(userId: string): Promise<boolean> {
@@ -318,11 +329,15 @@ export async function restoreMissingProfile(userId: string): Promise<boolean> {
       console.log("[auth] Profile already exists for:", userId);
       return true;
     }
+    const role = authUser.user.user_metadata?.role || "student";
+    const userCategory = authUser.user.user_metadata?.user_category || 
+      (role === "student" ? "student" : role === "parent" ? "parent" : "staff");
     const { error: insertError } = await admin.from("profiles").insert({
       id: userId,
       email: authUser.user.email || "",
       full_name: authUser.user.user_metadata?.full_name || "Restored User",
-      role: authUser.user.user_metadata?.role || "student",
+      role,
+      user_category: userCategory,
       campus_id: authUser.user.user_metadata?.campus_id || null,
       is_active: true,
       password_changed: true,
@@ -344,11 +359,7 @@ export async function getAllUsersWithStatus() {
   const admin = getSupabaseAdmin();
   const { data: profiles, error } = await admin
     .from("profiles")
-    .select(`
-      id, email, full_name, role, campus_id, is_active, password_changed, onboarding_completed, created_at,
-      campuses (name),
-      account_lockouts (failed_attempts, locked_until)
-    `)
+    .select("*, students(*), staff(*)")
     .order("created_at", { ascending: false });
   if (error) {
     console.error("[auth] Failed to get users:", error);

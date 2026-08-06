@@ -1,11 +1,11 @@
 /**
- * BDJA Session Management v3.0
+ * BDJA Session Management v4.0
  */
 
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAdmin } from "./supabase-server";
 import { checkAccountLockout } from "./security";
-import { UserRole } from "@/types";
+import { UserCategory, UserRole } from "@/types";
 
 export type AuthErrorCode =
   | "NO_SESSION"
@@ -30,6 +30,7 @@ export interface ValidatedSession {
   userId: string;
   email: string;
   role: UserRole;
+  userCategory: UserCategory;
   fullName: string;
   campusId: string | null;
   passwordChanged: boolean;
@@ -85,7 +86,7 @@ export async function validateSession(
     const admin = getSupabaseAdmin();
     const { data: profile, error: profileError } = await admin
       .from("profiles")
-      .select("id, email, full_name, role, campus_id, is_active, password_changed, onboarding_completed")
+      .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
       .eq("id", userId)
       .single();
 
@@ -93,11 +94,15 @@ export async function validateSession(
       console.error(`[session] Profile missing for user ${userId}, attempting recovery...`);
       const { data: authUser } = await admin.auth.admin.getUserById(userId);
       if (authUser?.user) {
+        const role = authUser.user.user_metadata?.role || "student";
+        const userCategory = authUser.user.user_metadata?.user_category ||
+          (role === "student" ? "student" : role === "parent" ? "parent" : "staff");
         const { error: insertError } = await admin.from("profiles").insert({
           id: userId,
           email: authUser.user.email || userEmail || "",
           full_name: authUser.user.user_metadata?.full_name || "User",
-          role: authUser.user.user_metadata?.role || "student",
+          role,
+          user_category: userCategory,
           campus_id: authUser.user.user_metadata?.campus_id || null,
           is_active: true,
           password_changed: false,
@@ -107,7 +112,7 @@ export async function validateSession(
           console.log(`[session] Profile auto-created for user ${userId}`);
           const { data: newProfile } = await admin
             .from("profiles")
-            .select("id, email, full_name, role, campus_id, is_active, password_changed, onboarding_completed")
+            .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
             .eq("id", userId)
             .single();
           if (newProfile) {
@@ -174,6 +179,7 @@ function buildSession(
       userId,
       email,
       role: (profile.role as UserRole) || "student",
+      userCategory: (profile.user_category as UserCategory) || "student",
       fullName: profile.full_name || "User",
       campusId: profile.campus_id || null,
       passwordChanged: profile.password_changed ?? false,
@@ -188,13 +194,13 @@ function buildSession(
 
 export async function validateSessionFromCookies(
   request: Request
-): Promise<{ userId: string | null; role: UserRole | null; isActive: boolean | null; error: AuthError | null }> {
+): Promise<{ userId: string | null; role: UserRole | null; userCategory: UserCategory | null; isActive: boolean | null; error: AuthError | null }> {
   try {
     const cookieHeader = request.headers.get("cookie") || "";
     const cookies = parseCookies(cookieHeader);
     const accessToken = cookies["sb-access-token"] || cookies["sb-" + process.env.NEXT_PUBLIC_SUPABASE_URL?.split("//")[1]?.split(".")[0] + "-auth-token"];
     if (!accessToken) {
-      return { userId: null, role: null, isActive: null, error: { code: "NO_SESSION", message: "No session found" } };
+      return { userId: null, role: null, userCategory: null, isActive: null, error: { code: "NO_SESSION", message: "No session found" } };
     }
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -203,26 +209,27 @@ export async function validateSessionFromCookies(
     );
     const { data: { user }, error } = await supabase.auth.getUser(accessToken);
     if (error || !user) {
-      return { userId: null, role: null, isActive: null, error: { code: "INVALID_TOKEN", message: "Invalid session" } };
+      return { userId: null, role: null, userCategory: null, isActive: null, error: { code: "INVALID_TOKEN", message: "Invalid session" } };
     }
     const admin = getSupabaseAdmin();
     const { data: profile } = await admin
       .from("profiles")
-      .select("role, is_active")
+      .select("role, user_category, is_active")
       .eq("id", user.id)
       .single();
     if (!profile) {
-      return { userId: null, role: null, isActive: null, error: { code: "PROFILE_MISSING", message: "Profile missing" } };
+      return { userId: null, role: null, userCategory: null, isActive: null, error: { code: "PROFILE_MISSING", message: "Profile missing" } };
     }
     return {
       userId: user.id,
       role: (profile.role as UserRole) || "student",
+      userCategory: (profile.user_category as UserCategory) || "student",
       isActive: profile.is_active ?? true,
       error: null,
     };
   } catch (error: any) {
     console.error("[session] Cookie validation error:", error);
-    return { userId: null, role: null, isActive: null, error: { code: "SERVER_ERROR", message: error.message } };
+    return { userId: null, role: null, userCategory: null, isActive: null, error: { code: "SERVER_ERROR", message: error.message } };
   }
 }
 
@@ -249,6 +256,12 @@ export async function requireAuth(req: Request): Promise<ValidatedSession> {
 
 export function requireRole(session: ValidatedSession, allowedRoles: UserRole[]): void {
   if (!allowedRoles.includes(session.role)) {
+    throw new AuthRequiredError("You do not have permission to access this resource.", 403, "FORBIDDEN");
+  }
+}
+
+export function requireCategory(session: ValidatedSession, allowedCategories: UserCategory[]): void {
+  if (!allowedCategories.includes(session.userCategory)) {
     throw new AuthRequiredError("You do not have permission to access this resource.", 403, "FORBIDDEN");
   }
 }

@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    // Auth check — v0.12.4: use async createClient with getAll/setAll
+    // Auth check
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const { messages, context, stream } = parseResult.data;
 
     // Search VORA first for relevant content
-    const lastUserMessage = messages.filter(m => m.role === "user").pop()?.content || "";
+    const lastUserMessage = messages.filter((m: any) => m.role === "user").pop()?.content || "";
     const voraResults = searchVoraContent(lastUserMessage, {
       grade_level: context?.grade_level,
       subject: context?.subject,
@@ -56,12 +56,23 @@ export async function POST(req: NextRequest) {
     const endpoint = process.env.NEXT_PUBLIC_AEVIBRON_ENDPOINT || "https://api.aevibron.com/api/v1/chat";
     const key = process.env.AEVIBRON_API_KEY || "";
 
+    if (!key) {
+      console.error("[Joy AI] AEVIBRON_API_KEY not configured");
+      return NextResponse.json({
+        error: "Joy AI is temporarily unavailable. Please contact the administrator.",
+        code: "CONFIG_MISSING",
+      }, { status: 503 });
+    }
+
     const payload = {
       model: context?.model || "aevibron-core-v3",
       messages,
       context: enrichedContext,
       stream: stream || false,
     };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
     const res = await fetch(endpoint, {
       method: "POST",
@@ -70,11 +81,23 @@ export async function POST(req: NextRequest) {
         "X-Aevibron-Key": key,
       },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeout);
+
     if (!res.ok) {
-      const err = await res.text();
-      return NextResponse.json({ error: `Aevibron error: ${err}` }, { status: res.status });
+      const status = res.status;
+      const errText = await res.text().catch(() => "Unknown error");
+      console.error(`[Joy AI] Aevibron returned ${status}:`, errText);
+
+      if (status === 401) {
+        return NextResponse.json({ error: "Joy AI authentication failed.", code: "AUTH_FAILED" }, { status: 503 });
+      }
+      if (status === 429) {
+        return NextResponse.json({ error: "Joy AI is busy. Please try again shortly.", code: "RATE_LIMITED" }, { status: 503 });
+      }
+      return NextResponse.json({ error: "Joy AI service error. Please try again.", code: "SERVICE_ERROR" }, { status: 503 });
     }
 
     const data = await res.json();
@@ -84,7 +107,11 @@ export async function POST(req: NextRequest) {
       youtube_results: youtubeResults,
     });
   } catch (error: any) {
-    console.error("Chat API error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error.name === "AbortError") {
+      console.error("[Joy AI] Request timed out");
+      return NextResponse.json({ error: "Joy AI is taking too long. Please try again.", code: "TIMEOUT" }, { status: 504 });
+    }
+    console.error("[Joy AI] Chat API error:", error);
+    return NextResponse.json({ error: "An unexpected error occurred. Please try again.", code: "SERVER_ERROR" }, { status: 500 });
   }
 }

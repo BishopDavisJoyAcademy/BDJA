@@ -1,12 +1,11 @@
 /**
- * BDJA Middleware v3.0
+ * BDJA Middleware v4.0
  */
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getRequiredPermission, hasPermission } from "@/lib/permissions";
-import { UserRole } from "@/types";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { checkRoutePermission } from "@/lib/permissions";
 
 const PUBLIC_PATHS = [
   "/", "/about", "/academics", "/admissions", "/students", "/news-events",
@@ -17,18 +16,15 @@ const PUBLIC_PATHS = [
 
 const AUTH_PATHS = ["/login", "/reset-password", "/onboarding"];
 
-function getDashboardPath(role: string | null): string {
-  switch (role) {
-    case "student": return "/student";
-    case "parent": return "/parent";
-    case "teacher": return "/teacher";
-    case "principal":
-    case "super_admin": return "/admin";
-    case "bursar": return "/bursar";
-    case "librarian": return "/librarian";
-    case "class_prefect": return "/student";
-    default: return "/student";
+function getDashboardPath(userCategory: string | null, role: string | null): string {
+  if (userCategory === "student") return "/student";
+  if (userCategory === "parent") return "/parent";
+  if (userCategory === "staff") {
+    if (role === "teacher") return "/teacher";
+    return "/teacher";
   }
+  if (userCategory === "admin") return "/admin";
+  return "/student";
 }
 
 export async function middleware(request: NextRequest) {
@@ -76,7 +72,7 @@ export async function middleware(request: NextRequest) {
   const admin = getSupabaseAdmin();
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("id, role, is_active, password_changed, onboarding_completed, full_name, email")
+    .select("id, role, user_category, is_active, password_changed, onboarding_completed, full_name, email")
     .eq("id", user.sub)
     .single();
 
@@ -85,11 +81,15 @@ export async function middleware(request: NextRequest) {
     try {
       const { data: authUser } = await admin.auth.admin.getUserById(user.sub);
       if (authUser?.user) {
+        const role = authUser.user.user_metadata?.role || "student";
+        const userCategory = authUser.user.user_metadata?.user_category || 
+          (role === "student" ? "student" : role === "parent" ? "parent" : "staff");
         const { error: insertError } = await admin.from("profiles").insert({
           id: user.sub,
           email: authUser.user.email || user.email || "",
           full_name: authUser.user.user_metadata?.full_name || "User",
-          role: authUser.user.user_metadata?.role || "student",
+          role,
+          user_category: userCategory,
           campus_id: authUser.user.user_metadata?.campus_id || null,
           is_active: true,
           password_changed: true,
@@ -99,7 +99,7 @@ export async function middleware(request: NextRequest) {
           console.log(`[middleware] Profile auto-recovered for user ${user.sub}`);
           const { data: newProfile } = await admin
             .from("profiles")
-            .select("id, role, is_active, password_changed, onboarding_completed")
+            .select("id, role, user_category, is_active, password_changed, onboarding_completed")
             .eq("id", user.sub)
             .single();
           if (newProfile) {
@@ -142,13 +142,12 @@ async function handleAuthenticatedUser(
     return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 
-  const requiredPerms = getRequiredPermission(pathname);
-  if (requiredPerms && requiredPerms.length > 0) {
-    const hasAccess = requiredPerms.some((perm) =>
-      hasPermission(profile.role as UserRole, perm as any)
-    );
+  // Check route permissions for non-public routes
+  if (!pathname.startsWith("/api/")) {
+    const hasAccess = await checkRoutePermission(userId, pathname);
     if (!hasAccess) {
-      return NextResponse.redirect(new URL(getDashboardPath(profile.role), request.url));
+      const dest = getDashboardPath(profile.user_category, profile.role);
+      return NextResponse.redirect(new URL(dest, request.url));
     }
   }
 

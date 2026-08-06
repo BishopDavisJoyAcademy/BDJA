@@ -80,18 +80,17 @@ const ERROR_CONFIGS: Record<string, ErrorConfig> = {
   },
 };
 
-function getDashboardPath(role: string | null): string {
-  switch (role) {
-    case "student": return "/student";
-    case "parent": return "/parent";
-    case "teacher": return "/teacher";
-    case "principal":
-    case "super_admin": return "/admin";
-    case "bursar": return "/bursar";
-    case "librarian": return "/librarian";
-    case "class_prefect": return "/student";
-    default: return "/student";
-  }
+function getDashboardPath(userCategory: string | null, role: string | null): string {
+  if (userCategory === "student") return "/student";
+  if (userCategory === "parent") return "/parent";
+  if (userCategory === "staff") return "/teacher";
+  if (userCategory === "admin") return "/admin";
+  // Legacy fallback
+  if (role === "student") return "/student";
+  if (role === "parent") return "/parent";
+  if (role === "teacher") return "/teacher";
+  if (role === "principal" || role === "super_admin") return "/admin";
+  return "/student";
 }
 
 async function fetchProfile(token: string) {
@@ -148,7 +147,7 @@ export default function LoginPage() {
     let cancelled = false;
     const checkSession = async () => {
       try {
-        const { data: { session } } = await getSessionWithTimeout(5000);
+        const { data: { session } } = await getSessionWithTimeout(5000) as any;
         if (cancelled) return;
         if (!session?.user) {
           setChecking(false);
@@ -183,7 +182,7 @@ export default function LoginPage() {
           router.replace("/onboarding");
           return;
         }
-        const dest = redirectParam || getDashboardPath(profile.role);
+        const dest = redirectParam || getDashboardPath(profile.user_category, profile.role);
         router.replace(dest);
       } catch (error: any) {
         console.error("[login] Session check failed:", error);
@@ -269,7 +268,7 @@ export default function LoginPage() {
         router.push("/onboarding");
         return;
       }
-      const dest = redirectParam || getDashboardPath(profile.role);
+      const dest = redirectParam || getDashboardPath(profile.user_category, profile.role);
       router.push(dest);
     } catch (error: any) {
       console.error("[login] Error:", error);
@@ -297,141 +296,121 @@ export default function LoginPage() {
         body: JSON.stringify({ action: "restore_own_profile" }),
       });
       if (res.ok) {
-        toast.success("Profile restored! Refreshing...");
-        window.location.reload();
+        toast.success("Profile restored! Logging you in...");
+        setTimeout(() => window.location.reload(), 1500);
       } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Recovery failed. Please contact the administrator.");
+        toast.error("Recovery failed. Please contact the administrator.");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Recovery failed");
+    } catch (err) {
+      toast.error("Recovery failed. Please try again.");
     } finally {
       setRecovering(false);
     }
   };
 
-  const portalLabel =
-    portal === "student"
-      ? "Student Portal"
-      : portal === "staff"
-      ? "Staff Portal"
-      : "BDJA Platform";
-
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1e3a5f]">
-        <div className="text-white text-sm animate-pulse">Checking session...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-gray-500 text-sm">Checking your session...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-[#1e3a5f]">
-      <div className="absolute inset-0 z-0 flex items-center justify-center">
-        <Image src="/logo.png" alt="BDJA Logo" width={600} height={600} className="object-contain opacity-10" priority />
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1e3a5f]/95 via-[#2d5a87]/90 to-[#1e3a5f]/95 z-[1]" />
-      <div className="relative z-10 w-full max-w-md px-4">
-        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-8 border border-white/20">
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[#1e3a5f] mb-4 transition-colors">
-              <ArrowLeft className="w-3 h-3" /> Back to Home
-            </Link>
-            <div className="w-20 h-20 mx-auto mb-4 bg-[#1e3a5f] rounded-xl flex items-center justify-center shadow-lg">
-              <School className="w-10 h-10 text-white" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          <div className="bg-bdja-primary px-8 py-6 text-center">
+            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <School className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-[#1e3a5f]">{portalLabel}</h1>
-            <p className="text-sm text-gray-500 mt-1">Bishop Davis Joy Academy</p>
-            <p className="text-xs text-[#c9a227] mt-2 font-medium">&quot;Prayer, Commitment and Hard Work for Success&quot;</p>
+            <h1 className="text-2xl font-bold text-white">BDJA Portal</h1>
+            <p className="text-white/80 text-sm mt-1">Bishop Davis Joy Academy</p>
           </div>
 
-          {errorConfig && (
-            <div className={`mb-6 p-4 rounded-xl border ${errorConfig.bgColor}`}>
-              <div className="flex items-start gap-3">
-                <div className={`mt-0.5 ${errorConfig.color}`}>{errorConfig.icon}</div>
-                <div className="flex-1">
-                  <h3 className={`text-sm font-semibold ${errorConfig.color}`}>{errorConfig.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{errorDetail || errorConfig.message}</p>
-                  {errorConfig.showRecovery && (
-                    <button
-                      onClick={handleRecoverProfile}
-                      disabled={recovering}
-                      className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${recovering ? "animate-spin" : ""}`} />
-                      {recovering ? "Recovering..." : "Restore My Profile"}
-                    </button>
-                  )}
+          <div className="p-8 space-y-6">
+            {errorConfig && (
+              <div className={`rounded-xl p-4 border ${errorConfig.bgColor}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`mt-0.5 ${errorConfig.color}`}>{errorConfig.icon}</div>
+                  <div className="flex-1">
+                    <h3 className={`font-semibold text-sm ${errorConfig.color}`}>{errorConfig.title}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{errorDetail || errorConfig.message}</p>
+                    {errorConfig.showRecovery && (
+                      <button
+                        onClick={handleRecoverProfile}
+                        disabled={recovering}
+                        className="mt-3 flex items-center gap-2 text-sm font-medium text-bdja-primary hover:underline"
+                      >
+                        {recovering ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                        {recovering ? "Restoring..." : "Restore my profile"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {loginError && !errorConfig && (
-            <div className="mb-6 p-4 rounded-xl border bg-red-50 border-red-200">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
+            {loginError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                 <p className="text-sm text-red-700">{loginError}</p>
               </div>
-            </div>
-          )}
+            )}
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-              <Input
-                type="email"
-                placeholder="you@bdja.ac.ke"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full"
-                autoComplete="email"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-              <div className="relative">
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
                 <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@bdja.ac.ke"
                   required
-                  className="w-full pr-10"
-                  autoComplete="current-password"
+                  className="h-11"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
-            </div>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-[#1e3a5f] hover:bg-[#2d5a87] text-white font-medium rounded-xl transition-all"
-            >
-              {loading ? "Signing in..." : `Sign In to ${portalLabel}`}
-            </Button>
-          </form>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} className="w-full h-11 text-base">
+                {loading ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-400">
-              Need help?{" "}
-              <Link href="/contact" className="text-[#c9a227] hover:underline">
-                Contact us
+            <div className="text-center">
+              <Link href="/reset-password" className="text-sm text-bdja-primary hover:underline">
+                Forgot your password?
               </Link>
-            </p>
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-            <p className="text-xs text-gray-400">&copy; 2026 Bishop Davis Joy Academy. All rights reserved.</p>
+            </div>
           </div>
         </div>
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Protected by BDJA Security. Unauthorized access is prohibited.
+        </p>
       </div>
     </div>
   );

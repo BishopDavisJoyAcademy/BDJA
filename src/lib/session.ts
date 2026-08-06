@@ -277,7 +277,7 @@ export async function refreshSession(token: string): Promise<{ token: string | n
     }
     return {
       token: data.session.access_token,
-      expiresAt: data.session.expires_at,
+      expiresAt: data.session.expires_at ? new Date(data.session.expires_at * 1000).toISOString() : null,
       error: null,
     };
   } catch (err: any) {

@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
       email,
       full_name: fullName,
       role: "super_admin",
+      userCategory: "admin",
       password_changed: false,
       onboarding_completed: false,
       is_active: true,

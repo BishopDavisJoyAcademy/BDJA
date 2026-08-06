@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       password: tempPassword,
       fullName: full_name,
       role: "principal",
+      userCategory: "admin",
       campusId: campus_id,
       phone: phone || undefined,
     });
@@ -74,7 +75,8 @@ export async function POST(req: NextRequest) {
       action: "HEADTEACHER_CREATED",
       target_type: "profile",
       target_id: newUser.userId,
-      metadata: { email, full_name, role: "principal", campus_id },
+      metadata: { email, full_name, role: "principal",
+      userCategory: "admin", campus_id },
     }).catch(() => {});
 
     return NextResponse.json({

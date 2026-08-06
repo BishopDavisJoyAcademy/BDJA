@@ -10,10 +10,11 @@ INSERT INTO students (id, profile_id, admission_number, grade_level, status)
 SELECT 
   p.id,
   p.id,
-  p.user_metadata->>'admission_number',
-  p.user_metadata->>'grade_level',
+  COALESCE(au.raw_user_meta_data->>'admission_number', 'ADM-' || substr(p.id::text, 1, 8)),
+  COALESCE(au.raw_user_meta_data->>'grade_level', 'grade1'),
   CASE WHEN p.is_active THEN 'active' ELSE 'inactive' END
 FROM profiles p
+JOIN auth.users au ON au.id = p.id
 WHERE p.role = 'student'
   AND NOT EXISTS (SELECT 1 FROM students s WHERE s.profile_id = p.id);
 
@@ -23,7 +24,7 @@ WHERE p.role = 'student'
 INSERT INTO staff (id, employee_id, department, designation, status)
 SELECT 
   p.id,
-  p.user_metadata->>'employee_id',
+  COALESCE(au.raw_user_meta_data->>'employee_id', p.email),
   CASE p.role
     WHEN 'teacher' THEN 'Academics'
     WHEN 'bursar' THEN 'Finance'
@@ -35,6 +36,7 @@ SELECT
   p.role,
   CASE WHEN p.is_active THEN 'active' ELSE 'inactive' END
 FROM profiles p
+JOIN auth.users au ON au.id = p.id
 WHERE p.role IN ('teacher', 'bursar', 'librarian', 'principal', 'super_admin')
   AND NOT EXISTS (SELECT 1 FROM staff s WHERE s.id = p.id);
 
@@ -44,16 +46,17 @@ WHERE p.role IN ('teacher', 'bursar', 'librarian', 'principal', 'super_admin')
 INSERT INTO parent_students (parent_id, student_id, relationship, is_primary)
 SELECT 
   p.id,
-  (p.user_metadata->>'student_id')::UUID,
-  COALESCE(p.user_metadata->>'relationship', 'parent'),
+  (au.raw_user_meta_data->>'student_id')::UUID,
+  COALESCE(au.raw_user_meta_data->>'relationship', 'parent'),
   true
 FROM profiles p
+JOIN auth.users au ON au.id = p.id
 WHERE p.role = 'parent'
-  AND p.user_metadata->>'student_id' IS NOT NULL
+  AND au.raw_user_meta_data->>'student_id' IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM parent_students ps 
     WHERE ps.parent_id = p.id 
-    AND ps.student_id = (p.user_metadata->>'student_id')::UUID
+    AND ps.student_id = (au.raw_user_meta_data->>'student_id')::UUID
   );
 
 -- ============================================

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase-server";
+import { createClient } from "@/lib/supabase-client";
 import { loadAllVoraContent, getVoraByGrade, getVoraSubjects, getVoraCategories } from "@/lib/vora";
 import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 

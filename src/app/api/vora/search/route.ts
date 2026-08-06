@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase-server";
+import { createClient } from "@/lib/supabase-client";
 import { voraSearchSchema } from "@/lib/validation";
 import { searchVoraContent, loadAllVoraContent } from "@/lib/vora";
 import { searchYouTubeAsVora } from "@/lib/youtube";

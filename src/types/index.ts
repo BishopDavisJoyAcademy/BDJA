@@ -1,4 +1,5 @@
 export interface VoraContent {
+  id: string;
   title: string;
   summary?: string;
   subject?: string;
@@ -6,6 +7,10 @@ export interface VoraContent {
   category?: string;
   topic?: string;
   tags?: string[];
+  channel?: string;
+  duration_seconds?: number;
+  thumbnail_url?: string;
+  youtube_url?: string;
 }
 
 export interface JoyMessage {

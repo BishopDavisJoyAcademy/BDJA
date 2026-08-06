@@ -348,11 +348,8 @@ GRANT ALL ON password_history TO service_role;
 GRANT ALL ON login_audit TO service_role;
 GRANT ALL ON admin_recovery_log TO service_role;
 
-GRANT ALL ON SEQUENCE account_lockouts_id_seq TO service_role;
-GRANT ALL ON SEQUENCE user_sessions_id_seq TO service_role;
-GRANT ALL ON SEQUENCE password_history_id_seq TO service_role;
-GRANT ALL ON SEQUENCE login_audit_id_seq TO service_role;
-GRANT ALL ON SEQUENCE admin_recovery_log_id_seq TO service_role;
+-- NOTE: UUID primary keys use gen_random_uuid(), not sequences.
+-- No sequence grants needed for these tables.
 
 -- ============================================
 -- 18. VERIFY: Ensure all existing auth.users have profiles

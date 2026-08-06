@@ -6,15 +6,16 @@
 -- ============================================
 -- 1. MIGRATE STUDENTS
 -- ============================================
-INSERT INTO students (id, admission_number, grade_level, status)
+INSERT INTO students (id, profile_id, admission_number, grade_level, status)
 SELECT 
+  p.id,
   p.id,
   p.user_metadata->>'admission_number',
   p.user_metadata->>'grade_level',
   CASE WHEN p.is_active THEN 'active' ELSE 'inactive' END
 FROM profiles p
 WHERE p.role = 'student'
-  AND NOT EXISTS (SELECT 1 FROM students s WHERE s.id = p.id);
+  AND NOT EXISTS (SELECT 1 FROM students s WHERE s.profile_id = p.id);
 
 -- ============================================
 -- 2. MIGRATE STAFF (teachers, bursars, librarians, principals)

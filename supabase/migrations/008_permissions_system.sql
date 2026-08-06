@@ -43,20 +43,20 @@ CREATE INDEX IF NOT EXISTS idx_staff_permissions_profile ON staff_permissions(pr
 CREATE INDEX IF NOT EXISTS idx_staff_permissions_permission ON staff_permissions(permission_id);
 
 -- ============================================
--- 4. STUDENTS TABLE
+-- 4. STUDENTS TABLE (ALTER EXISTING — created in 001)
 -- ============================================
-CREATE TABLE IF NOT EXISTS students (
-  id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
-  admission_number TEXT UNIQUE,
-  grade_level TEXT,
-  class_id UUID,
-  enrollment_date DATE,
-  status TEXT DEFAULT 'active',
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+-- Add missing columns to existing students table
+ALTER TABLE students ADD COLUMN IF NOT EXISTS grade_level TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
-CREATE INDEX IF NOT EXISTS idx_students_admission ON students(admission_number);
+-- Make class_id nullable if it was NOT NULL (so migration 009 can insert without it)
+ALTER TABLE students ALTER COLUMN class_id DROP NOT NULL;
+ALTER TABLE students ALTER COLUMN campus_id DROP NOT NULL;
+
+-- Ensure profile_id links exist for existing students
+ALTER TABLE students ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL;
+
+-- Create/update indexes
 CREATE INDEX IF NOT EXISTS idx_students_grade ON students(grade_level);
 CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
 
@@ -161,7 +161,7 @@ CREATE POLICY "staff_permissions_admin" ON staff_permissions FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('principal', 'super_admin'))
 );
 
-CREATE POLICY "students_own" ON students FOR SELECT USING (id = auth.uid());
+CREATE POLICY "students_own" ON students FOR SELECT USING (profile_id = auth.uid() OR id = auth.uid());
 CREATE POLICY "students_admin" ON students FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('principal', 'super_admin', 'teacher'))
 );

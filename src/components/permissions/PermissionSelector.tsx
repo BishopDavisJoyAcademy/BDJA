@@ -40,7 +40,7 @@ export default function PermissionSelector({ selectedIds, onChange }: Permission
     if (allSelected) {
       onChange(selectedIds.filter((sid) => !permIds.includes(sid)));
     } else {
-      onChange([...new Set([...selectedIds, ...permIds])]);
+      onChange(Array.from(new Set([...selectedIds, ...permIds])));
     }
   };
 

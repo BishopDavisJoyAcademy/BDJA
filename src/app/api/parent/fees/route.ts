@@ -46,8 +46,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: payError.message }, { status: 500 });
     }
 
-    const totalPaid = (payments || []).filter((p) => p.status === "verified").reduce((s, p) => s + p.amount, 0);
-    const totalPending = (payments || []).filter((p) => p.status === "pending").reduce((s, p) => s + p.amount, 0);
+    const totalPaid = (payments || []).filter((p: { status: string; amount: number }) => p.status === "verified").reduce((s: number, p: { amount: number }) => s + p.amount, 0);
+    const totalPending = (payments || []).filter((p: { status: string; amount: number }) => p.status === "pending").reduce((s: number, p: { amount: number }) => s + p.amount, 0);
 
     return NextResponse.json({
       payments: payments || [],

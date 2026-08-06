@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     }
     const userId = session.userId;
     const userEmail = session.email;
-    const body = await req.json();
+    const body = await req.json() as Record<string, any>;
     const isFirstLogin = body.is_first_login === true;
     let newPassword: string;
 

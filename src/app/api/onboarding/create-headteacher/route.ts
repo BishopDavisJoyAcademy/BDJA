@@ -22,7 +22,7 @@ const headteacherSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as Record<string, any>;
     const parseResult = headteacherSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json(

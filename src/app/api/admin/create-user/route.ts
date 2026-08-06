@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     const adminId = session.session.userId;
     const adminRole = session.session.role;
 
-    const body = await req.json();
+    const body = await req.json() as Record<string, any>;
     const parseResult = createUserSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json(

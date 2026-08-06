@@ -104,6 +104,10 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
     }
 
     const passwordHash = await hashPassword(password);
+
+    if (!authUserId) {
+      throw new Error("Unexpected: authUserId is null after successful auth user creation");
+    }
     await addPasswordToHistory(authUserId, passwordHash);
 
     await logAudit({

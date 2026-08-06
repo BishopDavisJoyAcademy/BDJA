@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validation
-    const body = await req.json();
+    const body = await req.json() as Record<string, any>;
     const parseResult = chatMessageSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });

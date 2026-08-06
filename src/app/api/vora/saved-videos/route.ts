@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await req.json() as Record<string, any>;
     const parseResult = saveVideoSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });

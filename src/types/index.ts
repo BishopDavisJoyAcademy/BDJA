@@ -1,3 +1,8 @@
+export interface JoyMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
 export interface NotificationItem {
   id: string;
   title: string;

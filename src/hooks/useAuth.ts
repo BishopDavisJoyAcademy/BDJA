@@ -11,6 +11,7 @@ export interface AuthUser {
   id: string;
   email: string | null;
   role: UserRole;
+  user_category: string;
   full_name: string;
   password_changed: boolean;
   onboarding_completed: boolean;
@@ -157,6 +158,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
       id: userId,
       email: email ?? null,
       role: (profile.role as UserRole) || "student",
+      user_category: profile.user_category || (profile.role === "student" ? "student" : profile.role === "parent" ? "parent" : "staff"),
       full_name: profile.full_name || "User",
       password_changed: profile.password_changed ?? false,
       onboarding_completed: profile.onboarding_completed ?? false,

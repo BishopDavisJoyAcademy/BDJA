@@ -1,3 +1,12 @@
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  created_at: string;
+}
+
 export interface Campus {
   id: string;
   name: string;

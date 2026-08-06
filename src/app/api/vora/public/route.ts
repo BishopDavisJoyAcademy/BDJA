@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       subject: item.subject,
       category: item.category,
       topic: item.topic,
-      thumbnail_url: item.thumbnail_url || getYouTubeThumbnail(extractYouTubeId(item.youtube_url) || ""),
+      thumbnail_url: item.thumbnail_url || getYouTubeThumbnail(extractYouTubeId(item.youtube_url || "") || ""),
       youtube_url: item.youtube_url,
       duration_seconds: item.duration_seconds,
       channel: item.channel,

@@ -315,7 +315,7 @@ export async function detectSuspiciousActivity(
     .limit(20);
   if (error || !data) return { isSuspicious: false };
   if (data.length >= 10) return { isSuspicious: true, reason: "Too many failed attempts in 5 minutes" };
-  const uniqueIPs = new Set(data.map((d) => d.ip_address));
+  const uniqueIPs = new Set(data.map((d: { ip_address: string }) => d.ip_address));
   if (uniqueIPs.size >= 3) return { isSuspicious: true, reason: "Login attempts from multiple IPs" };
   return { isSuspicious: false };
 }

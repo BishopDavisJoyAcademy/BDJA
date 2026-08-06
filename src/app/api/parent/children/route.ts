@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ children: [] });
     }
 
-    const studentIds = links.map((l) => l.student_id);
+    const studentIds = links.map((l: { student_id: string }) => l.student_id);
 
     const { data: children, error: childError } = await admin
       .from("profiles")

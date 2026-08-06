@@ -1,3 +1,13 @@
+export interface VoraContent {
+  title: string;
+  summary?: string;
+  subject?: string;
+  grade_level?: string;
+  category?: string;
+  topic?: string;
+  tags?: string[];
+}
+
 export interface JoyMessage {
   role: "user" | "assistant" | "system";
   content: string;

@@ -335,10 +335,6 @@ export function generateSecureToken(length: number = 32): string {
   return crypto.randomBytes(length).toString("hex");
 }
 
-export function hashSessionToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
-
 export function generateDeviceFingerprint(req: any): string {
   const data = `${req.headers.get("user-agent") || ""}|${req.headers.get("accept-language") || ""}`;
   return crypto.createHash("sha256").update(data).digest("hex").slice(0, 32);

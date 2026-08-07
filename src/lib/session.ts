@@ -198,7 +198,7 @@ function buildSession(
   email: string,
   accessToken: string
 ): { session: ValidatedSession; error: null } {
-  const role = (profile.role as UserRole) || "student";
+  const role = (profile.role as UserRole | "principal" | "super_admin") || "student";
   // Correctly derive user_category from role if missing
   let userCategory: UserCategory = profile.user_category;
   if (!userCategory) {

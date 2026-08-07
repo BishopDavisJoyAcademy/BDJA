@@ -1,12 +1,11 @@
 /**
- * BDJA Middleware v5.0 — Ghost-free + Security Hardened
+ * BDJA Middleware v5.0 — Ghost-free + Edge-safe
  */
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { checkRoutePermission } from "@/lib/permissions";
-import { getSecurityHeaders } from "@/lib/security";
 
 const PUBLIC_PATHS = [
   "/", "/about", "/academics", "/admissions", "/students", "/news-events",
@@ -28,12 +27,6 @@ function getDashboardPath(userCategory: string | null): string {
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
   const pathname = request.nextUrl.pathname;
-
-  // Apply security headers to all responses
-  const securityHeaders = getSecurityHeaders();
-  Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
 
   if (
     pathname.startsWith("/_next/") ||

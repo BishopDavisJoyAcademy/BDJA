@@ -61,7 +61,6 @@ export default function GodModePage() {
       if (res.ok) {
         setImpersonating(targetId);
         toast.success(`Now viewing as ${data.targetUser.full_name}`);
-        // Redirect to target user's dashboard
         const cat = data.targetUser.user_category;
         if (cat === "student") router.push("/student");
         else if (cat === "staff") router.push("/teacher");
@@ -159,12 +158,12 @@ export default function GodModePage() {
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{u.full_name}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{u.email}</td>
                   <td className="px-4 py-3">
-                    <Badge variant={u.user_category === "staff" ? "default" : "secondary"}>
+                    <Badge variant={u.user_category === "staff" ? "default" : "info"}>
                       {u.user_category}
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={u.is_active ? "success" : "secondary"}>
+                    <Badge variant={u.is_active ? "success" : "default"}>
                       {u.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </td>

@@ -10,7 +10,7 @@ interface PermissionSelectorProps {
   onChange: (ids: string[]) => void;
 }
 
-export default function PermissionSelector({ selectedIds, onChange }: PermissionSelectorProps) {
+export function PermissionSelector({ selectedIds, onChange }: PermissionSelectorProps) {
   const { allPermissions, categories, isLoading, fetchPermissions } = usePermissionStore();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 

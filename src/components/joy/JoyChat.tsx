@@ -68,7 +68,7 @@ function getRolePrompts(userCategory: string | undefined): GreetingPrompt[] {
   ];
 }
 
-export default function JoyChat() {
+export function JoyChat() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showGreeting, setShowGreeting] = useState(true);

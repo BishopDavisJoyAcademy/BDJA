@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 
 interface AnimatedCounterProps {
-  end: number;
+  end?: number;
+  value?: number;
   suffix?: string;
   prefix?: string;
   duration?: number;
@@ -12,12 +13,15 @@ interface AnimatedCounterProps {
 
 export function AnimatedCounter({
   end,
+  value,
   suffix = "",
   prefix = "",
   duration = 2000,
   className = "",
 }: AnimatedCounterProps) {
+  const targetValue = value ?? end ?? 0;
   const [count, setCount] = useState(0);
+  const targetEnd = targetValue;
   const [hasStarted, setHasStarted] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
 
@@ -45,7 +49,7 @@ export function AnimatedCounter({
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
       const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      setCount(Math.floor(easeOutQuart * end));
+      setCount(Math.floor(easeOutQuart * targetEnd));
       if (progress < 1) {
         raf = requestAnimationFrame(animate);
       }
@@ -53,7 +57,7 @@ export function AnimatedCounter({
 
     raf = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(raf);
-  }, [hasStarted, end, duration]);
+  }, [hasStarted, targetEnd, duration]);
 
   return (
     <span ref={ref} className={className}>

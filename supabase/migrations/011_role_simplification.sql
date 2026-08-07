@@ -1,9 +1,15 @@
--- BDJA Migration 011: Role Simplification (Ghost Removal)
+-- BDJA Migration 011: Role Simplification (Ghost Removal) — FIXED
 -- Collapses 8 hardcoded roles into 4: student, parent, staff, admin
 -- IDEMPOTENT - safe to run multiple times
 
 -- ============================================
--- 1. Migrate old roles to new simplified roles
+-- 1. DROP old constraints FIRST so updates don't fail
+-- ============================================
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_user_category_check;
+
+-- ============================================
+-- 2. Migrate old roles to new simplified roles
 -- ============================================
 UPDATE profiles SET 
   role = 'staff',
@@ -22,18 +28,16 @@ UPDATE profiles SET
 WHERE role NOT IN ('student', 'parent', 'staff', 'admin');
 
 -- ============================================
--- 2. Update constraints
+-- 3. ADD new constraints AFTER all updates are done
 -- ============================================
-ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
 ALTER TABLE profiles ADD CONSTRAINT profiles_role_check 
   CHECK (role IN ('student', 'parent', 'staff', 'admin'));
 
-ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_user_category_check;
 ALTER TABLE profiles ADD CONSTRAINT profiles_user_category_check 
   CHECK (user_category IN ('student', 'parent', 'staff', 'admin'));
 
 -- ============================================
--- 3. Update RLS policies for simplified roles
+-- 4. Update RLS policies for simplified roles
 -- ============================================
 DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 DROP POLICY IF EXISTS "Teachers can view student profiles" ON profiles;
@@ -65,7 +69,7 @@ CREATE POLICY "Staff can view student and parent profiles" ON profiles
   );
 
 -- ============================================
--- 4. Grant all permissions to existing admins
+-- 5. Grant all permissions to existing admins
 -- ============================================
 INSERT INTO staff_permissions (profile_id, permission_id, granted_by)
 SELECT 

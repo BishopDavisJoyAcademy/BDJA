@@ -202,9 +202,10 @@ function buildSession(
   // Correctly derive user_category from role if missing
   let userCategory: UserCategory = profile.user_category;
   if (!userCategory) {
+    const rawRole = profile.role as string;
     if (role === "student") userCategory = "student";
     else if (role === "parent") userCategory = "parent";
-    else if (role === "principal" || role === "super_admin") userCategory = "admin";
+    else if (rawRole === "principal" || rawRole === "super_admin") userCategory = "admin";
     else userCategory = "staff";
   }
 

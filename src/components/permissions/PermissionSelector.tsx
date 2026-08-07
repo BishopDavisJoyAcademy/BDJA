@@ -6,11 +6,13 @@ import { PermissionCategory } from "@/types";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 interface PermissionSelectorProps {
-  selectedIds: string[];
+  selectedIds?: string[];
+  selected?: string[];
   onChange: (ids: string[]) => void;
 }
 
-export function PermissionSelector({ selectedIds, onChange }: PermissionSelectorProps) {
+export function PermissionSelector({ selectedIds, selected, onChange }: PermissionSelectorProps) {
+  const resolvedSelected = selected ?? selectedIds ?? [];
   const { allPermissions, categories, isLoading, fetchPermissions } = usePermissionStore();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
@@ -29,18 +31,18 @@ export function PermissionSelector({ selectedIds, onChange }: PermissionSelector
 
   const togglePermission = (id: string) => {
     onChange(
-      selectedIds.includes(id)
-        ? selectedIds.filter((sid) => sid !== id)
-        : [...selectedIds, id]
+      resolvedSelected.includes(id)
+        ? resolvedSelected.filter((sid) => sid !== id)
+        : [...resolvedSelected, id]
     );
   };
 
   const toggleAllInCategory = (catKey: string, permIds: string[]) => {
-    const allSelected = permIds.every((id) => selectedIds.includes(id));
+    const allSelected = permIds.every((id) => resolvedSelected.includes(id));
     if (allSelected) {
-      onChange(selectedIds.filter((sid) => !permIds.includes(sid)));
+      onChange(resolvedSelected.filter((sid) => !permIds.includes(sid)));
     } else {
-      onChange(Array.from(new Set([...selectedIds, ...permIds])));
+      onChange(Array.from(new Set([...resolvedSelected, ...permIds])));
     }
   };
 
@@ -55,8 +57,8 @@ export function PermissionSelector({ selectedIds, onChange }: PermissionSelector
     <div className="space-y-3">
       {permissionsByCategory.map((cat) => {
         const permIds = cat.permissions.map((p) => p.id);
-        const allSelected = permIds.length > 0 && permIds.every((id) => selectedIds.includes(id));
-        const someSelected = permIds.some((id) => selectedIds.includes(id)) && !allSelected;
+        const allSelected = permIds.length > 0 && permIds.every((id) => resolvedSelected.includes(id));
+        const someSelected = permIds.some((id) => resolvedSelected.includes(id)) && !allSelected;
         const isExpanded = expandedCategories.has(cat.key);
 
         return (
@@ -103,17 +105,17 @@ export function PermissionSelector({ selectedIds, onChange }: PermissionSelector
                   >
                     <div
                       className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                        selectedIds.includes(perm.id)
+                        resolvedSelected.includes(perm.id)
                           ? "bg-bdja-primary border-bdja-primary"
                           : "border-gray-300"
                       }`}
                     >
-                      {selectedIds.includes(perm.id) && <Check className="w-3 h-3 text-white" />}
+                      {resolvedSelected.includes(perm.id) && <Check className="w-3 h-3 text-white" />}
                     </div>
                     <input
                       type="checkbox"
                       className="sr-only"
-                      checked={selectedIds.includes(perm.id)}
+                      checked={resolvedSelected.includes(perm.id)}
                       onChange={() => togglePermission(perm.id)}
                     />
                     <div>

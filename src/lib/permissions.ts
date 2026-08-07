@@ -91,7 +91,7 @@ export async function grantPermissions(
       .from("permissions")
       .select("id, key")
       .in("id", [...added, ...removed]);
-    const keyMap = new Map((permData || []).map((p: any) => [p.id, p.key]));
+    const keyMap = new Map<string, string>((permData || []).map((p: any) => [p.id, p.key]));
 
     return {
       success: true,

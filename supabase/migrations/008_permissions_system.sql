@@ -93,6 +93,27 @@ CREATE INDEX IF NOT EXISTS idx_parent_students_parent ON parent_students(parent_
 CREATE INDEX IF NOT EXISTS idx_parent_students_student ON parent_students(student_id);
 
 -- ============================================
+-- NOTIFICATIONS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  recipient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  type TEXT DEFAULT 'info',
+  read BOOLEAN DEFAULT false,
+  link_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "notifications_own" ON notifications FOR ALL USING (recipient_id = auth.uid());
+GRANT ALL ON notifications TO service_role;
+
+-- ============================================
 -- 7. SEED PERMISSION CATEGORIES
 -- ============================================
 INSERT INTO permission_categories (key, name, icon, sort_order) VALUES

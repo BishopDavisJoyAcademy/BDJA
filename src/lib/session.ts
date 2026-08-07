@@ -1,5 +1,6 @@
 /**
  * BDJA Session Management v4.0
+ * Supports BOTH Bearer token AND cookie-based session validation.
  */
 
 import { createServerClient } from "@supabase/ssr";
@@ -37,28 +38,27 @@ export interface ValidatedSession {
   onboardingCompleted: boolean;
   isActive: boolean;
   accessToken: string;
-  expiresAt: string;
 }
 
 export async function validateSession(
   req: Request
 ): Promise<{ session: ValidatedSession | null; error: AuthError | null }> {
   try {
+    // Try Bearer token first
     const authHeader = req.headers.get("Authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
     let userId: string | null = null;
     let userEmail: string | null = null;
-    let accessToken: string | null = null;
-    let expiresAt: string | null = null;
+    let accessToken: string = "";
 
-    if (token) {
+    if (bearerToken) {
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         { cookies: { getAll() { return []; }, setAll() {} } }
       );
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      const { data: { user }, error: userError } = await supabase.auth.getUser(bearerToken);
       if (userError || !user) {
         return {
           session: null,
@@ -67,13 +67,38 @@ export async function validateSession(
       }
       userId = user.id;
       userEmail = user.email ?? null;
-      accessToken = token;
-      expiresAt = user.confirmed_at || new Date(Date.now() + 3600 * 1000).toISOString();
+      accessToken = bearerToken;
     } else {
-      return {
-        session: null,
-        error: { code: "NO_SESSION", message: "Please log in to continue." },
-      };
+      // Fallback: read session from cookies (standard for API routes)
+      const cookieHeader = req.headers.get("cookie") || "";
+      const cookies = parseCookies(cookieHeader);
+      const refreshToken = cookies["sb-refresh-token"] || "";
+      const accessTokenCookie = cookies["sb-access-token"] || "";
+
+      // Try to get user from cookie-based session
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return Object.entries(cookies).map(([name, value]) => ({ name, value }));
+            },
+            setAll() {},
+          },
+        }
+      );
+
+      const { data: { user }, error: sessionError } = await supabase.auth.getUser(accessTokenCookie);
+      if (sessionError || !user) {
+        return {
+          session: null,
+          error: { code: "NO_SESSION", message: "Please log in to continue." },
+        };
+      }
+      userId = user.id;
+      userEmail = user.email ?? null;
+      accessToken = accessTokenCookie;
     }
 
     if (!userId) {
@@ -96,7 +121,7 @@ export async function validateSession(
       if (authUser?.user) {
         const role = authUser.user.user_metadata?.role || "student";
         const userCategory = authUser.user.user_metadata?.user_category ||
-          (role === "student" ? "student" : role === "parent" ? "parent" : "staff");
+          (role === "student" ? "student" : role === "parent" ? "parent" : "admin");
         const { error: insertError } = await admin.from("profiles").insert({
           id: userId,
           email: authUser.user.email || userEmail || "",
@@ -116,7 +141,7 @@ export async function validateSession(
             .eq("id", userId)
             .single();
           if (newProfile) {
-            return buildSession(newProfile, userId, userEmail || "", accessToken || "", expiresAt || "");
+            return buildSession(newProfile, userId, userEmail || "", accessToken);
           }
         }
       }
@@ -153,7 +178,7 @@ export async function validateSession(
       };
     }
 
-    return buildSession(profile, userId, userEmail || "", accessToken || "", expiresAt || "");
+    return buildSession(profile, userId, userEmail || "", accessToken);
   } catch (error: any) {
     console.error("[session] Validation error:", error);
     return {
@@ -171,66 +196,33 @@ function buildSession(
   profile: any,
   userId: string,
   email: string,
-  accessToken: string,
-  expiresAt: string
+  accessToken: string
 ): { session: ValidatedSession; error: null } {
+  const role = (profile.role as UserRole) || "student";
+  // Correctly derive user_category from role if missing
+  let userCategory: UserCategory = profile.user_category;
+  if (!userCategory) {
+    if (role === "student") userCategory = "student";
+    else if (role === "parent") userCategory = "parent";
+    else if (role === "principal" || role === "super_admin") userCategory = "admin";
+    else userCategory = "staff";
+  }
+
   return {
     session: {
       userId,
       email,
-      role: (profile.role as UserRole) || "student",
-      userCategory: (profile.user_category as UserCategory) || "student",
+      role,
+      userCategory,
       fullName: profile.full_name || "User",
       campusId: profile.campus_id || null,
       passwordChanged: profile.password_changed ?? false,
       onboardingCompleted: profile.onboarding_completed ?? false,
       isActive: profile.is_active ?? true,
       accessToken,
-      expiresAt,
     },
     error: null,
   };
-}
-
-export async function validateSessionFromCookies(
-  request: Request
-): Promise<{ userId: string | null; role: UserRole | null; userCategory: UserCategory | null; isActive: boolean | null; error: AuthError | null }> {
-  try {
-    const cookieHeader = request.headers.get("cookie") || "";
-    const cookies = parseCookies(cookieHeader);
-    const accessToken = cookies["sb-access-token"] || cookies["sb-" + process.env.NEXT_PUBLIC_SUPABASE_URL?.split("//")[1]?.split(".")[0] + "-auth-token"];
-    if (!accessToken) {
-      return { userId: null, role: null, userCategory: null, isActive: null, error: { code: "NO_SESSION", message: "No session found" } };
-    }
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { cookies: { getAll() { return []; }, setAll() {} } }
-    );
-    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
-    if (error || !user) {
-      return { userId: null, role: null, userCategory: null, isActive: null, error: { code: "INVALID_TOKEN", message: "Invalid session" } };
-    }
-    const admin = getSupabaseAdmin();
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("role, user_category, is_active")
-      .eq("id", user.id)
-      .single();
-    if (!profile) {
-      return { userId: null, role: null, userCategory: null, isActive: null, error: { code: "PROFILE_MISSING", message: "Profile missing" } };
-    }
-    return {
-      userId: user.id,
-      role: (profile.role as UserRole) || "student",
-      userCategory: (profile.user_category as UserCategory) || "student",
-      isActive: profile.is_active ?? true,
-      error: null,
-    };
-  } catch (error: any) {
-    console.error("[session] Cookie validation error:", error);
-    return { userId: null, role: null, userCategory: null, isActive: null, error: { code: "SERVER_ERROR", message: error.message } };
-  }
 }
 
 function parseCookies(cookieHeader: string): Record<string, string> {
@@ -274,26 +266,5 @@ export class AuthRequiredError extends Error {
     this.statusCode = statusCode;
     this.code = code;
     this.name = "AuthRequiredError";
-  }
-}
-
-export async function refreshSession(token: string): Promise<{ token: string | null; expiresAt: string | null; error: string | null }> {
-  try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { cookies: { getAll() { return []; }, setAll() {} } }
-    );
-    const { data, error } = await supabase.auth.refreshSession({ refresh_token: token });
-    if (error || !data.session) {
-      return { token: null, expiresAt: null, error: error?.message || "Refresh failed" };
-    }
-    return {
-      token: data.session.access_token,
-      expiresAt: data.session.expires_at ? new Date(data.session.expires_at * 1000).toISOString() : null,
-      error: null,
-    };
-  } catch (err: any) {
-    return { token: null, expiresAt: null, error: err.message };
   }
 }

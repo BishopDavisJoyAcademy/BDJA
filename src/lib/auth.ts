@@ -1,5 +1,6 @@
 /**
- * BDJA Authentication Utilities v4.0
+ * BDJA Authentication Utilities v5.0
+ * Ghost-free: all old roles collapsed to student/parent/staff/admin
  */
 
 import { getSupabaseAdmin } from "./supabase-server";
@@ -34,8 +35,8 @@ export interface CreateUserOptions {
   email: string;
   password: string;
   fullName: string;
-  role: string;
-  userCategory: string;
+  role: "student" | "parent" | "staff" | "admin";
+  userCategory: "student" | "parent" | "staff" | "admin";
   campusId?: string;
   phone?: string;
   metadata?: Record<string, any>;
@@ -161,7 +162,7 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
     email: options.email,
     password: tempPassword,
     fullName: options.fullName,
-    role: "teacher",
+    role: "staff",
     userCategory: "staff",
     campusId: options.campusId,
     phone: options.phone,
@@ -170,7 +171,6 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
 
   const admin = getSupabaseAdmin();
 
-  // Create staff record
   const { error: staffError } = await admin.from("staff").insert({
     id: userResult.userId,
     employee_id: options.email.split("@")[0].toUpperCase() + "-" + Date.now().toString().slice(-4),
@@ -180,7 +180,6 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
   });
   if (staffError) console.error("[auth] Staff record creation failed:", staffError);
 
-  // Grant permissions
   if (options.permissionIds.length > 0) {
     await grantPermissions(userResult.userId, options.permissionIds, options.createdBy);
   }
@@ -231,7 +230,6 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
 
   const admin = getSupabaseAdmin();
 
-  // Create student record
   const { error: studentError } = await admin.from("students").insert({
     id: userResult.userId,
     admission_number: options.admissionNumber,
@@ -242,7 +240,6 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
   });
   if (studentError) console.error("[auth] Student record creation failed:", studentError);
 
-  // Link parent if provided
   if (options.parentId) {
     const { error: linkError } = await admin.from("parent_students").insert({
       parent_id: options.parentId,
@@ -290,7 +287,6 @@ export async function createParent(options: CreateParentOptions): Promise<Create
 
   const admin = getSupabaseAdmin();
 
-  // Link to student if provided
   if (options.studentId) {
     const { error: linkError } = await admin.from("parent_students").insert({
       parent_id: userResult.userId,
@@ -329,9 +325,13 @@ export async function restoreMissingProfile(userId: string): Promise<boolean> {
       console.log("[auth] Profile already exists for:", userId);
       return true;
     }
-    const role = authUser.user.user_metadata?.role || "student";
-    const userCategory = authUser.user.user_metadata?.user_category || 
-      (role === "student" ? "student" : role === "parent" ? "parent" : "staff");
+
+    // Map old roles to new simplified roles
+    const rawRole = authUser.user.user_metadata?.role || "student";
+    const role = mapOldRole(rawRole);
+    const userCategory = authUser.user.user_metadata?.user_category ||
+      (role === "student" ? "student" : role === "parent" ? "parent" : role === "admin" ? "admin" : "staff");
+
     const { error: insertError } = await admin.from("profiles").insert({
       id: userId,
       email: authUser.user.email || "",
@@ -352,6 +352,28 @@ export async function restoreMissingProfile(userId: string): Promise<boolean> {
   } catch (error: any) {
     console.error("[auth] Profile restoration error:", error);
     return false;
+  }
+}
+
+/**
+ * Map legacy roles to the new simplified role system.
+ * teacher, class_prefect, bursar, librarian -> staff
+ * principal, super_admin -> admin
+ */
+export function mapOldRole(oldRole: string): "student" | "parent" | "staff" | "admin" {
+  switch (oldRole) {
+    case "student": return "student";
+    case "parent": return "parent";
+    case "teacher":
+    case "class_prefect":
+    case "bursar":
+    case "librarian":
+      return "staff";
+    case "principal":
+    case "super_admin":
+      return "admin";
+    default:
+      return "student";
   }
 }
 

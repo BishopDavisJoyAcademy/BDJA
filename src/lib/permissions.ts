@@ -57,12 +57,25 @@ export async function grantPermissions(
   profileId: string,
   permissionIds: string[],
   grantedBy: string
-): Promise<boolean> {
+): Promise<{ success: boolean; added: string[] }> {
   const admin = getSupabaseAdmin();
   try {
-    // Delete existing permissions for this staff member
+    // Get current permissions
+    const { data: current } = await admin
+      .from("staff_permissions")
+      .select("permission_id")
+      .eq("profile_id", profileId);
+    const currentIds = new Set((current || []).map((c: any) => c.permission_id));
+
+    // Determine added/removed
+    const newIds = new Set(permissionIds);
+    const added = permissionIds.filter((id) => !currentIds.has(id));
+    const removed = (current || []).filter((c: any) => !newIds.has(c.permission_id)).map((c: any) => c.permission_id);
+
+    // Delete existing
     await admin.from("staff_permissions").delete().eq("profile_id", profileId);
-    // Insert new permissions
+
+    // Insert new
     if (permissionIds.length > 0) {
       const rows = permissionIds.map((pid) => ({
         profile_id: profileId,
@@ -72,10 +85,21 @@ export async function grantPermissions(
       const { error } = await admin.from("staff_permissions").insert(rows);
       if (error) throw error;
     }
-    return true;
+
+    // Get permission keys for audit
+    const { data: permData } = await admin
+      .from("permissions")
+      .select("id, key")
+      .in("id", [...added, ...removed]);
+    const keyMap = new Map((permData || []).map((p: any) => [p.id, p.key]));
+
+    return {
+      success: true,
+      added: added.map((id) => keyMap.get(id) || id),
+    };
   } catch (err: any) {
     console.error("[permissions] Failed to grant permissions:", err);
-    return false;
+    return { success: false, added: [] };
   }
 }
 
@@ -90,35 +114,41 @@ export async function revokeAllPermissions(profileId: string): Promise<boolean> 
   }
 }
 
-// Legacy compatibility: route-based permission checks
+// Route permissions map
 export const ROUTE_PERMISSIONS: Record<string, string[]> = {
-  "/admin": ["staff.manage"],
-  "/admin/users": ["staff.manage"],
+  "/admin": ["admin.access"],
+  "/admin/users": ["admin.access"],
   "/admin/analytics": ["analytics.view"],
   "/admin/audit": ["audit.view"],
   "/admin/staff": ["staff.manage"],
   "/admin/students": ["students.manage"],
   "/admin/subjects": ["settings.manage"],
-  "/admin/content": ["staff.manage"],
+  "/admin/content": ["content.manage"],
   "/admin/campuses": ["settings.manage"],
   "/admin/pages": ["pages.edit"],
-  "/fees": ["fees.view"],
-  "/library": ["library.view"],
-  "/teacher": ["grades.manage"],
-  "/grades": ["grades.view"],
-  "/attendance": ["attendance.view"],
-  "/timetable": ["timetable.view"],
-  "/assignments": ["assignments.view"],
-  "/admissions": ["admissions.view"],
+  "/admin/setup": ["admin.access"],
+  "/admin/god-mode": ["impersonate.users"],
+  "/admin/suggestions": ["suggestions.manage"],
+  "/teacher": ["grades.view", "attendance.view", "timetable.view"],
+  "/teacher/marks": ["grades.manage"],
+  "/teacher/registers": ["attendance.manage"],
+  "/teacher/timetables": ["timetable.manage"],
+  "/fees": ["fees.view", "fees.manage"],
+  "/library": ["library.view", "library.manage"],
+  "/grades": ["grades.view", "grades.manage"],
+  "/attendance": ["attendance.view", "attendance.manage"],
+  "/timetable": ["timetable.view", "timetable.manage"],
+  "/assignments": ["assignments.view", "assignments.manage"],
+  "/admissions": ["admissions.view", "admissions.manage"],
   "/manage/admissions": ["admissions.manage"],
   "/manage/calendar": ["calendar.manage"],
   "/manage/library": ["library.manage"],
   "/manage/vora": ["vora.manage"],
-  "/vora": ["vora.view"],
-  "/calendar": ["calendar.view"],
+  "/vora": ["vora.view", "vora.manage"],
+  "/calendar": ["calendar.view", "calendar.manage"],
   "/messages": ["messages.send"],
-  "/parent": ["students.view"],
-  "/student": ["students.view"],
+  "/student": [],
+  "/student/parent": [],
 };
 
 export async function getRequiredPermission(pathname: string): Promise<string[] | null> {
@@ -128,9 +158,18 @@ export async function getRequiredPermission(pathname: string): Promise<string[] 
   return null;
 }
 
-export async function checkRoutePermission(userId: string, pathname: string): Promise<boolean> {
+export async function checkRoutePermission(
+  userId: string,
+  pathname: string,
+  userCategory?: string
+): Promise<boolean> {
+  if (userCategory === "admin") return true;
+  if (userCategory === "student" && pathname.startsWith("/student")) return true;
+  if (userCategory === "parent" && pathname.startsWith("/student")) return true;
+
   const required = await getRequiredPermission(pathname);
   if (!required || required.length === 0) return true;
+
   for (const perm of required) {
     if (await hasPermission(userId, perm)) return true;
   }

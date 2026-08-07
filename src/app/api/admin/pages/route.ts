@@ -1,154 +1,95 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { hasPermission } from "@/lib/permissions";
 
-function createClient() {
-  const cookieStore = cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) { return cookieStore.get(name)?.value; },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: "", ...options });
-        },
-      },
-    }
-  );
-}
+export const dynamic = "force-dynamic";
 
-// GET /api/admin/pages — list all or get by slug
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const slug = searchParams.get("slug");
-  const supabase = createClient();
-
+export async function GET(req: NextRequest) {
   try {
-    if (slug) {
-      const { data, error } = await supabase
-        .from("cms_pages")
-        .select("*")
-        .eq("slug", slug)
-        .maybeSingle();
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-      return NextResponse.json({ page: data });
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const admin = getSupabaseAdmin();
+
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    const { data, error } = await supabase
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("user_category")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "pages.edit")))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { data: pages, error } = await admin
       .from("cms_pages")
-      .select("id, slug, title, is_published, updated_at, last_edited_by, profiles(full_name)")
-      .order("slug");
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ pages: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
+      .select("*")
+      .order("updated_at", { ascending: false });
 
-// POST /api/admin/pages — create new page (admin only)
-export async function POST(request: NextRequest) {
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", session.user.id)
-    .single();
-  if (!profile || !["principal", "super_admin"].includes(profile.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  try {
-    const body = await request.json();
-    const { slug, title, content, meta_description, meta_keywords, is_published } = body;
-    if (!slug || !title) {
-      return NextResponse.json({ error: "Slug and title are required" }, { status: 400 });
+    if (error) {
+      return NextResponse.json({ error: "Failed to fetch pages" }, { status: 500 });
     }
 
-    const { data, error } = await supabase.from("cms_pages").insert({
-      slug: slug.toLowerCase().trim().replace(/\s+/g, "-"),
-      title,
-      content: content || "",
-      meta_description: meta_description || "",
-      meta_keywords: meta_keywords || "",
-      is_published: is_published !== false,
-      last_edited_by: session.user.id,
-    }).select().single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ page: data }, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ pages: pages || [] });
+  } catch (error: any) {
+    console.error("[api/admin/pages] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
-// PUT /api/admin/pages — update page (admin only)
-export async function PUT(request: NextRequest) {
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", session.user.id)
-    .single();
-  if (!profile || !["principal", "super_admin"].includes(profile.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
+export async function PUT(req: NextRequest) {
   try {
-    const body = await request.json();
-    const { id, slug, title, content, meta_description, meta_keywords, is_published } = body;
-    if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const admin = getSupabaseAdmin();
 
-    const { data, error } = await supabase.from("cms_pages").update({
-      slug: slug ? slug.toLowerCase().trim().replace(/\s+/g, "-") : undefined,
-      title,
-      content,
-      meta_description,
-      meta_keywords,
-      is_published,
-      last_edited_by: session.user.id,
-    }).eq("id", id).select().single();
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    }
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ page: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("user_category")
+      .eq("id", user.id)
+      .single();
 
-// DELETE /api/admin/pages — delete page (admin only)
-export async function DELETE(request: NextRequest) {
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "pages.edit")))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", session.user.id)
-    .single();
-  if (!profile || !["principal", "super_admin"].includes(profile.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+    const body = await req.json();
+    const { slug, title, content, meta_description, published } = body;
 
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+    const { error } = await admin
+      .from("cms_pages")
+      .upsert({
+        slug,
+        title,
+        content,
+        meta_description,
+        published,
+        updated_by: user.id,
+        updated_at: new Date().toISOString(),
+      });
 
-    const { error } = await supabase.from("cms_pages").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: "Failed to save page" }, { status: 500 });
+    }
+
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (error: any) {
+    console.error("[api/admin/pages] PUT Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

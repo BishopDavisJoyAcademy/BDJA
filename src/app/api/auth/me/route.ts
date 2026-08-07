@@ -1,63 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateSession } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { getUserPermissions } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const { session, error } = await validateSession(req);
-    if (error || !session) {
-      return NextResponse.json({ error: error?.message || "Unauthorized" }, { status: 401 });
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
+    const token = authHeader.replace("Bearer ", "");
     const admin = getSupabaseAdmin();
 
-    // Get user permissions
-    const { data: perms } = await admin
-      .rpc("get_user_permissions", { p_user_id: session.userId });
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    }
 
-    // Get staff/student specific data
-    const { data: staffData } = await admin
-      .from("staff")
-      .select("department, designation")
-      .eq("id", session.userId)
+    const { data: profile, error: profileError } = await admin
+      .from("profiles")
+      .select("*, staff(department, designation), students(admission_number, grade_level)")
+      .eq("id", user.id)
       .single();
 
-    const { data: studentData } = await admin
-      .from("students")
-      .select("admission_number, grade_level")
-      .eq("id", session.userId)
-      .single();
+    if (profileError || !profile) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    const permissions = await getUserPermissions(user.id);
 
     return NextResponse.json({
       user: {
-        id: session.userId,
-        email: session.email,
-        role: session.role,
-        user_category: session.userCategory,
-        full_name: session.fullName,
-        campus_id: session.campusId,
-        password_changed: session.passwordChanged,
-        onboarding_completed: session.onboardingCompleted,
-        is_active: session.isActive,
+        id: profile.id,
+        email: profile.email,
+        full_name: profile.full_name,
+        role: profile.role,
+        user_category: profile.user_category,
+        campus_id: profile.campus_id,
+        is_active: profile.is_active,
+        password_changed: profile.password_changed,
+        onboarding_completed: profile.onboarding_completed,
+        department: profile.staff?.department || null,
+        designation: profile.staff?.designation || null,
+        admission_number: profile.students?.admission_number || null,
+        grade_level: profile.students?.grade_level || null,
       },
-      profile: {
-        id: session.userId,
-        email: session.email,
-        role: session.role,
-        user_category: session.userCategory,
-        full_name: session.fullName,
-        campus_id: session.campusId,
-        password_changed: session.passwordChanged,
-        onboarding_completed: session.onboardingCompleted,
-        is_active: session.isActive,
-        department: staffData?.department || null,
-        designation: staffData?.designation || null,
-        admission_number: studentData?.admission_number || null,
-        grade_level: studentData?.grade_level || null,
-      },
-      permissions: perms?.map((p: any) => p.permission_key) || [],
+      permissions,
     });
   } catch (error: any) {
     console.error("[api/auth/me] Error:", error);

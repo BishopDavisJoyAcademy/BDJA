@@ -1,66 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { firstLoginPasswordSchema } from "@/lib/validation";
+import { hashPassword, addPasswordToHistory } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
-/**
- * POST /api/auth/onboarding
- *
- * Marks onboarding as completed and returns the updated profile.
- * CRITICAL FIX: Uses .update().select().single() instead of
- * separate .update() then .select() calls. This ensures the read
- * happens on the SAME database connection as the write, avoiding
- * the read-replica lag that caused the onboarding loop.
- */
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("Authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-
-    if (!token) {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const token = authHeader.replace("Bearer ", "");
+    const admin = getSupabaseAdmin();
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { cookies: { getAll() { return []; }, setAll() {} } }
-    );
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    // CRITICAL FIX: Chain .select() to .update() so the read happens
-    // on the primary database connection, not a lagging read replica.
-    const { data: profile, error } = await getSupabaseAdmin()
+    const body = await req.json();
+    const parseResult = firstLoginPasswordSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });
+    }
+
+    const { new_password } = parseResult.data;
+    const passwordHash = await hashPassword(new_password);
+
+    const { error: updateError } = await admin
       .from("profiles")
-      .update({ onboarding_completed: true })
-      .eq("id", user.id)
-      .select("role, password_changed, onboarding_completed, is_active")
-      .single();
+      .update({
+        password_changed: true,
+        onboarding_completed: true,
+        temp_password_hash: null,
+      })
+      .eq("id", user.id);
 
-    if (error || !profile) {
-      console.error("[auth/onboarding] Update/select failed:", error);
-      return NextResponse.json(
-        { error: "Failed to complete onboarding" },
-        { status: 500 }
-      );
+    if (updateError) {
+      return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      profile,
-    });
+    await addPasswordToHistory(user.id, passwordHash);
 
+    const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, {
+      password: new_password,
+    });
+    if (authUpdateError) {
+      console.error("[onboarding] Auth password update failed:", authUpdateError);
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("[auth/onboarding] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    console.error("[api/auth/onboarding] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

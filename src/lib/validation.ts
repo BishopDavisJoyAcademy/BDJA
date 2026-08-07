@@ -13,7 +13,8 @@ export const passwordSchema = z.string()
 export const createUserSchema = z.object({
   email: emailSchema,
   full_name: z.string().min(2, "Name too short").max(100, "Name too long"),
-  role: z.enum(["student", "parent", "teacher", "class_prefect", "bursar", "librarian", "principal", "super_admin"]),
+  role: z.enum(["student", "staff", "admin"]),
+  user_category: z.enum(["student", "parent", "staff", "admin"]).optional(),
   campus_id: z.string().uuid().optional(),
   phone: z.string().max(20).optional(),
   admission_number: z.string().max(50).optional(),

@@ -1,32 +1,36 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import PermissionSelector from "@/components/permissions/PermissionSelector";
-import CredentialModal from "@/components/staff/CredentialModal";
-import { ArrowLeft, Loader2, UserPlus } from "lucide-react";
-import toast from "react-hot-toast";
+import { PermissionSelector } from "@/components/permissions/PermissionSelector";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 
-export default function CreateStaffPage() {
+export default function CreateStaff() {
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [createdUser, setCreatedUser] = useState<any>(null);
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-
   const [form, setForm] = useState({
-    fullName: "",
     email: "",
+    full_name: "",
     phone: "",
     department: "",
     designation: "",
+    campus_id: "",
   });
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.email || !form.full_name) {
+      toast.error("Email and full name are required");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/admin/staff", {
@@ -37,14 +41,12 @@ export default function CreateStaffPage() {
           permissionIds: selectedPermissions,
         }),
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create staff");
 
-      setCreatedUser(data.staff);
-      setShowModal(true);
-      toast.success("Staff member created successfully!");
-      setForm({ fullName: "", email: "", phone: "", department: "", designation: "" });
-      setSelectedPermissions([]);
+      toast.success(`Staff member created! Temp password: ${data.tempPassword}`);
+      router.push("/admin/staff");
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -52,106 +54,107 @@ export default function CreateStaffPage() {
     }
   };
 
+  if (user?.user_category !== "admin") {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">You do not have permission to access this page.</p>
+        <Link href="/admin" className="text-bdja-primary hover:underline mt-2 inline-block">
+          Go to Dashboard
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/admin/staff" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/admin/staff">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Create Staff Member</h1>
-          <p className="text-sm text-gray-500">Add a new staff member and assign permissions</p>
+          <h1 className="text-2xl font-bold text-gray-900">Add Staff Member</h1>
+          <p className="text-gray-500">Create a new staff account with permissions</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white rounded-xl border p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-bdja-primary" />
-            Basic Information
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-              <Input
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                placeholder="John Doe"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="john@bdja.ac.ke"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-              <Input
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="+2547XXXXXXXX"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-              <Input
-                value={form.department}
-                onChange={(e) => setForm({ ...form, department: e.target.value })}
-                placeholder="Academics"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-              <Input
-                value={form.designation}
-                onChange={(e) => setForm({ ...form, designation: e.target.value })}
-                placeholder="Teacher"
-              />
-            </div>
+      <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg border shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+            <Input
+              value={form.full_name}
+              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              placeholder="John Doe"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="john@bdja.ac.ke"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <Input
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              placeholder="+254..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+            <Input
+              value={form.department}
+              onChange={(e) => setForm({ ...form, department: e.target.value })}
+              placeholder="e.g. Mathematics"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+            <Input
+              value={form.designation}
+              onChange={(e) => setForm({ ...form, designation: e.target.value })}
+              placeholder="e.g. Senior Teacher"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Campus ID</label>
+            <Input
+              value={form.campus_id}
+              onChange={(e) => setForm({ ...form, campus_id: e.target.value })}
+              placeholder="UUID"
+            />
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Permissions</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Select what this staff member is allowed to manage. You can change these anytime.
-          </p>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
           <PermissionSelector
-            selectedIds={selectedPermissions}
+            selected={selectedPermissions}
             onChange={setSelectedPermissions}
           />
+          <p className="text-xs text-gray-500 mt-1">
+            Select the modules this staff member can access. They will see only what you allow.
+          </p>
         </div>
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading} className="flex items-center gap-2">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            Create Staff Member
+            Create Staff
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.push("/admin/staff")}>
-            Cancel
-          </Button>
+          <Link href="/admin/staff">
+            <Button variant="outline" type="button">Cancel</Button>
+          </Link>
         </div>
       </form>
-
-      {createdUser && (
-        <CredentialModal
-          isOpen={showModal}
-          onClose={() => {
-            setShowModal(false);
-            router.push("/admin/staff");
-          }}
-          email={createdUser.email}
-          tempPassword={createdUser.temp_password}
-          fullName={createdUser.full_name}
-          phone={form.phone}
-        />
-      )}
     </div>
   );
 }

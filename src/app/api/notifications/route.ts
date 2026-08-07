@@ -1,62 +1,70 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateSession } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const { session, error } = await validateSession(req);
-    if (error || !session) {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
+    const token = authHeader.replace("Bearer ", "");
     const admin = getSupabaseAdmin();
-    const { data, error: dbError } = await admin
-      .from("notifications")
-      .select("*")
-      .eq("recipient_id", session.userId)
-      .order("created_at", { ascending: false })
-      .limit(20);
 
-    if (dbError) {
-      return NextResponse.json({ error: dbError.message }, { status: 500 });
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    return NextResponse.json({ notifications: data || [] });
+    const { data: notifications, error } = await admin
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      return NextResponse.json({ error: "Failed to fetch notifications" }, { status: 500 });
+    }
+
+    return NextResponse.json({ notifications: notifications || [] });
   } catch (error: any) {
-    console.error("[api/notifications] GET error:", error);
+    console.error("[api/notifications] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { session, error } = await validateSession(req);
-    if (error || !session) {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const token = authHeader.replace("Bearer ", "");
+    const admin = getSupabaseAdmin();
 
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-    if (!id) {
-      return NextResponse.json({ error: "ID required" }, { status: 400 });
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    const admin = getSupabaseAdmin();
-    const { error: dbError } = await admin
-      .from("notifications")
-      .update({ read: true })
-      .eq("id", id)
-      .eq("recipient_id", session.userId);
+    const body = await req.json();
+    const { notification_id, read } = body;
 
-    if (dbError) {
-      return NextResponse.json({ error: dbError.message }, { status: 500 });
+    const { error } = await admin
+      .from("notifications")
+      .update({ read })
+      .eq("id", notification_id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      return NextResponse.json({ error: "Failed to update notification" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("[api/notifications] PATCH error:", error);
+    console.error("[api/notifications] PATCH Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

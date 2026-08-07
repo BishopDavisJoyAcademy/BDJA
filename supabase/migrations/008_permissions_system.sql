@@ -1,14 +1,12 @@
--- ============================================================
--- BDJA Platform v4.0 — Permissions System
--- Migration 008: Database-Driven Permissions
--- ============================================================
+-- BDJA Migration 008: Permissions System v2 (FIXED)
+-- Uses user_id (not recipient_id) to match 001_initial_schema
 
 -- ============================================
--- 1. PERMISSION CATEGORIES
+-- 1. Permission Categories
 -- ============================================
 CREATE TABLE IF NOT EXISTS permission_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  key TEXT NOT NULL UNIQUE,
+  key TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   icon TEXT,
   sort_order INTEGER DEFAULT 0,
@@ -16,193 +14,158 @@ CREATE TABLE IF NOT EXISTS permission_categories (
 );
 
 -- ============================================
--- 2. PERMISSIONS TABLE
+-- 2. Permissions
 -- ============================================
 CREATE TABLE IF NOT EXISTS permissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  key TEXT NOT NULL UNIQUE,
+  key TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
-  category TEXT NOT NULL REFERENCES permission_categories(key),
+  category TEXT NOT NULL REFERENCES permission_categories(key) ON DELETE CASCADE,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- ============================================
--- 3. STAFF PERMISSIONS (junction)
+-- 3. Staff Permissions (many-to-many)
 -- ============================================
 CREATE TABLE IF NOT EXISTS staff_permissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
   granted_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
+  granted_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(profile_id, permission_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_staff_permissions_profile ON staff_permissions(profile_id);
-CREATE INDEX IF NOT EXISTS idx_staff_permissions_permission ON staff_permissions(permission_id);
-
 -- ============================================
--- 4. STUDENTS TABLE (ALTER EXISTING — created in 001)
+-- 4. Enable RLS
 -- ============================================
--- Add missing columns to existing students table
-ALTER TABLE students ADD COLUMN IF NOT EXISTS grade_level TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
-
--- Make class_id nullable if it was NOT NULL (so migration 009 can insert without it)
-ALTER TABLE students ALTER COLUMN class_id DROP NOT NULL;
-ALTER TABLE students ALTER COLUMN campus_id DROP NOT NULL;
-
--- Ensure profile_id links exist for existing students
-ALTER TABLE students ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL;
-
--- Create/update indexes
-CREATE INDEX IF NOT EXISTS idx_students_grade ON students(grade_level);
-CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
-
--- ============================================
--- 5. STAFF TABLE
--- ============================================
-CREATE TABLE IF NOT EXISTS staff (
-  id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
-  employee_id TEXT UNIQUE,
-  department TEXT,
-  designation TEXT,
-  join_date DATE,
-  status TEXT DEFAULT 'active',
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_staff_employee ON staff(employee_id);
-
--- ============================================
--- 6. PARENT-STUDENT LINKS
--- ============================================
-CREATE TABLE IF NOT EXISTS parent_students (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  parent_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  relationship TEXT DEFAULT 'parent',
-  is_primary BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(parent_id, student_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_parent_students_parent ON parent_students(parent_id);
-CREATE INDEX IF NOT EXISTS idx_parent_students_student ON parent_students(student_id);
-
--- ============================================
--- NOTIFICATIONS TABLE
--- ============================================
-CREATE TABLE IF NOT EXISTS notifications (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  recipient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  message TEXT NOT NULL,
-  type TEXT DEFAULT 'info',
-  read BOOLEAN DEFAULT false,
-  link_url TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications(recipient_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
-
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "notifications_own" ON notifications FOR ALL USING (recipient_id = auth.uid());
-GRANT ALL ON notifications TO service_role;
-
--- ============================================
--- 7. SEED PERMISSION CATEGORIES
--- ============================================
-INSERT INTO permission_categories (key, name, icon, sort_order) VALUES
-  ('academics', 'Academics', 'BookOpen', 1),
-  ('finance', 'Finance', 'DollarSign', 2),
-  ('communication', 'Communication', 'MessageSquare', 3),
-  ('administration', 'Administration', 'Settings', 4),
-  ('cms', 'CMS', 'FileText', 5)
-ON CONFLICT (key) DO NOTHING;
-
--- ============================================
--- 8. SEED PERMISSIONS
--- ============================================
-INSERT INTO permissions (key, name, category, description) VALUES
-  -- Academics
-  ('students.view', 'View Students', 'academics', 'View student records'),
-  ('students.manage', 'Manage Students', 'academics', 'Create, edit, and delete student records'),
-  ('grades.view', 'View Grades', 'academics', 'View grade reports'),
-  ('grades.manage', 'Manage Grades', 'academics', 'Enter and edit grades'),
-  ('attendance.view', 'View Attendance', 'academics', 'View attendance records'),
-  ('attendance.manage', 'Manage Attendance', 'academics', 'Mark and edit attendance'),
-  ('timetable.view', 'View Timetable', 'academics', 'View class timetables'),
-  ('timetable.manage', 'Manage Timetable', 'academics', 'Create and edit timetables'),
-  ('assignments.view', 'View Assignments', 'academics', 'View assignments'),
-  ('assignments.manage', 'Manage Assignments', 'academics', 'Create and grade assignments'),
-  -- Finance
-  ('fees.view', 'View Fees', 'finance', 'View fee structures and balances'),
-  ('fees.manage', 'Manage Fees', 'finance', 'Create fee structures and record payments'),
-  ('payments.verify', 'Verify Payments', 'finance', 'Verify and approve fee payments'),
-  -- Communication
-  ('announcements.broadcast', 'Broadcast Announcements', 'communication', 'Send announcements to users'),
-  ('messages.send', 'Send Messages', 'communication', 'Send messages to students, parents, or staff'),
-  -- Administration
-  ('staff.view', 'View Staff', 'administration', 'View staff directory'),
-  ('staff.manage', 'Manage Staff', 'administration', 'Create and manage staff accounts'),
-  ('admissions.view', 'View Admissions', 'administration', 'View admission applications'),
-  ('admissions.manage', 'Manage Admissions', 'administration', 'Process admission applications'),
-  ('calendar.view', 'View Calendar', 'administration', 'View school calendar'),
-  ('calendar.manage', 'Manage Calendar', 'administration', 'Create and edit calendar events'),
-  ('library.view', 'View Library', 'administration', 'View library resources'),
-  ('library.manage', 'Manage Library', 'administration', 'Manage library catalog and borrowings'),
-  ('vora.view', 'View VORA', 'administration', 'View VORA learning resources'),
-  ('vora.manage', 'Manage VORA', 'administration', 'Upload and manage VORA content'),
-  ('analytics.view', 'View Analytics', 'administration', 'View system analytics and reports'),
-  ('audit.view', 'View Audit Logs', 'administration', 'View system audit logs'),
-  ('settings.manage', 'Manage Settings', 'administration', 'Configure system settings'),
-  -- CMS
-  ('pages.edit', 'Edit CMS Pages', 'cms', 'Edit public website pages')
-ON CONFLICT (key) DO NOTHING;
-
--- ============================================
--- 9. RLS FOR NEW TABLES
--- ============================================
+ALTER TABLE permission_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_permissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE permission_categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE students ENABLE ROW LEVEL SECURITY;
-ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
-ALTER TABLE parent_students ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "permissions_public_read" ON permissions FOR SELECT USING (true);
-CREATE POLICY "perm_categories_public_read" ON permission_categories FOR SELECT USING (true);
-
-CREATE POLICY "staff_permissions_own" ON staff_permissions FOR SELECT USING (profile_id = auth.uid());
-CREATE POLICY "staff_permissions_admin" ON staff_permissions FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('principal', 'super_admin'))
-);
-
-CREATE POLICY "students_own" ON students FOR SELECT USING (profile_id = auth.uid() OR id = auth.uid());
-CREATE POLICY "students_admin" ON students FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('principal', 'super_admin', 'teacher'))
-);
-
-CREATE POLICY "staff_own" ON staff FOR SELECT USING (id = auth.uid());
-CREATE POLICY "staff_admin" ON staff FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('principal', 'super_admin'))
-);
-
-CREATE POLICY "parent_students_own" ON parent_students FOR SELECT USING (parent_id = auth.uid());
-CREATE POLICY "parent_students_admin" ON parent_students FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('principal', 'super_admin'))
-);
 
 -- ============================================
--- 10. GRANT SERVICE ROLE
+-- 5. RLS Policies
 -- ============================================
-GRANT ALL ON permissions TO service_role;
-GRANT ALL ON staff_permissions TO service_role;
-GRANT ALL ON permission_categories TO service_role;
-GRANT ALL ON students TO service_role;
-GRANT ALL ON staff TO service_role;
-GRANT ALL ON parent_students TO service_role;
+CREATE POLICY "Anyone can read permission categories" ON permission_categories
+  FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can read permissions" ON permissions
+  FOR SELECT USING (true);
+
+CREATE POLICY "Admins can manage staff permissions" ON staff_permissions
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.user_category = 'admin'
+    )
+  );
+
+CREATE POLICY "Staff can view own permissions" ON staff_permissions
+  FOR SELECT USING (profile_id = auth.uid());
+
+-- ============================================
+-- 6. Helper Functions (FIXED: use user_id not recipient_id)
+-- ============================================
+CREATE OR REPLACE FUNCTION has_permission(p_user_id UUID, p_permission_key TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+  -- Admins always have all permissions
+  IF EXISTS (SELECT 1 FROM profiles WHERE id = p_user_id AND user_category = 'admin') THEN
+    RETURN true;
+  END IF;
+  RETURN EXISTS (
+    SELECT 1 
+    FROM staff_permissions sp
+    JOIN permissions p ON p.id = sp.permission_id
+    WHERE sp.profile_id = p_user_id AND p.key = p_permission_key
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION get_user_permissions(p_user_id UUID)
+RETURNS TABLE(permission_key TEXT) AS $$
+BEGIN
+  -- Admins get all permission keys
+  IF EXISTS (SELECT 1 FROM profiles WHERE id = p_user_id AND user_category = 'admin') THEN
+    RETURN QUERY SELECT p.key FROM permissions p;
+  END IF;
+  RETURN QUERY
+  SELECT p.key 
+  FROM staff_permissions sp
+  JOIN permissions p ON p.id = sp.permission_id
+  WHERE sp.profile_id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- 7. Notification trigger (FIXED: use user_id)
+-- ============================================
+CREATE OR REPLACE FUNCTION notify_user_on_permission_change()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO notifications (user_id, title, message, type, read, created_at)
+  VALUES (
+    NEW.profile_id,
+    'Permission Updated',
+    'Your access permissions have been updated by an administrator.',
+    'permission',
+    false,
+    now()
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_permission_change_notification ON staff_permissions;
+CREATE TRIGGER trg_permission_change_notification
+  AFTER INSERT OR UPDATE ON staff_permissions
+  FOR EACH ROW
+  EXECUTE FUNCTION notify_user_on_permission_change();
+
+-- ============================================
+-- 8. Seed default permission categories
+-- ============================================
+INSERT INTO permission_categories (key, name, icon, sort_order) VALUES
+  ('academic', 'Academic', 'GraduationCap', 1),
+  ('administration', 'Administration', 'Shield', 2),
+  ('finance', 'Finance', 'Wallet', 3),
+  ('library', 'Library', 'Library', 4),
+  ('content', 'Content', 'FileText', 5),
+  ('communication', 'Communication', 'MessageSquare', 6)
+ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- 9. Seed default permissions
+-- ============================================
+INSERT INTO permissions (key, name, category, description) VALUES
+  ('grades.view', 'View Grades', 'academic', 'View student grades'),
+  ('grades.manage', 'Manage Grades', 'academic', 'Enter and edit student grades'),
+  ('attendance.view', 'View Attendance', 'academic', 'View attendance records'),
+  ('attendance.manage', 'Manage Attendance', 'academic', 'Mark and edit attendance'),
+  ('timetable.view', 'View Timetable', 'academic', 'View class schedules'),
+  ('timetable.manage', 'Manage Timetable', 'academic', 'Create and edit timetables'),
+  ('assignments.view', 'View Assignments', 'academic', 'View assignments'),
+  ('assignments.manage', 'Manage Assignments', 'academic', 'Create and manage assignments'),
+  ('admin.access', 'Admin Access', 'administration', 'Full admin dashboard access'),
+  ('staff.manage', 'Manage Staff', 'administration', 'Create and manage staff accounts'),
+  ('students.manage', 'Manage Students', 'administration', 'Create and manage student accounts'),
+  ('analytics.view', 'View Analytics', 'administration', 'View school analytics'),
+  ('audit.view', 'View Audit Logs', 'administration', 'View system audit logs'),
+  ('settings.manage', 'Manage Settings', 'administration', 'Configure platform settings'),
+  ('fees.view', 'View Fees', 'finance', 'View fee records'),
+  ('fees.manage', 'Manage Fees', 'finance', 'Manage fee payments and balances'),
+  ('payments.verify', 'Verify Payments', 'finance', 'Verify and confirm payments'),
+  ('library.view', 'View Library', 'library', 'View library catalog'),
+  ('library.manage', 'Manage Library', 'library', 'Manage library books and borrowing'),
+  ('vora.view', 'View VORA', 'content', 'View learning videos'),
+  ('vora.manage', 'Manage VORA', 'content', 'Manage VORA content'),
+  ('calendar.view', 'View Calendar', 'content', 'View school calendar'),
+  ('calendar.manage', 'Manage Calendar', 'content', 'Manage calendar events'),
+  ('pages.edit', 'Edit Pages', 'content', 'Edit CMS pages'),
+  ('content.manage', 'Manage Content', 'content', 'Manage platform content'),
+  ('admissions.view', 'View Admissions', 'administration', 'View admission applications'),
+  ('admissions.manage', 'Manage Admissions', 'administration', 'Process admission applications'),
+  ('messages.send', 'Send Messages', 'communication', 'Send internal messages'),
+  ('impersonate.users', 'Impersonate Users', 'administration', 'Preview portals as other users (God Mode)'),
+  ('suggestions.manage', 'Manage Suggestions', 'administration', 'Review and manage user suggestions')
+ON CONFLICT (key) DO NOTHING;

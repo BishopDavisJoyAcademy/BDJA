@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { UserRole } from "@/types";
-
-export type UserCategory = "student" | "parent" | "staff" | "admin";
+import { UserRole, UserCategory } from "@/types";
 
 export interface AuthUser {
   id: string;
@@ -78,20 +76,21 @@ export function useAuth() {
         return;
       }
 
-      const role = profile.role || "student";
-      // CORRECT fallback: principal/super_admin → admin
+      // Map old roles to new simplified roles for safety
+      const rawRole = profile.role || "student";
+      const role: UserRole = ["student", "parent", "staff", "admin"].includes(rawRole)
+        ? rawRole
+        : ["principal", "super_admin"].includes(rawRole) ? "admin" : "staff";
+
       let userCategory: UserCategory = profile.user_category;
-      if (!userCategory) {
-        if (role === "student") userCategory = "student";
-        else if (role === "parent") userCategory = "parent";
-        else if (role === "principal" || role === "super_admin") userCategory = "admin";
-        else userCategory = "staff";
+      if (!userCategory || !["student", "parent", "staff", "admin"].includes(userCategory)) {
+        userCategory = role === "student" ? "student" : role === "parent" ? "parent" : role === "admin" ? "admin" : "staff";
       }
 
       const authUser: AuthUser = {
         id: profile.id,
         email: profile.email,
-        role: role as UserRole,
+        role,
         user_category: userCategory,
         full_name: profile.full_name || "User",
         password_changed: profile.password_changed ?? false,

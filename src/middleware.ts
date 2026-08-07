@@ -1,11 +1,12 @@
 /**
- * BDJA Middleware v4.0
+ * BDJA Middleware v5.0 — Ghost-free + Security Hardened
  */
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { checkRoutePermission } from "@/lib/permissions";
+import { getSecurityHeaders } from "@/lib/security";
 
 const PUBLIC_PATHS = [
   "/", "/about", "/academics", "/admissions", "/students", "/news-events",
@@ -16,13 +17,10 @@ const PUBLIC_PATHS = [
 
 const AUTH_PATHS = ["/login", "/reset-password", "/onboarding"];
 
-function getDashboardPath(userCategory: string | null, role: string | null): string {
+function getDashboardPath(userCategory: string | null): string {
   if (userCategory === "student") return "/student";
-  if (userCategory === "parent") return "/parent";
-  if (userCategory === "staff") {
-    if (role === "teacher") return "/teacher";
-    return "/teacher";
-  }
+  if (userCategory === "parent") return "/student";
+  if (userCategory === "staff") return "/teacher";
   if (userCategory === "admin") return "/admin";
   return "/student";
 }
@@ -30,6 +28,12 @@ function getDashboardPath(userCategory: string | null, role: string | null): str
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
   const pathname = request.nextUrl.pathname;
+
+  // Apply security headers to all responses
+  const securityHeaders = getSecurityHeaders();
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
 
   if (
     pathname.startsWith("/_next/") ||
@@ -81,12 +85,13 @@ export async function middleware(request: NextRequest) {
     try {
       const { data: authUser } = await admin.auth.admin.getUserById(user.sub);
       if (authUser?.user) {
-        const role = authUser.user.user_metadata?.role || "student";
-        const userCategory = authUser.user.user_metadata?.user_category || 
-          (role === "student" ? "student" : role === "parent" ? "parent" : "staff");
+        const rawRole = authUser.user.user_metadata?.role || "student";
+        const role = ["student", "parent", "staff", "admin"].includes(rawRole) ? rawRole : "staff";
+        const userCategory = authUser.user.user_metadata?.user_category ||
+          (role === "student" ? "student" : role === "parent" ? "parent" : role === "admin" ? "admin" : "staff");
         const { error: insertError } = await admin.from("profiles").insert({
           id: user.sub,
-          email: authUser.user.email || user.email || "",
+          email: authUser.user.email || "",
           full_name: authUser.user.user_metadata?.full_name || "User",
           role,
           user_category: userCategory,
@@ -112,7 +117,6 @@ export async function middleware(request: NextRequest) {
     }
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("error", "profile_missing");
-    loginUrl.searchParams.set("error_detail", "Your account profile is missing. Please contact the administrator.");
     return NextResponse.redirect(loginUrl);
   }
 
@@ -130,7 +134,6 @@ async function handleAuthenticatedUser(
     if (pathname.startsWith("/login")) return response;
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("error", "suspended");
-    loginUrl.searchParams.set("error_detail", "Your account has been suspended. Please contact the administrator.");
     return NextResponse.redirect(loginUrl);
   }
 
@@ -142,11 +145,10 @@ async function handleAuthenticatedUser(
     return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 
-  // Check route permissions for non-public routes
   if (!pathname.startsWith("/api/")) {
-    const hasAccess = await checkRoutePermission(userId, pathname);
+    const hasAccess = await checkRoutePermission(userId, pathname, profile.user_category);
     if (!hasAccess) {
-      const dest = getDashboardPath(profile.user_category, profile.role);
+      const dest = getDashboardPath(profile.user_category);
       return NextResponse.redirect(new URL(dest, request.url));
     }
   }

@@ -1,51 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase-client";
-import { loadAllVoraContent, getVoraByGrade, getVoraSubjects, getVoraCategories } from "@/lib/vora";
-import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { hasPermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const identifier = getClientIdentifier(req) + ":vora-content";
-    const { success } = await rateLimit(identifier, { limit: 60, windowMs: 60000 });
-    if (!success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const admin = getSupabaseAdmin();
+
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    // Auth check — v0.12.4: use async createClient with getAll/setAll
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("user_category")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    // Students, staff, and admins can access VORA
+    if (profile.user_category === "parent") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
-    const grade = searchParams.get("grade");
+    const grade_level = searchParams.get("grade_level");
     const subject = searchParams.get("subject");
-    const category = searchParams.get("category");
-    const mode = searchParams.get("mode"); // 'subjects', 'categories', 'all'
 
-    if (mode === "subjects") {
-      return NextResponse.json({ subjects: getVoraSubjects() });
+    let query = admin.from("vora_content").select("*");
+    if (grade_level) query = query.eq("grade_level", grade_level);
+    if (subject) query = query.eq("subject", subject);
+
+    const { data, error } = await query.order("created_at", { ascending: false }).limit(50);
+
+    if (error) {
+      return NextResponse.json({ error: "Failed to fetch VORA content" }, { status: 500 });
     }
 
-    if (mode === "categories") {
-      return NextResponse.json({ categories: getVoraCategories() });
-    }
-
-    let content = grade ? getVoraByGrade(grade) : loadAllVoraContent();
-
-    if (subject) {
-      content = content.filter(c => c.subject?.toLowerCase() === subject.toLowerCase());
-    }
-    if (category) {
-      content = content.filter(c => c.category?.toLowerCase() === category.toLowerCase());
-    }
-
-    return NextResponse.json({ content, count: content.length });
+    return NextResponse.json({ content: data || [] });
   } catch (error: any) {
-    console.error("VORA content error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[api/vora/content] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

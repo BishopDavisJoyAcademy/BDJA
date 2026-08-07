@@ -1,30 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateSession } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const { session, error } = await validateSession(req);
-    if (error || !session) {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
+    const token = authHeader.replace("Bearer ", "");
     const admin = getSupabaseAdmin();
 
-    const { data, error: dbError } = await admin
-      .from("announcements")
-      .select("*")
-      .or("audience.cs.{parents},audience.cs.{all}")
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    if (dbError) {
-      return NextResponse.json({ error: dbError.message }, { status: 500 });
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    return NextResponse.json({ announcements: data || [] });
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("user_category")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || profile.user_category !== "parent") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { data: announcements, error } = await admin
+      .from("calendar_events")
+      .select("*")
+      .in("target_audience", ["all", "parents"])
+      .order("start_date", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      return NextResponse.json({ error: "Failed to fetch announcements" }, { status: 500 });
+    }
+
+    return NextResponse.json({ announcements: announcements || [] });
   } catch (error: any) {
     console.error("[api/parent/announcements] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

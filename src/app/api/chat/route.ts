@@ -9,21 +9,18 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limiting
     const identifier = getClientIdentifier(req) + ":chat";
     const { success } = await rateLimit(identifier, { limit: 20, windowMs: 60000 });
     if (!success) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    // Auth check
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Validation
     const body = await req.json() as Record<string, any>;
     const parseResult = chatMessageSchema.safeParse(body);
     if (!parseResult.success) {
@@ -32,7 +29,6 @@ export async function POST(req: NextRequest) {
 
     const { messages, context, stream } = parseResult.data;
 
-    // Search VORA first for relevant content
     const lastUserMessage = messages.filter((m: any) => m.role === "user").pop()?.content || "";
     const voraResults = searchVoraContent(lastUserMessage, {
       grade_level: context?.grade_level,
@@ -40,7 +36,6 @@ export async function POST(req: NextRequest) {
       limit: 5,
     });
 
-    // If no local results, search YouTube as fallback
     let youtubeResults: any[] = [];
     if (voraResults.length === 0 && lastUserMessage.length > 3) {
       youtubeResults = await searchYouTubeAsVora(lastUserMessage, context?.grade_level, 3);
@@ -52,7 +47,6 @@ export async function POST(req: NextRequest) {
       hasLocalContent: voraResults.length > 0,
     };
 
-    // Proxy to Aevibron
     const endpoint = process.env.NEXT_PUBLIC_AEVIBRON_ENDPOINT || "https://api.aevibron.com/api/v1/chat";
     const key = process.env.AEVIBRON_API_KEY || "";
 

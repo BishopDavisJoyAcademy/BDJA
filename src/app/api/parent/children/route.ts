@@ -1,42 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateSession } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const { session, error } = await validateSession(req);
-    if (error || !session) {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
+    const token = authHeader.replace("Bearer ", "");
     const admin = getSupabaseAdmin();
 
-    // Get linked children
-    const { data: links, error: linkError } = await admin
-      .from("parent_students")
-      .select("student_id")
-      .eq("parent_id", session.userId);
-
-    if (linkError) {
-      return NextResponse.json({ error: linkError.message }, { status: 500 });
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    if (!links || links.length === 0) {
-      return NextResponse.json({ children: [] });
-    }
-
-    const studentIds = links.map((l: { student_id: string }) => l.student_id);
-
-    const { data: children, error: childError } = await admin
+    const { data: profile } = await admin
       .from("profiles")
-      .select("*, students(*)")
-      .in("id", studentIds)
-      .eq("is_active", true);
+      .select("user_category")
+      .eq("id", user.id)
+      .single();
 
-    if (childError) {
-      return NextResponse.json({ error: childError.message }, { status: 500 });
+    if (!profile || profile.user_category !== "parent") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { data: children, error } = await admin
+      .from("parent_students")
+      .select("student_id, relationship, students(*, profiles(full_name, email, phone))")
+      .eq("parent_id", user.id);
+
+    if (error) {
+      return NextResponse.json({ error: "Failed to fetch children" }, { status: 500 });
     }
 
     return NextResponse.json({ children: children || [] });

@@ -52,7 +52,8 @@
     "recharts": "^2.12.0",
     "framer-motion": "^11.1.0",
     "react-intersection-observer": "^9.10.0",
-    "workbox-webpack-plugin": "^7.1.0"
+    "workbox-webpack-plugin": "^7.1.0",
+    "react-syntax-highlighter": "^15.5.0"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

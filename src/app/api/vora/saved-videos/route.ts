@@ -1,107 +1,71 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase-client";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { saveVideoSchema } from "@/lib/validation";
-import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const identifier = getClientIdentifier(req) + ":saved-videos";
-    const { success } = await rateLimit(identifier, { limit: 60, windowMs: 60000 });
-    if (!success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-    }
-
-    // Auth check — v0.12.4: use async createClient with getAll/setAll
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const token = authHeader.replace("Bearer ", "");
+    const admin = getSupabaseAdmin();
 
-    const { data, error } = await getSupabaseAdmin()
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    }
+
+    const { data, error } = await admin
       .from("saved_videos")
-      .select("*")
+      .select("*, vora_content(*)")
       .eq("user_id", user.id)
-      .order("saved_at", { ascending: false });
+      .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      return NextResponse.json({ error: "Failed to fetch saved videos" }, { status: 500 });
+    }
 
     return NextResponse.json({ videos: data || [] });
   } catch (error: any) {
-    console.error("Saved videos GET error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[api/vora/saved-videos] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const identifier = getClientIdentifier(req) + ":save-video";
-    const { success } = await rateLimit(identifier, { limit: 20, windowMs: 60000 });
-    if (!success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-    }
-
-    // Auth check — v0.12.4: use async createClient with getAll/setAll
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const token = authHeader.replace("Bearer ", "");
+    const admin = getSupabaseAdmin();
 
-    const body = await req.json() as Record<string, any>;
-    const parseResult = saveVideoSchema.safeParse(body);
-    if (!parseResult.success) {
-      return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    const { error } = await getSupabaseAdmin().from("saved_videos").insert({
-      user_id: user.id,
-      ...parseResult.data,
-    });
+    const body = await req.json();
+    const { video_id } = body;
+
+    if (!video_id) {
+      return NextResponse.json({ error: "video_id required" }, { status: 400 });
+    }
+
+    const { error } = await admin
+      .from("saved_videos")
+      .insert({ user_id: user.id, video_id });
 
     if (error) {
-      if (error.code === "23505") {
-        return NextResponse.json({ error: "Video already saved" }, { status: 409 });
-      }
-      throw error;
+      return NextResponse.json({ error: "Failed to save video" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: "Video saved" });
+    return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("Save video error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-export async function DELETE(req: NextRequest) {
-  try {
-    // Auth check — v0.12.4: use async createClient with getAll/setAll
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-    if (!id) {
-      return NextResponse.json({ error: "ID required" }, { status: 400 });
-    }
-
-    const { error } = await getSupabaseAdmin()
-      .from("saved_videos")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user.id);
-
-    if (error) throw error;
-
-    return NextResponse.json({ success: true, message: "Video removed" });
-  } catch (error: any) {
-    console.error("Delete saved video error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[api/vora/saved-videos] POST Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

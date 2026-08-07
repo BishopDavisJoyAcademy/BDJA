@@ -36,9 +36,7 @@ export interface Campus {
 }
 
 export type UserCategory = 'student' | 'parent' | 'staff' | 'admin';
-
-// Legacy role kept for backward compatibility during transition
-export type UserRole = 'student' | 'parent' | 'teacher' | 'class_prefect' | 'bursar' | 'librarian' | 'principal' | 'super_admin';
+export type UserRole = 'student' | 'parent' | 'staff' | 'admin';
 
 export interface Profile {
   id: string;
@@ -71,15 +69,15 @@ export interface Staff {
   department?: string;
   designation?: string;
   join_date?: string;
-  status: 'active' | 'inactive' | 'on_leave';
+  status: 'active' | 'inactive' | 'suspended';
 }
 
 export interface ParentStudent {
   id: string;
   parent_id: string;
   student_id: string;
-  relationship: string;
-  is_primary: boolean;
+  relationship?: string;
+  is_primary?: boolean;
 }
 
 export interface Permission {
@@ -98,13 +96,19 @@ export interface PermissionCategory {
   sort_order: number;
 }
 
-export interface StaffPermission {
+export interface Suggestion {
   id: string;
-  profile_id: string;
-  permission_id: string;
-  granted_by?: string;
-  created_at?: string;
-  permission?: Permission;
+  user_id: string;
+  type: 'idea' | 'feedback' | 'bug' | 'improvement' | 'complaint';
+  title: string;
+  description: string;
+  status: 'open' | 'under_review' | 'planned' | 'implemented' | 'declined' | 'closed';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  admin_response?: string;
+  responded_by?: string;
+  responded_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CmsPage {
@@ -113,135 +117,109 @@ export interface CmsPage {
   title: string;
   content: string;
   meta_description?: string;
-  is_published: boolean;
+  published: boolean;
+  updated_by?: string;
   updated_at?: string;
-}
-
-export interface Admission {
-  id: string;
-  student_name: string;
-  parent_name: string;
-  parent_phone: string;
-  parent_email?: string;
-  grade_level: string;
-  campus_id?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'enrolled';
-  notes?: string;
-  created_at?: string;
-}
-
-export interface FeeStructure {
-  id: string;
-  grade_level: string;
-  term: string;
-  academic_year: string;
-  amount: number;
-  description?: string;
-}
-
-export interface Payment {
-  id: string;
-  student_id: string;
-  fee_structure_id: string;
-  amount: number;
-  payment_method: string;
-  status: 'pending' | 'verified' | 'rejected';
-  receipt_number?: string;
-  paid_at?: string;
-  verified_by?: string;
-  created_at?: string;
 }
 
 export interface CalendarEvent {
   id: string;
   title: string;
   description?: string;
-  event_type: string;
   start_date: string;
   end_date?: string;
-  all_day: boolean;
-  audience: string[];
-  grade_levels?: string[];
+  event_type: string;
+  target_audience: string;
+  target_grade?: string;
   campus_id?: string;
   created_by: string;
-  created_at?: string;
 }
 
 export interface TimetableEntry {
   id: string;
   class_id: string;
   subject_id: string;
-  teacher_id: string;
+  teacher_id?: string;
   day_of_week: number;
   start_time: string;
   end_time: string;
   room?: string;
+  topic?: string;
 }
 
-export interface Subject {
-  id: string;
-  name: string;
-  code?: string;
-  grade_levels: string[];
-  description?: string;
-}
-
-export interface Grade {
+export interface Assessment {
   id: string;
   student_id: string;
-  subject_id: string;
   class_id: string;
+  subject_id: string;
+  strand: string;
+  sub_strand: string;
+  specific_learning_outcome?: string;
+  performance_level: 'beginning' | 'developing' | 'competent' | 'exceeds';
+  score?: number;
+  max_score?: number;
   term: string;
   academic_year: string;
-  score: number;
-  max_score: number;
-  grade_level: string;
-  remarks?: string;
-  teacher_id: string;
-  created_at?: string;
 }
 
 export interface Assignment {
   id: string;
-  title: string;
-  description?: string;
-  subject_id: string;
   class_id: string;
+  subject_id: string;
   teacher_id: string;
-  due_date: string;
-  max_score: number;
-  status: 'draft' | 'published' | 'closed';
-  created_at?: string;
-}
-
-export interface VoraVideo {
-  id: string;
   title: string;
   description?: string;
-  youtube_id: string;
-  grade_level?: string;
-  subject_id?: string;
-  topic?: string;
-  duration?: number;
-  is_featured: boolean;
-  created_by: string;
-  created_at?: string;
+  due_date?: string;
+  max_score?: number;
+  status: 'draft' | 'published' | 'closed';
 }
 
-export interface LibraryResource {
+export interface FeePayment {
+  id: string;
+  student_id: string;
+  amount: number;
+  balance: number;
+  term: string;
+  academic_year: string;
+  payment_date?: string;
+  payment_method?: string;
+  receipt_number?: string;
+  status: 'paid' | 'partial' | 'unpaid' | 'overdue';
+}
+
+export interface LibraryBook {
   id: string;
   title: string;
   author?: string;
-  resource_type: string;
-  grade_level?: string;
-  subject_id?: string;
-  file_url?: string;
-  file_type?: string;
-  is_physical: boolean;
-  quantity?: number;
-  available?: number;
-  created_by: string;
-  created_at?: string;
+  isbn?: string;
+  category?: string;
+  status: 'available' | 'borrowed' | 'lost' | 'damaged';
+  campus_id?: string;
+}
+
+export interface Admission {
+  id: string;
+  student_name: string;
+  parent_name?: string;
+  parent_email?: string;
+  parent_phone?: string;
+  grade_level: string;
+  campus_id?: string;
+  status: 'pending' | 'reviewing' | 'approved' | 'rejected' | 'waitlisted';
+  submitted_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  user_id?: string;
+  action: string;
+  target_type: string;
+  target_id?: string;
+  metadata?: Record<string, any>;
+  impersonated_user_id?: string;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
 }
 
 export interface Message {
@@ -250,7 +228,6 @@ export interface Message {
   recipient_id: string;
   subject?: string;
   content: string;
-  is_read: boolean;
-  parent_message_id?: string;
-  created_at?: string;
+  read: boolean;
+  created_at: string;
 }

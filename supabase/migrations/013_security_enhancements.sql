@@ -27,6 +27,11 @@ CREATE TABLE IF NOT EXISTS user_sessions (
   expires_at TIMESTAMPTZ NOT NULL
 );
 
+-- Add columns that may be missing from migration 007's version
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS user_agent TEXT;
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS device_fingerprint TEXT;
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token_hash);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_active ON user_sessions(is_active);

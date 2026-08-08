@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase-client";
+import { supabase } from "@/lib/supabase";
 import { JoyConversation, JoyMessage } from "@/types/joy";
 
 export function useJoyConversations() {

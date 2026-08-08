@@ -7,6 +7,7 @@ export function useAttachments() {
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentFile | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const generateId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -53,6 +54,36 @@ export function useAttachments() {
       });
     }
     setAttachments((prev) => [...prev, ...newAttachments]);
+
+    // AUTO-UPLOAD: Start uploading immediately after adding
+    setIsUploading(true);
+    for (const att of newAttachments) {
+      try {
+        const formData = new FormData();
+        formData.append("file", att.file);
+        formData.append("type", att.type);
+
+        setAttachments((prev) =>
+          prev.map((a) => (a.id === att.id ? { ...a, status: "uploading", progress: 0 } : a))
+        );
+
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error("Upload failed");
+        const json = await res.json();
+        setAttachments((prev) =>
+          prev.map((a) => (a.id === att.id ? { ...a, status: "success", progress: 100, url: json.url } : a))
+        );
+      } catch (err: any) {
+        setAttachments((prev) =>
+          prev.map((a) => (a.id === att.id ? { ...a, status: "error", errorMessage: err.message } : a))
+        );
+      }
+    }
+    setIsUploading(false);
   }, []);
 
   const addLink = useCallback((url: string, title?: string) => {
@@ -90,43 +121,21 @@ export function useAttachments() {
     ]);
   }, []);
 
-  const addWhiteboard = useCallback((data: WhiteboardData) => {
+  const addWhiteboard = useCallback((data: WhiteboardData, dataUrl?: string) => {
     const id = generateId();
-    // Convert whiteboard to image
-    const canvas = document.createElement("canvas");
-    canvas.width = data.width;
-    canvas.height = data.height;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = data.background;
-      ctx.fillRect(0, 0, data.width, data.height);
-      // Draw strokes
-      data.strokes.forEach((stroke: any) => {
-        ctx.beginPath();
-        ctx.strokeStyle = stroke.color;
-        ctx.lineWidth = stroke.width;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        stroke.points.forEach((p: any, i: number) => {
-          if (i === 0) ctx.moveTo(p.x, p.y);
-          else ctx.lineTo(p.x, p.y);
-        });
-        ctx.stroke();
-      });
-    }
-    const dataUrl = canvas.toDataURL("image/png");
+    const finalDataUrl = dataUrl || "";
     setAttachments((prev) => [
       ...prev,
       {
         id,
-        file: new File([dataUrl], "whiteboard.png"),
+        file: new File([finalDataUrl], "whiteboard.png"),
         name: "Whiteboard",
-        size: dataUrl.length,
+        size: finalDataUrl.length,
         type: "whiteboard",
         status: "success",
         progress: 100,
-        thumbnail: dataUrl,
-        dataUrl,
+        thumbnail: finalDataUrl || undefined,
+        dataUrl: finalDataUrl || undefined,
         metadata: { whiteboardData: data },
       },
     ]);
@@ -202,5 +211,6 @@ export function useAttachments() {
     uploadAll,
     formatFileSize,
     generateId,
+    isUploading,
   };
 }

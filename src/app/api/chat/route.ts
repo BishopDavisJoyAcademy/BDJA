@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { messages, conversationId, stream = false } = body;
+    const { messages, conversationId, stream = false, attachments } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: "Messages array required" }, { status: 400 });
@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
         conversation_id: conversationId,
         role: "user",
         content: lastUserMsg,
+        metadata: attachments ? { attachments } : undefined,
       });
       await admin.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
     }
@@ -81,14 +82,36 @@ export async function POST(req: NextRequest) {
               fullResponse += chunk;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`));
             }, enrichedContext);
+
+            // Extract actions from the complete response
+            const { text, actions } = extractActions(fullResponse);
+
+            // Send actions via SSE so frontend can execute them immediately
+            if (actions.length > 0) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ actions })}\n\n`));
+            }
+
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
 
-            // Save assistant message
+            // Save assistant message (with actions stripped from content)
             if (conversationId) {
               await admin.from("conversation_messages").insert({
                 conversation_id: conversationId,
                 role: "assistant",
-                content: fullResponse,
+                content: text,
+                metadata: actions.length > 0 ? { actions } : undefined,
+              });
+            }
+
+            // Execute server-side actions
+            for (const action of actions) {
+              const result = await executeJoyAction(userId, profile?.user_category || "student", action);
+              await admin.from("joy_actions").insert({
+                user_id: userId,
+                action_type: action.type,
+                action_data: action,
+                success: result.success,
+                error_message: result.error || null,
               });
             }
 

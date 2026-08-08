@@ -6,7 +6,8 @@ import {
   ChevronLeft, Pin, Trash2, Settings, Mic, MicOff, Plus, Download,
   Copy, Check, ThumbsUp, ThumbsDown, Sparkles, BookOpen, Calendar,
   GraduationCap, Lightbulb, Volume2, VolumeX, Keyboard, ImagePlus,
-  Link2, PenTool, BarChart3, ScanLine, Camera, FileText,
+  Link2, PenTool, BarChart3, ScanLine, Camera, FileText, ChevronDown,
+  Palette, Eraser, Trash, Undo, CheckCheck, Paperclip, Loader2
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -20,7 +21,6 @@ import { useAttachments } from "@/hooks/useAttachments";
 import { getThemeConfig, THEME_LIST } from "@/lib/joy-themes";
 import { JoyMessage, JoyConversation, JoyTheme } from "@/types/joy";
 import { AttachmentFile } from "@/types/attachments";
-import { BottomSheet } from "./BottomSheet";
 import { AttachmentChip } from "./AttachmentChip";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,7 @@ export function JoyChat() {
   const {
     attachments, showBottomSheet, setShowBottomSheet, previewAttachment, setPreviewAttachment,
     addFiles, addLink, addPoll, addWhiteboard, updateAttachment, removeAttachment,
-    clearAttachments, uploadAll, formatFileSize,
+    clearAttachments, uploadAll, formatFileSize, isUploading,
   } = useAttachments();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -68,6 +68,8 @@ export function JoyChat() {
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [pendingActions, setPendingActions] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -75,6 +77,14 @@ export function JoyChat() {
   const photosInputRef = useRef<HTMLInputElement>(null);
   const docsInputRef = useRef<HTMLInputElement>(null);
   const scannerInputRef = useRef<HTMLInputElement>(null);
+  const attachmentMenuRef = useRef<HTMLDivElement>(null);
+  const whiteboardCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [whiteboardStrokes, setWhiteboardStrokes] = useState<any[]>([]);
+  const [whiteboardCurrentStroke, setWhiteboardCurrentStroke] = useState<any>(null);
+  const [whiteboardColor, setWhiteboardColor] = useState("#1e3a5f");
+  const [whiteboardSize, setWhiteboardSize] = useState(3);
+  const [whiteboardTool, setWhiteboardTool] = useState<"pen" | "eraser">("pen");
+  const whiteboardCtxRef = useRef<CanvasRenderingContext2D | null>(null);
 
   const userName = user?.full_name || user?.email?.split("@")[0] || "there";
   const userCategory = user?.user_category || "student";
@@ -122,7 +132,7 @@ export function JoyChat() {
     return common;
   }, [userCategory]);
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingText]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingText, isLoading]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -145,6 +155,17 @@ export function JoyChat() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isFullScreen, isOpen, showSettings, showSidebar, previewAttachment, showLinkInput, showPollInput, showWhiteboard]);
+
+  // Click outside attachment menu
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (attachmentMenuRef.current && !attachmentMenuRef.current.contains(e.target as Node)) {
+        setShowAttachmentMenu(false);
+      }
+    }
+    if (showAttachmentMenu) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showAttachmentMenu]);
 
   // Voice input
   useEffect(() => {
@@ -189,7 +210,6 @@ export function JoyChat() {
     }
   };
 
-  // Attachment handlers
   const handleCamera = () => {
     if (cameraInputRef.current) { cameraInputRef.current.value = ""; cameraInputRef.current.click(); }
   };
@@ -203,15 +223,16 @@ export function JoyChat() {
     if (scannerInputRef.current) { scannerInputRef.current.value = ""; scannerInputRef.current.click(); }
   };
   const handleVoice = () => { toggleVoice(); };
-  const handleWhiteboard = () => { setShowWhiteboard(true); };
-  const handlePoll = () => { setShowPollInput(true); };
-  const handleLink = () => { setShowLinkInput(true); };
+  const handleWhiteboardOpen = () => { setShowWhiteboard(true); setShowAttachmentMenu(false); };
+  const handlePoll = () => { setShowPollInput(true); setShowAttachmentMenu(false); };
+  const handleLink = () => { setShowLinkInput(true); setShowAttachmentMenu(false); };
 
   const submitLink = () => {
     if (!linkUrl.trim()) return;
     addLink(linkUrl.trim());
     setLinkUrl("");
     setShowLinkInput(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   const submitPoll = () => {
@@ -233,16 +254,61 @@ export function JoyChat() {
     setStreamingText("");
     setSuggestions([]);
     clearAttachments();
+    setPendingActions([]);
   };
+
+  // Execute actions on frontend
+  const executeFrontendActions = useCallback((actions: any[]) => {
+    if (!actions || actions.length === 0) return;
+    for (const action of actions) {
+      if (action.type === "navigate" && action.target) {
+        const target = action.target;
+        let path = target;
+        if (target === "fees_management") path = "/fees";
+        else if (target === "vora") path = "/vora";
+        else if (target === "grades") path = "/grades";
+        else if (target === "timetable") path = "/timetable";
+        else if (target === "assignments") path = "/assignments";
+        else if (target === "attendance") path = "/attendance";
+        else if (target === "calendar") path = "/calendar";
+        else if (target === "library") path = "/library";
+        else if (target === "messages") path = "/messages";
+        else if (target === "admissions") path = "/manage/admissions";
+        else if (target === "admin") path = "/admin";
+        else if (target === "teacher") path = "/teacher";
+        else if (target === "student") path = "/student";
+        else if (target === "parent") path = "/parent";
+        else if (target === "profile") path = "/profile";
+        else if (target === "settings") path = "/settings";
+        else if (!target.startsWith("/")) path = `/${target}`;
+
+        toast.success(`Navigating to ${action.target}...`);
+        setTimeout(() => { window.location.href = path; }, 800);
+      } else if (action.type === "refresh") {
+        toast.success("Refreshing...");
+        setTimeout(() => window.location.reload(), 500);
+      } else if (action.type === "notify") {
+        toast.success(action.payload?.message || "Notification sent");
+      }
+    }
+  }, []);
 
   const handleSend = async (text?: string) => {
     const messageText = text || input.trim();
     if (!messageText && attachments.length === 0) return;
     if (isLoading || isStreaming) return;
 
+    // Build message content with attachments included
+    let fullContent = messageText;
+    const linkAttachments = attachments.filter(a => a.type === "link" && a.url);
+    if (linkAttachments.length > 0) {
+      const linksText = linkAttachments.map(a => a.url).join("\n");
+      fullContent = fullContent ? `${fullContent}\n\n${linksText}` : linksText;
+    }
+
     let conversationId = currentConversation?.id;
     if (!conversationId) {
-      const conv = await createConversation(messageText.slice(0, 30) || "New Chat");
+      const conv = await createConversation(fullContent.slice(0, 30) || "New Chat");
       if (!conv) return;
       conversationId = conv.id;
     }
@@ -252,7 +318,7 @@ export function JoyChat() {
       id: crypto.randomUUID(),
       conversation_id: conversationId,
       role: "user",
-      content: messageText,
+      content: fullContent,
       created_at: new Date().toISOString(),
     };
 
@@ -261,12 +327,13 @@ export function JoyChat() {
     setIsLoading(true);
     setStreamingText("");
     setSuggestions([]);
+    setPendingActions([]);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      // Upload attachments
+      // Upload attachments that need uploading (images, docs, etc.)
       const uploadedAttachments = await uploadAll();
       const attachmentUrls = uploadedAttachments.filter((a) => a.url).map((a) => ({
         name: a.name,
@@ -298,6 +365,11 @@ export function JoyChat() {
           }),
         });
 
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.error || `HTTP ${res.status}`);
+        }
+
         const reader = res.body?.getReader();
         if (!reader) throw new Error("No response body");
         const decoder = new TextDecoder();
@@ -314,6 +386,7 @@ export function JoyChat() {
               try {
                 const parsed = JSON.parse(data);
                 if (parsed.chunk) { fullText += parsed.chunk; setStreamingText(fullText); }
+                if (parsed.actions) { setPendingActions(parsed.actions); }
               } catch { /* ignore */ }
             }
           }
@@ -330,6 +403,19 @@ export function JoyChat() {
           };
           setMessages((prev) => [...prev, assistantMsg]);
           generateSuggestions(fullText);
+
+          // Extract and execute actions from the full text
+          const actionMatch = fullText.match(/\{\s*"actions"\s*:\s*(\[[\s\S]*?\])\s*\}/);
+          if (actionMatch) {
+            try {
+              const actions = JSON.parse(`{"actions":${actionMatch[1]}}`).actions;
+              executeFrontendActions(actions);
+            } catch { /* ignore parse errors */ }
+          }
+        }
+        // Also execute any actions sent via SSE
+        if (pendingActions.length > 0) {
+          executeFrontendActions(pendingActions);
         }
       } else {
         const res = await fetch("/api/chat", {
@@ -354,18 +440,14 @@ export function JoyChat() {
           conversation_id: conversationId,
           role: "assistant",
           content: json.reply || "I'm sorry, I couldn't process that.",
+          metadata: json.actions ? { actions: json.actions } : undefined,
           created_at: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
         generateSuggestions(json.reply);
 
         if (json.actions?.length > 0) {
-          for (const action of json.actions) {
-            if (action.type === "navigate" && action.target) {
-              toast.success(`Navigating to ${action.target}...`);
-              setTimeout(() => { window.location.href = action.target; }, 1000);
-            }
-          }
+          executeFrontendActions(json.actions);
         }
       }
     } catch (error: any) {
@@ -375,6 +457,7 @@ export function JoyChat() {
       setIsStreaming(false);
       setStreamingText("");
       clearAttachments();
+      setPendingActions([]);
     }
   };
 
@@ -414,6 +497,102 @@ export function JoyChat() {
   const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   const fontSizeClass = preferences.font_size === "small" ? "text-xs" : preferences.font_size === "large" ? "text-base" : "text-sm";
+
+  // Whiteboard drawing handlers
+  useEffect(() => {
+    if (!showWhiteboard || !whiteboardCanvasRef.current) return;
+    const canvas = whiteboardCanvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    whiteboardCtxRef.current = ctx;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = whiteboardColor;
+    ctx.lineWidth = whiteboardSize;
+
+    // Redraw existing strokes
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    whiteboardStrokes.forEach((stroke) => {
+      ctx.beginPath();
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.width;
+      stroke.points.forEach((p: any, i: number) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+    });
+  }, [showWhiteboard, whiteboardStrokes, whiteboardColor, whiteboardSize]);
+
+  const getWhiteboardPos = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = whiteboardCanvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
+  };
+
+  const handleWhiteboardStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const pos = getWhiteboardPos(e);
+    const newStroke = {
+      points: [pos],
+      color: whiteboardTool === "eraser" ? "#ffffff" : whiteboardColor,
+      width: whiteboardTool === "eraser" ? whiteboardSize * 3 : whiteboardSize,
+    };
+    setWhiteboardCurrentStroke(newStroke);
+  };
+
+  const handleWhiteboardMove = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    if (!whiteboardCurrentStroke) return;
+    const pos = getWhiteboardPos(e);
+    const updated = { ...whiteboardCurrentStroke, points: [...whiteboardCurrentStroke.points, pos] };
+    setWhiteboardCurrentStroke(updated);
+
+    const ctx = whiteboardCtxRef.current;
+    const canvas = whiteboardCanvasRef.current;
+    if (!ctx || !canvas) return;
+    const pts = updated.points;
+    const last = pts[pts.length - 2];
+    ctx.beginPath();
+    ctx.strokeStyle = updated.color;
+    ctx.lineWidth = updated.width;
+    ctx.moveTo(last.x, last.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  };
+
+  const handleWhiteboardEnd = () => {
+    if (!whiteboardCurrentStroke) return;
+    setWhiteboardStrokes((prev) => [...prev, whiteboardCurrentStroke]);
+    setWhiteboardCurrentStroke(null);
+  };
+
+  const handleWhiteboardUndo = () => {
+    setWhiteboardStrokes((prev) => prev.slice(0, -1));
+  };
+
+  const handleWhiteboardClear = () => {
+    setWhiteboardStrokes([]);
+  };
+
+  const handleWhiteboardSave = () => {
+    const canvas = whiteboardCanvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL("image/png");
+    addWhiteboard({
+      strokes: whiteboardStrokes,
+      width: canvas.width,
+      height: canvas.height,
+      background: "#ffffff",
+    }, dataUrl);
+    setShowWhiteboard(false);
+    setWhiteboardStrokes([]);
+    toast.success("Whiteboard saved!");
+  };
 
   // Thinking indicator component
   const ThinkingIndicator = () => (
@@ -584,69 +763,67 @@ export function JoyChat() {
 
       {/* Messages */}
       <div className={cn("flex-1 overflow-y-auto p-4 space-y-4", fontSizeClass)} style={{ scrollbarWidth: "thin", scrollbarColor: `${theme.scrollbarThumb} ${theme.scrollbarTrack}` }}>
-        {messages.length === 0 && !isStreaming && (
+        {messages.length === 0 && !isStreaming && !isLoading && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: theme.primary + "15" }}>
               <img src="/joy-logo.png" alt="Joy" className="w-10 h-10 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
               <Bot className="w-8 h-8 hidden" style={{ color: theme.primary }} />
             </div>
-            <div>
-              <h4 className="font-semibold mb-1" style={{ color: theme.text }}>{getGreeting()}</h4>
-              <p className="text-sm" style={{ color: theme.textMuted }}>I'm here to help with academics, administration, and spiritual growth.</p>
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold" style={{ color: theme.text }}>{getGreeting()}</h2>
+              <p className="text-sm max-w-xs mx-auto" style={{ color: theme.textMuted }}>I can help with homework, grades, timetables, fees, and more.</p>
             </div>
             <div className="grid grid-cols-1 gap-2 w-full max-w-xs">
-              {getSmartSuggestions().map((prompt, i) => (
-                <button key={i} onClick={() => handleSend(prompt.sendText)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all hover:scale-[1.02]" style={{ background: theme.surface, border: `1px solid ${theme.border}`, color: theme.text }}>
-                  <span style={{ color: theme.primary }}>{prompt.icon}</span><span>{prompt.text}</span>
+              {getSmartSuggestions().map((s, i) => (
+                <button key={i} onClick={() => handleSend(s.sendText)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all hover:scale-[1.02]" style={{ background: theme.surface, border: `1px solid ${theme.border}`, color: theme.text }}>
+                  <span style={{ color: theme.primary }}>{s.icon}</span>
+                  <span>{s.text}</span>
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {messages.map((msg, index) => (
-          <div key={msg.id || index} className={cn("flex gap-3", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ background: msg.role === "user" ? theme.userBubble : theme.primary + "15" }}>
+        {messages.map((msg) => (
+          <div key={msg.id} className={cn("flex gap-3", msg.role === "user" ? "flex-row-reverse" : "")}>
+            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden", msg.role === "user" ? "bg-gray-200" : "")} style={msg.role !== "user" ? { background: theme.primary + "15" } : {}}>
               {msg.role === "user" ? (
-                <span className="text-xs font-bold" style={{ color: theme.userBubbleText }}>{userName.charAt(0).toUpperCase()}</span>
+                <span className="text-xs font-bold text-gray-600">{userName.charAt(0).toUpperCase()}</span>
               ) : (
                 <>
-                  <img src="/joy-logo.png" alt="Joy" className="w-5 h-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+                  <img src="/joy-logo.png" alt="Joy" className="w-5 h-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   <Bot className="w-4 h-4 hidden" style={{ color: theme.primary }} />
                 </>
               )}
             </div>
-            <div className={cn("max-w-[80%] space-y-1", msg.role === "user" ? "items-end" : "items-start")}>
+            <div className={cn("max-w-[80%]", msg.role === "user" ? "items-end" : "items-start")}>
               <div className={cn("px-4 py-3 rounded-2xl", msg.role === "user" ? "rounded-br-md" : "rounded-bl-md")} style={{ background: msg.role === "user" ? theme.userBubble : theme.assistantBubble, color: msg.role === "user" ? theme.userBubbleText : theme.assistantBubbleText }}>
                 {msg.role === "assistant" ? (
-                  <div className="prose prose-sm max-w-none" style={{ color: theme.assistantBubbleText }}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
-                      code({ node, inline, className, children, ...props }: any) {
-                        const match = /language-(\w+)/.exec(className || "");
-                        return !inline && match ? (
-                          <div className="relative group">
-                            <button onClick={() => copyToClipboard(String(children).replace(/\n$/, ""), `code-${index}`)} className="absolute top-2 right-2 p-1 rounded bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {copiedId === `code-${index}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-white" />}
-                            </button>
-                            <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>{String(children).replace(/\n$/, "")}</SyntaxHighlighter>
-                          </div>
-                        ) : (
-                          <code className="px-1 py-0.5 rounded text-xs" style={{ background: theme.codeBg, color: theme.textInverse }} {...props}>{children}</code>
-                        );
-                      },
-                      p: ({ children }: any) => <p style={{ color: theme.assistantBubbleText }} className="m-0 mb-2 last:mb-0">{children}</p>,
-                      li: ({ children }: any) => <li style={{ color: theme.assistantBubbleText }}>{children}</li>,
-                      strong: ({ children }: any) => <strong style={{ color: theme.assistantBubbleText }}>{children}</strong>,
-                      em: ({ children }: any) => <em style={{ color: theme.assistantBubbleText }}>{children}</em>,
-                      a: ({ children, href }: any) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: theme.primary }}>{children}</a>,
-                    }}>{msg.content}</ReactMarkdown>
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ node, inline, className, children, ...props }: any) {
+                          const match = /language-(\w+)/.exec(className || "");
+                          return !inline && match ? (
+                            <SyntaxHighlighter style={oneDark as any} language={match[1]} PreTag="div" {...props}>
+                              {String(children).replace(/\n$/, "")}
+                            </SyntaxHighlighter>
+                          ) : (
+                            <code className={className} {...props}>{children}</code>
+                          );
+                        },
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
                   </div>
                 ) : (
-                  <p className="m-0">{msg.content}</p>
+                  <p className="m-0 whitespace-pre-wrap">{msg.content}</p>
                 )}
               </div>
-              <div className="flex items-center gap-2 px-1">
-                {preferences.show_timestamps && <span className="text-[10px]" style={{ color: theme.textMuted }}>{formatTime(msg.created_at)}</span>}
+              <div className="flex items-center gap-2 mt-1 px-1">
+                <span className="text-[10px]" style={{ color: theme.textMuted }}>{formatTime(msg.created_at)}</span>
                 {msg.role === "assistant" && (
                   <div className="flex items-center gap-1">
                     <button onClick={() => copyToClipboard(msg.content, msg.id)} className="p-1 rounded hover:bg-black/5 transition-colors" title="Copy">
@@ -673,7 +850,10 @@ export function JoyChat() {
             </div>
             <div className="max-w-[80%]">
               <div className="px-4 py-3 rounded-2xl rounded-bl-md" style={{ background: theme.assistantBubble, color: theme.assistantBubbleText }}>
-                <p className="m-0">{streamingText}<span className="animate-pulse">▌</span></p>
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
+                </div>
+                <span className="animate-pulse">▌</span>
               </div>
             </div>
           </div>
@@ -693,26 +873,76 @@ export function JoyChat() {
         </div>
       )}
 
-      {/* Attachment chips */}
-      {attachments.length > 0 && (
-        <div className="px-4 pb-2">
-          <div className="flex gap-2 flex-wrap">
+      {/* Input Area with Attachments INSIDE */}
+      <div className="p-3 shrink-0 space-y-2" style={{ borderTop: `1px solid ${theme.border}` }}>
+        {/* Attachment chips — INSIDE the input area */}
+        {attachments.length > 0 && (
+          <div className="flex gap-2 flex-wrap px-1">
             {attachments.map((att) => (
               <AttachmentChip key={att.id} attachment={att} formatFileSize={formatFileSize} onRemove={removeAttachment} onPreview={setPreviewAttachment} theme={theme} />
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Input */}
-      <div className="p-3 shrink-0" style={{ borderTop: `1px solid ${theme.border}` }}>
+        {/* Uploading indicator */}
+        {isUploading && (
+          <div className="flex items-center gap-2 px-1">
+            <Loader2 className="w-3 h-3 animate-spin" style={{ color: theme.primary }} />
+            <span className="text-xs" style={{ color: theme.textMuted }}>Uploading attachments...</span>
+          </div>
+        )}
+
         <div className="flex items-end gap-2 rounded-xl px-3 py-2" style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
-          <button onClick={() => setShowBottomSheet(true)} className="p-2 rounded-lg hover:bg-black/5 transition-colors shrink-0" title="Add attachment">
-            <Plus className="w-4 h-4" style={{ color: theme.textMuted }} />
-          </button>
+          {/* Attachment Menu Button */}
+          <div className="relative shrink-0" ref={attachmentMenuRef}>
+            <button
+              onClick={() => setShowAttachmentMenu((p) => !p)}
+              className="p-2 rounded-lg hover:bg-black/5 transition-colors"
+              title="Add attachment"
+            >
+              <Paperclip className={cn("w-4 h-4 transition-colors", showAttachmentMenu ? "" : "")} style={{ color: showAttachmentMenu ? theme.primary : theme.textMuted }} />
+            </button>
+
+            {/* Attachment Popover Menu — appears BELOW the button */}
+            {showAttachmentMenu && (
+              <div
+                className="absolute bottom-full left-0 mb-2 w-56 rounded-xl shadow-xl border overflow-hidden z-50"
+                style={{ background: theme.surface, borderColor: theme.border }}
+              >
+                <div className="p-2 space-y-0.5">
+                  <button onClick={() => { handleCamera(); setShowAttachmentMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-black/5 transition-colors text-left" style={{ color: theme.text }}>
+                    <Camera className="w-4 h-4" style={{ color: "#ef4444" }} /> Camera
+                  </button>
+                  <button onClick={() => { handlePhotos(); setShowAttachmentMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-black/5 transition-colors text-left" style={{ color: theme.text }}>
+                    <ImagePlus className="w-4 h-4" style={{ color: "#8b5cf6" }} /> Photos
+                  </button>
+                  <button onClick={() => { handleDocuments(); setShowAttachmentMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-black/5 transition-colors text-left" style={{ color: theme.text }}>
+                    <FileText className="w-4 h-4" style={{ color: "#3b82f6" }} /> Documents
+                  </button>
+                  <button onClick={() => { handleVoice(); setShowAttachmentMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-black/5 transition-colors text-left" style={{ color: theme.text }}>
+                    <Mic className="w-4 h-4" style={{ color: "#f59e0b" }} /> Voice
+                  </button>
+                  <button onClick={() => { handleWhiteboardOpen(); }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-black/5 transition-colors text-left" style={{ color: theme.text }}>
+                    <PenTool className="w-4 h-4" style={{ color: "#10b981" }} /> Whiteboard
+                  </button>
+                  <button onClick={() => { handleScanner(); setShowAttachmentMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-black/5 transition-colors text-left" style={{ color: theme.text }}>
+                    <ScanLine className="w-4 h-4" style={{ color: "#ec4899" }} /> Scanner
+                  </button>
+                  <button onClick={() => { handlePoll(); }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-black/5 transition-colors text-left" style={{ color: theme.text }}>
+                    <BarChart3 className="w-4 h-4" style={{ color: "#06b6d4" }} /> Poll
+                  </button>
+                  <button onClick={() => { handleLink(); }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-black/5 transition-colors text-left" style={{ color: theme.text }}>
+                    <Link2 className="w-4 h-4" style={{ color: "#6366f1" }} /> Link
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button onClick={toggleVoice} className={cn("p-2 rounded-lg transition-colors shrink-0", isListening ? "animate-pulse" : "hover:bg-black/5")} style={{ background: isListening ? theme.primary + "20" : "transparent" }} title="Voice input">
             {isListening ? <Mic className="w-4 h-4" style={{ color: theme.primary }} /> : <MicOff className="w-4 h-4" style={{ color: theme.textMuted }} />}
           </button>
+
           <textarea
             ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
@@ -722,6 +952,7 @@ export function JoyChat() {
             className="flex-1 bg-transparent resize-none outline-none text-sm py-2 max-h-32"
             style={{ color: theme.text }}
           />
+
           <button
             onClick={() => handleSend()}
             disabled={isLoading || isStreaming || (!input.trim() && attachments.length === 0)}
@@ -731,29 +962,14 @@ export function JoyChat() {
             <Send className="w-4 h-4 text-white" />
           </button>
         </div>
-        <p className="text-[10px] mt-1 text-center" style={{ color: theme.textMuted }}>Joy can make mistakes. Always verify important information.</p>
+        <p className="text-[10px] text-center" style={{ color: theme.textMuted }}>Joy can make mistakes. Always verify important information.</p>
       </div>
 
-      {/* Hidden file inputs - fresh each click */}
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { addFiles(e.target.files, "camera"); if (e.target.value) e.target.value = ""; }} />
-      <input ref={photosInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addFiles(e.target.files, "photos"); if (e.target.value) e.target.value = ""; }} />
-      <input ref={docsInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx" multiple className="hidden" onChange={(e) => { addFiles(e.target.files, "documents"); if (e.target.value) e.target.value = ""; }} />
+      {/* Hidden file inputs - support ALL file types */}
+      <input ref={cameraInputRef} type="file" accept="*/*" capture="environment" className="hidden" onChange={(e) => { addFiles(e.target.files, "camera"); if (e.target.value) e.target.value = ""; }} />
+      <input ref={photosInputRef} type="file" accept="*/*" multiple className="hidden" onChange={(e) => { addFiles(e.target.files, "photos"); if (e.target.value) e.target.value = ""; }} />
+      <input ref={docsInputRef} type="file" accept="*/*" multiple className="hidden" onChange={(e) => { addFiles(e.target.files, "documents"); if (e.target.value) e.target.value = ""; }} />
       <input ref={scannerInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { addFiles(e.target.files, "scanner"); if (e.target.value) e.target.value = ""; }} />
-
-      {/* Bottom Sheet */}
-      <BottomSheet
-        isOpen={showBottomSheet}
-        onClose={() => setShowBottomSheet(false)}
-        onCamera={handleCamera}
-        onPhotos={handlePhotos}
-        onDocuments={handleDocuments}
-        onVoice={handleVoice}
-        onWhiteboard={handleWhiteboard}
-        onScanner={handleScanner}
-        onPoll={handlePoll}
-        onLink={handleLink}
-        theme={theme}
-      />
 
       {/* Attachment Preview */}
       {previewAttachment && (
@@ -770,7 +986,7 @@ export function JoyChat() {
         <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
             <h4 className="font-semibold mb-4" style={{ color: theme.text }}>Add Link</h4>
-            <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 rounded-lg text-sm border outline-none mb-4" style={{ background: theme.background, borderColor: theme.border, color: theme.text }} />
+            <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitLink(); }} placeholder="https://..." className="w-full px-3 py-2 rounded-lg text-sm border outline-none mb-4" style={{ background: theme.background, borderColor: theme.border, color: theme.text }} />
             <div className="flex gap-2">
               <button onClick={() => setShowLinkInput(false)} className="flex-1 py-2 rounded-lg text-sm border" style={{ borderColor: theme.border, color: theme.text }}>Cancel</button>
               <button onClick={submitLink} className="flex-1 py-2 rounded-lg text-sm text-white font-medium" style={{ background: theme.primary }}>Add</button>
@@ -797,44 +1013,113 @@ export function JoyChat() {
         </div>
       )}
 
-      {/* Whiteboard Modal (simplified) */}
+      {/* Whiteboard Modal — FULLY FUNCTIONAL */}
       {showWhiteboard && (
-        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
-          <div className="w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col" style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
-            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: theme.border }}>
+        <div className="absolute inset-0 z-[60] flex flex-col" style={{ background: theme.background }}>
+          {/* Whiteboard Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b shrink-0" style={{ borderColor: theme.border, background: theme.surface }}>
+            <div className="flex items-center gap-2">
+              <PenTool className="w-5 h-5" style={{ color: theme.primary }} />
               <h4 className="font-semibold" style={{ color: theme.text }}>Whiteboard</h4>
-              <button onClick={() => setShowWhiteboard(false)} className="p-2 rounded-lg hover:bg-black/5"><X className="w-4 h-4" style={{ color: theme.textMuted }} /></button>
             </div>
-            <div className="p-4 text-center">
-              <p className="text-sm mb-4" style={{ color: theme.textMuted }}>Whiteboard feature coming soon. Use the image upload to share drawings for now.</p>
-              <button onClick={() => setShowWhiteboard(false)} className="px-4 py-2 rounded-lg text-sm text-white" style={{ background: theme.primary }}>Close</button>
+            <div className="flex items-center gap-2">
+              <button onClick={handleWhiteboardUndo} className="p-2 rounded-lg hover:bg-black/5 transition-colors" title="Undo">
+                <Undo className="w-4 h-4" style={{ color: theme.textMuted }} />
+              </button>
+              <button onClick={handleWhiteboardClear} className="p-2 rounded-lg hover:bg-black/5 transition-colors" title="Clear">
+                <Trash className="w-4 h-4" style={{ color: theme.textMuted }} />
+              </button>
+              <button onClick={() => setShowWhiteboard(false)} className="p-2 rounded-lg hover:bg-black/5 transition-colors">
+                <X className="w-4 h-4" style={{ color: theme.textMuted }} />
+              </button>
             </div>
+          </div>
+
+          {/* Whiteboard Toolbar */}
+          <div className="flex items-center gap-3 px-4 py-2 border-b shrink-0 overflow-x-auto" style={{ borderColor: theme.border, background: theme.surface }}>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setWhiteboardTool("pen")} className={cn("p-2 rounded-lg transition-colors", whiteboardTool === "pen" ? "bg-black/10" : "hover:bg-black/5")}>
+                <PenTool className="w-4 h-4" style={{ color: whiteboardTool === "pen" ? theme.primary : theme.textMuted }} />
+              </button>
+              <button onClick={() => setWhiteboardTool("eraser")} className={cn("p-2 rounded-lg transition-colors", whiteboardTool === "eraser" ? "bg-black/10" : "hover:bg-black/5")}>
+                <Eraser className="w-4 h-4" style={{ color: whiteboardTool === "eraser" ? theme.primary : theme.textMuted }} />
+              </button>
+            </div>
+            <div className="w-px h-6" style={{ background: theme.border }} />
+            <div className="flex items-center gap-1">
+              {["#1e3a5f", "#ef4444", "#22c55e", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899", "#000000"].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => { setWhiteboardColor(c); setWhiteboardTool("pen"); }}
+                  className={cn("w-6 h-6 rounded-full border-2 transition-transform hover:scale-110", whiteboardColor === c && whiteboardTool === "pen" ? "border-gray-900 scale-110" : "border-transparent")}
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+            <div className="w-px h-6" style={{ background: theme.border }} />
+            <div className="flex items-center gap-2">
+              <span className="text-xs" style={{ color: theme.textMuted }}>Size</span>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                value={whiteboardSize}
+                onChange={(e) => setWhiteboardSize(Number(e.target.value))}
+                className="w-20"
+              />
+            </div>
+            <div className="flex-1" />
+            <button
+              onClick={handleWhiteboardSave}
+              className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium text-white transition-colors hover:opacity-90"
+              style={{ background: theme.primary }}
+            >
+              <CheckCheck className="w-4 h-4" /> Save & Attach
+            </button>
+          </div>
+
+          {/* Whiteboard Canvas */}
+          <div className="flex-1 relative overflow-hidden" style={{ background: "#f8fafc" }}>
+            <canvas
+              ref={whiteboardCanvasRef}
+              width={1200}
+              height={800}
+              className="absolute inset-0 w-full h-full cursor-crosshair touch-none"
+              style={{ background: "#ffffff" }}
+              onMouseDown={handleWhiteboardStart}
+              onMouseMove={handleWhiteboardMove}
+              onMouseUp={handleWhiteboardEnd}
+              onMouseLeave={handleWhiteboardEnd}
+              onTouchStart={handleWhiteboardStart}
+              onTouchMove={handleWhiteboardMove}
+              onTouchEnd={handleWhiteboardEnd}
+            />
           </div>
         </div>
       )}
 
-      {/* Keyboard Shortcuts */}
+      {/* Keyboard Shortcuts Modal */}
       {showShortcuts && (
-        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="rounded-2xl p-6 w-80 max-w-[90%]" style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
             <h4 className="font-semibold mb-4" style={{ color: theme.text }}>Keyboard Shortcuts</h4>
             <div className="space-y-2 text-sm">
               {[
-                { key: "Ctrl/Cmd + K", desc: "Open/Close Joy" },
-                { key: "Ctrl/Cmd + N", desc: "New conversation" },
+                { key: "Ctrl/Cmd + K", desc: "Toggle Joy" },
+                { key: "Ctrl/Cmd + N", desc: "New chat" },
                 { key: "Ctrl/Cmd + F", desc: "Toggle full screen" },
                 { key: "Ctrl/Cmd + /", desc: "Show shortcuts" },
-                { key: "Shift + Enter", desc: "New line" },
-                { key: "Enter", desc: "Send message" },
                 { key: "Esc", desc: "Close panels / Exit" },
+                { key: "Enter", desc: "Send message" },
+                { key: "Shift + Enter", desc: "New line" },
               ].map((s) => (
-                <div key={s.key} className="flex justify-between items-center py-1">
-                  <span style={{ color: theme.textMuted }}>{s.desc}</span>
+                <div key={s.key} className="flex justify-between py-1">
                   <kbd className="px-2 py-0.5 rounded text-xs font-mono" style={{ background: theme.background, border: `1px solid ${theme.border}`, color: theme.text }}>{s.key}</kbd>
+                  <span style={{ color: theme.textMuted }}>{s.desc}</span>
                 </div>
               ))}
             </div>
-            <button onClick={() => setShowShortcuts(false)} className="w-full mt-4 py-2 rounded-lg text-sm font-medium" style={{ background: theme.primary, color: theme.textInverse }}>Got it</button>
+            <button onClick={() => setShowShortcuts(false)} className="w-full mt-4 py-2 rounded-lg text-sm text-white font-medium" style={{ background: theme.primary }}>Got it</button>
           </div>
         </div>
       )}

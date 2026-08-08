@@ -69,237 +69,206 @@ LANGUAGE:
 
 USER: You are speaking with ${ctx.userName}.`;
   }
+
   if (ctx?.userCategory) {
     prompt += `
 ROLE: ${ctx.userCategory}`;
   }
+
   if (ctx?.gradeLevel) {
     prompt += `
-GRADE LEVEL: ${ctx.gradeLevel}. Tailor all explanations to this level.`;
+GRADE LEVEL: ${ctx.gradeLevel}`;
   }
+
   if (ctx?.designation) {
     prompt += `
 DESIGNATION: ${ctx.designation}`;
   }
 
-  // Context injection
   if (ctx?.timetable && ctx.timetable.length > 0) {
     prompt += `
 
-TIMETABLE DATA:
-`;
-    ctx.timetable.slice(0, 5).forEach((t: any, i: number) => {
-      prompt += `${i + 1}. ${t.subjects?.name || t.subject || "Subject"} - ${t.day_of_week !== undefined ? ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][t.day_of_week] : ""} ${t.start_time || ""}-${t.end_time || ""}${t.room ? ` (Room ${t.room})` : ""}
-`;
-    });
-  }
-
-  if (ctx?.assignments && ctx.assignments.length > 0) {
-    prompt += `
-PENDING ASSIGNMENTS:
-`;
-    ctx.assignments.slice(0, 5).forEach((a: any, i: number) => {
-      prompt += `${i + 1}. ${a.title} (${a.subjects?.name || a.subject || "Subject"})${a.due_date ? ` - Due: ${a.due_date}` : ""}
-`;
-    });
+TIMETABLE (next few classes):
+${ctx.timetable.slice(0, 5).map((t: any) => `- ${t.day_of_week}: ${t.subjects?.name || t.subject} (${t.start_time}-${t.end_time})`).join("\n")}`;
   }
 
   if (ctx?.grades && ctx.grades.length > 0) {
     prompt += `
+
 RECENT GRADES:
-`;
-    ctx.grades.slice(0, 5).forEach((g: any, i: number) => {
-      prompt += `${i + 1}. ${g.subjects?.name || g.subject || "Subject"}: ${g.performance_level || g.score || "N/A"}
-`;
-    });
+${ctx.grades.slice(0, 5).map((g: any) => `- ${g.subjects?.name || g.subject}: ${g.score}/${g.max_score || 100}`).join("\n")}`;
+  }
+
+  if (ctx?.assignments && ctx.assignments.length > 0) {
+    prompt += `
+
+PENDING ASSIGNMENTS:
+${ctx.assignments.slice(0, 5).map((a: any) => `- ${a.subjects?.name || a.subject}: ${a.title} (Due: ${a.due_date})`).join("\n")}`;
   }
 
   if (ctx?.fees && ctx.fees.length > 0) {
     prompt += `
-FEE INFORMATION:
-`;
-    ctx.fees.slice(0, 3).forEach((f: any, i: number) => {
-      prompt += `${i + 1}. ${f.term || ""} ${f.academic_year || ""}: ${f.status || "N/A"} (Balance: ${f.balance || 0})
-`;
-    });
+
+FEE RECORDS:
+${ctx.fees.slice(0, 3).map((f: any) => `- ${f.amount_paid ? `Paid: KES ${f.amount_paid}` : `Balance: KES ${f.balance || 0}`}`).join("\n")}`;
+  }
+
+  if (ctx?.attendance && ctx.attendance.length > 0) {
+    const present = ctx.attendance.filter((a: any) => a.status === "present").length;
+    const total = ctx.attendance.length;
+    prompt += `
+
+ATTENDANCE: ${present}/${total} days present recently.`;
   }
 
   if (ctx?.calendarEvents && ctx.calendarEvents.length > 0) {
     prompt += `
+
 UPCOMING EVENTS:
-`;
-    ctx.calendarEvents.slice(0, 5).forEach((e: any, i: number) => {
-      prompt += `${i + 1}. ${e.title} - ${e.start_date ? new Date(e.start_date).toLocaleDateString() : "TBD"}
-`;
-    });
+${ctx.calendarEvents.slice(0, 3).map((e: any) => `- ${e.title}: ${e.date}`).join("\n")}`;
   }
 
   if (ctx?.voraResults && ctx.voraResults.length > 0) {
     prompt += `
-LOCAL VORA CONTENT:
-`;
-    ctx.voraResults.forEach((v: any, i: number) => {
-      prompt += `${i + 1}. ${v.title} (${v.subject}, ${v.grade_level}) - ${v.summary?.substring(0, 80) || "No summary"}
-`;
-    });
-    prompt += `
-When relevant, recommend these videos and explain how they connect to the user's question.`;
+
+RELEVANT LEARNING VIDEOS:
+${ctx.voraResults.slice(0, 3).map((v: any) => `- ${v.title} (${v.subject}, ${v.grade_level}): ${v.youtube_url}`).join("\n")}`;
   }
 
   if (ctx?.children && ctx.children.length > 0) {
     prompt += `
 
 CHILDREN:
-`;
-    ctx.children.forEach((c: any, i: number) => {
-      prompt += `${i + 1}. ${c.students?.admission_number || "Child"} - Grade: ${c.students?.classes?.name || c.students?.grade_level || "N/A"}
-`;
-    });
+${ctx.children.slice(0, 3).map((c: any) => `- ${c.students?.admission_number || "Student"}: Grade ${c.students?.classes?.name || c.students?.grade_level}`).join("\n")}`;
   }
 
-  // Action capabilities
+  // ACTIONS — CRITICAL FIX
   if (ctx?.availableActions && ctx.availableActions.length > 0) {
     prompt += `
 
-ACTIONS YOU CAN TRIGGER (include in JSON format at the END of your response ONLY when the user explicitly asks you to do something):
-`;
-    ctx.availableActions.forEach((a: string) => {
-      prompt += `- ${a}: ${getActionDescription(a)}
-`;
-    });
-    prompt += `
-To trigger an action, add this EXACT JSON block at the very end of your message (after a blank line):
-{"actions":[{"type":"ACTION_TYPE","target":"...","payload":{...}}]}
-Only include this when the user explicitly asks you to create, update, delete, or navigate.`;
+AVAILABLE ACTIONS YOU CAN TRIGGER (ONLY when the user explicitly asks you to do something):
+${ctx.availableActions.map((a) => `- ${a}`).join("\n")}
+
+ACTION FORMAT — When you need to perform an action, output it as a JSON block at the VERY END of your response, AFTER your natural language reply. Use this exact format:
+
+{\"actions\":[{\"type\":\"navigate\",\"target\":\"TARGET_NAME\",\"payload\":{}}]}
+
+Valid targets: fees_management, vora, grades, timetable, assignments, attendance, calendar, library, messages, admissions, admin, teacher, student, parent, profile, settings.
+
+RULES:
+- Only include the JSON block if the user explicitly asked you to navigate or do something.
+- Do NOT include the JSON block for general questions or explanations.
+- The JSON must be the very last thing in your response.
+- Do NOT wrap the JSON in markdown code blocks.`;
   }
+
+  prompt += `
+
+CURRENT DATE: ${new Date().toLocaleDateString("en-KE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.`;
 
   return prompt;
 }
 
-function getActionDescription(action: string): string {
-  const map: Record<string, string> = {
-    navigate: "Redirect the user to a specific page",
-    refresh: "Refresh data on the current page",
-    create_record: "Create a new database record (timetable, assignment, etc.)",
-    update_record: "Update an existing database record",
-    delete_record: "Delete a database record",
-    notify: "Send a notification to a user",
-    open_modal: "Open a modal dialog",
-    export: "Export data to PDF or text",
-  };
-  return map[action] || action;
-}
-
 export async function chatWithJoy(
-  messages: JoyMessage[],
+  messages: { role: string; content: string }[],
   context?: AevibronContext
 ): Promise<string> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const systemPrompt = buildSystemPrompt(context);
 
-  try {
-    const systemPrompt = buildSystemPrompt(context);
-    const payload = {
-      model: context?.personality === "playful" ? "aevibron-core-v3" : "aevibron-core-v3",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
-      ],
-      stream: false,
-    };
+  const payload = {
+    model: "aevibron-core-v3",
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ],
+    temperature: 0.7,
+    max_tokens: 2048,
+  };
 
-    const res = await fetch(AEVIBRON_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Aevibron-Key": AEVIBRON_KEY,
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
+  const res = await fetch(AEVIBRON_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Aevibron-Key": AEVIBRON_KEY,
+    },
+    body: JSON.stringify(payload),
+  });
 
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Aevibron error (${res.status}): ${err}`);
-    }
-
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that. Please try again.";
-  } catch (error: any) {
-    if (error.name === "AbortError") {
-      return "The request timed out. Please try again with a shorter message.";
-    }
-    console.error("Joy AI Error:", error);
-    return "I'm having trouble connecting right now. Please check your connection and try again.";
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Aevibron error: ${res.status}`);
   }
+
+  const data = await res.json();
+  // Handle both direct response and choices format
+  if (data.choices && data.choices[0]?.message?.content) {
+    return data.choices[0].message.content;
+  }
+  if (data.content) {
+    return data.content;
+  }
+  if (data.reply) {
+    return data.reply;
+  }
+  if (typeof data === "string") {
+    return data;
+  }
+  throw new Error("Unexpected response format from Aevibron");
 }
 
 export async function streamJoy(
-  messages: JoyMessage[],
+  messages: { role: string; content: string }[],
   onChunk: (chunk: string) => void,
   context?: AevibronContext
 ): Promise<void> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  const systemPrompt = buildSystemPrompt(context);
 
-  try {
-    const systemPrompt = buildSystemPrompt(context);
-    const payload = {
-      model: "aevibron-core-v3",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
-      ],
-      stream: true,
-    };
+  const payload = {
+    model: "aevibron-core-v3",
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ],
+    temperature: 0.7,
+    max_tokens: 2048,
+    stream: true,
+  };
 
-    const res = await fetch(AEVIBRON_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Aevibron-Key": AEVIBRON_KEY,
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
+  const res = await fetch(AEVIBRON_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Aevibron-Key": AEVIBRON_KEY,
+    },
+    body: JSON.stringify(payload),
+  });
 
-    clearTimeout(timeoutId);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Aevibron error: ${res.status}`);
+  }
 
-    if (!res.ok) throw new Error(`Failed to stream from Aevibron (${res.status})`);
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No response body");
+  const decoder = new TextDecoder();
 
-    const reader = res.body?.getReader();
-    if (!reader) throw new Error("No response body");
-
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6);
-          if (data === "[DONE]") return;
-          try {
-            const parsed = JSON.parse(data);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) onChunk(content);
-          } catch {
-            // Ignore malformed JSON chunks
-          }
-        }
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const data = line.slice(6);
+        if (data === "[DONE]") continue;
+        try {
+          const parsed = JSON.parse(data);
+          const chunk = parsed.choices?.[0]?.delta?.content || parsed.delta?.content || parsed.chunk || "";
+          if (chunk) onChunk(chunk);
+        } catch { /* ignore */ }
       }
     }
-  } catch (error: any) {
-    if (error.name === "AbortError") {
-      onChunk("\n\n[Connection timed out. Please try again.]");
-      return;
-    }
-    throw error;
   }
 }

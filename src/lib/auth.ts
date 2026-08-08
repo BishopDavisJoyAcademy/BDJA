@@ -178,10 +178,6 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
     createdBy: options.createdBy,
   });
 
-  if (!userResult.success) {
-    throw new Error(userResult.error || "Failed to create user");
-  }
-
   const { error: staffError } = await admin.from("staff").insert({
     id: userResult.userId,
     employee_id: options.email.split("@")[0].toUpperCase() + "-" + Date.now().toString().slice(-4),

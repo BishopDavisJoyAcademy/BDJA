@@ -14,7 +14,28 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { messages, conversationId, stream = false } = body;
+    const { messages, conversationId, stream = false, image } = body;
+
+    // Build messages with image support
+    const builtMessages: any[] = [
+      { role: "system", content: systemPrompt },
+    ];
+
+    // Add previous messages
+    for (const msg of messages) {
+      if (msg.role === "user" && image && msg === messages[messages.length - 1]) {
+        // Last user message with image
+        builtMessages.push({
+          role: "user",
+          content: [
+            { type: "text", text: msg.content },
+            { type: "image_url", image_url: { url: image } },
+          ],
+        });
+      } else {
+        builtMessages.push({ role: msg.role, content: msg.content });
+      }
+    }
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: "Messages array required" }, { status: 400 });
@@ -170,15 +191,27 @@ function categorizeQuery(query: string): string {
 }
 
 function extractActions(text: string): { text: string; actions: any[] } {
-  const actionRegex = /\n?\s*\{\s*"actions"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/;
-  const match = text.match(actionRegex);
-  if (match) {
-    try {
-      const parsed = JSON.parse(match[0].trim());
-      const cleanText = text.replace(actionRegex, "").trim();
-      return { text: cleanText, actions: parsed.actions || [] };
-    } catch {
-      return { text, actions: [] };
+  // Look for JSON action blocks anywhere in the text
+  // Handles: inline, code blocks, at end, with extra whitespace
+  const patterns = [
+    /\n?\s*\{\s*"actions"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/,
+    /```(?:json)?\s*\n?\s*\{\s*"actions"\s*:\s*\[[\s\S]*?\]\s*\}\s*\n?```/,
+    /\{\s*"actions"\s*:\s*\[[\s\S]*?\]\s*\}/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      try {
+        const jsonStr = match[0].replace(/```json?\s*|```/g, "").trim();
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.actions && Array.isArray(parsed.actions)) {
+          const cleanText = text.replace(match[0], "").trim();
+          return { text: cleanText, actions: parsed.actions };
+        }
+      } catch {
+        continue;
+      }
     }
   }
   return { text, actions: [] };

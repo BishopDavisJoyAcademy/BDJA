@@ -302,6 +302,7 @@ export function JoyChat() {
             messages: chatMessages,
             conversationId,
             stream: true,
+            image: imagePreview || undefined,
           }),
         });
 
@@ -354,6 +355,7 @@ export function JoyChat() {
             messages: chatMessages,
             conversationId,
             stream: false,
+            image: imagePreview || undefined,
           }),
         });
 
@@ -496,8 +498,9 @@ export function JoyChat() {
         style={{ background: theme.headerGradient }}
       >
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.2)" }}>
-            <Bot className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden" style={{ background: "rgba(255,255,255,0.2)" }}>
+            <img src="/joy-logo.png" alt="Joy" className="w-6 h-6 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement?.querySelector('svg')?.classList.remove('hidden'); }} />
+            <Bot className="w-5 h-5 text-white hidden" />
           </div>
           <div>
             <h3 className="font-semibold text-white text-sm">Joy AI</h3>
@@ -868,7 +871,8 @@ export function JoyChat() {
         {/* Streaming text */}
         {isStreaming && streamingText && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: theme.primary + "15" }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ background: theme.primary + "15" }}>
+              <img src="/joy-logo.png" alt="Joy" className="w-5 h-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               <Bot className="w-4 h-4" style={{ color: theme.primary }} />
             </div>
             <div className="max-w-[80%]">
@@ -884,14 +888,18 @@ export function JoyChat() {
 
         {isLoading && !isStreaming && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: theme.primary + "15" }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ background: theme.primary + "15" }}>
+              <img src="/joy-logo.png" alt="Joy" className="w-5 h-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               <Bot className="w-4 h-4" style={{ color: theme.primary }} />
             </div>
             <div className="px-4 py-3 rounded-2xl rounded-bl-md" style={{ background: theme.assistantBubble }}>
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.primary, animationDelay: "0ms" }} />
-                <div className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.primary, animationDelay: "150ms" }} />
-                <div className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.primary, animationDelay: "300ms" }} />
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium" style={{ color: theme.textMuted }}>Joy is thinking</span>
+                <div className="flex gap-0.5">
+                  <span className="w-1 h-1 rounded-full animate-pulse" style={{ background: theme.primary, animationDelay: "0ms" }} />
+                  <span className="w-1 h-1 rounded-full animate-pulse" style={{ background: theme.primary, animationDelay: "200ms" }} />
+                  <span className="w-1 h-1 rounded-full animate-pulse" style={{ background: theme.primary, animationDelay: "400ms" }} />
+                </div>
               </div>
             </div>
           </div>

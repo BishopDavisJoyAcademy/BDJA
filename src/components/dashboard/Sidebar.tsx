@@ -60,6 +60,7 @@ const adminNavItems: NavItem[] = [
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { label: "Audit Logs", href: "/admin/audit", icon: Shield },
   { label: "CMS Pages", href: "/admin/pages", icon: FileText },
+  { label: "VORA Content", href: "/admin/vora", icon: Video },
   { label: "Content", href: "/admin/content", icon: FileText },
   { label: "Campuses", href: "/admin/campuses", icon: MapPin },
   { label: "Settings", href: "/admin/settings", icon: Settings },

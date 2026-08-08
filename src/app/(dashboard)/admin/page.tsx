@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Card } from "@/components/ui/Card";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
-import { Users, GraduationCap, UserCheck, BookOpen } from "lucide-react";
+import { Users, GraduationCap, UserCheck, BookOpen, Video, FileText, Calendar } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminDashboard() {
@@ -32,6 +32,9 @@ export default function AdminDashboard() {
     { label: "Total Students", value: 0, icon: GraduationCap, href: "/admin/students" },
     { label: "Total Staff", value: 0, icon: Users, href: "/admin/staff" },
     { label: "Total Parents", value: 0, icon: UserCheck, href: "/admin/users" },
+    { label: "VORA Content", value: 0, icon: Video, href: "/admin/vora" },
+    { label: "CMS Pages", value: 0, icon: FileText, href: "/admin/pages" },
+    { label: "Calendar Events", value: 0, icon: Calendar, href: "/manage/calendar" },
     { label: "Pending Admissions", value: 0, icon: BookOpen, href: "/manage/admissions" },
   ];
 
@@ -53,7 +56,7 @@ export default function AdminDashboard() {
                     <AnimatedCounter value={stat.value} />
                   </p>
                 </div>
-                <stat.icon className="w-8 h-8 text-bdja-primary" />
+                <stat.icon className="w-8 h-8 text-bdja-primary opacity-50" />
               </div>
             </Card>
           </Link>
@@ -62,37 +65,45 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <Link href="/admin/staff/create" className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 text-sm font-medium text-center">
-              Add Staff
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+          <div className="space-y-2">
+            <Link href="/admin/staff/create" className="block p-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <p className="font-medium text-gray-900">Add Staff Member</p>
+              <p className="text-sm text-gray-500">Create a new staff account with permissions</p>
             </Link>
-            <Link href="/admin/students/create" className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 text-sm font-medium text-center">
-              Add Student
+            <Link href="/admin/vora" className="block p-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <p className="font-medium text-gray-900">Manage VORA Content</p>
+              <p className="text-sm text-gray-500">Add, edit, or remove learning videos</p>
             </Link>
-            <Link href="/admin/pages" className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 text-sm font-medium text-center">
-              Edit Pages
+            <Link href="/admin/pages" className="block p-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <p className="font-medium text-gray-900">CMS Pages</p>
+              <p className="text-sm text-gray-500">Manage website content and pages</p>
             </Link>
-            <Link href="/admin/analytics" className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 text-sm font-medium text-center">
-              Analytics
+            <Link href="/manage/calendar" className="block p-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <p className="font-medium text-gray-900">School Calendar</p>
+              <p className="text-sm text-gray-500">Add or edit events and holidays</p>
             </Link>
           </div>
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">System Status</h2>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Platform Version</span>
-              <span className="font-medium">5.0.0</span>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">System Status</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Authentication</span>
+              <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Active</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Role System</span>
-              <span className="font-medium text-green-600">Ghost-Free</span>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Database</span>
+              <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Connected</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Permissions</span>
-              <span className="font-medium text-green-600">Database-Driven</span>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Storage</span>
+              <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Ready</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Joy AI</span>
+              <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Online</span>
             </div>
           </div>
         </Card>

@@ -38,13 +38,20 @@ export default function LoginPage() {
         return;
       }
 
-      if (data.user) {
-        // Fetch profile to determine redirect
+      if (data.user && data.session) {
+        // Fetch full profile
         const { data: profile } = await supabase
           .from("profiles")
-          .select("user_category, password_changed, onboarding_completed")
+          .select("user_category, password_changed, onboarding_completed, is_active")
           .eq("id", data.user.id)
           .single();
+
+        if (profile?.is_active === false) {
+          await supabase.auth.signOut();
+          setError("Your account has been suspended.");
+          setLoading(false);
+          return;
+        }
 
         if (!profile?.password_changed) {
           router.push("/reset-password?first=true");
@@ -55,12 +62,11 @@ export default function LoginPage() {
           return;
         }
 
-        if (redirect && redirect !== "/login") {
+        if (redirect && redirect !== "/login" && redirect !== "/reset-password") {
           router.push(redirect);
           return;
         }
 
-        // Redirect based on user_category
         const category = profile?.user_category || "student";
         if (category === "student") router.push("/student");
         else if (category === "parent") router.push("/parent");
@@ -94,29 +100,13 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@bdja.ac.ke"
-              required
-            />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@bdja.ac.ke" required />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
+              <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" required />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -127,10 +117,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-500">
-          Forgot password?{" "}
-          <Link href="/reset-password" className="text-bdja-primary hover:underline">
-            Reset here
-          </Link>
+          Forgot password? <Link href="/reset-password" className="text-bdja-primary hover:underline">Reset here</Link>
         </p>
       </div>
     </div>

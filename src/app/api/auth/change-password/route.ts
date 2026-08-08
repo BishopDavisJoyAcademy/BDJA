@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     const { error: updateError } = await admin
       .from("profiles")
-      .update({ temp_password_hash: passwordHash })
+      .update({ temp_password_hash: passwordHash, password_changed: true, updated_at: new Date().toISOString() })
       .eq("id", user.id);
 
     if (updateError) {
@@ -51,16 +51,15 @@ export async function POST(req: NextRequest) {
 
     await addPasswordToHistory(user.id, passwordHash);
 
-    const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, {
-      password: new_password,
-    });
-    if (authUpdateError) {
-      console.error("[change-password] Auth password update failed:", authUpdateError);
-    }
+    const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, { password: new_password });
+    if (authUpdateError) console.error("[change-password] Auth update failed:", authUpdateError);
 
-    return NextResponse.json({ success: true });
+    // Sign out all other sessions
+    await admin.auth.admin.signOut(user.id, "global");
+
+    return NextResponse.json({ success: true, message: "Password updated. Please log in again." });
   } catch (error: any) {
-    console.error("[api/auth/change-password] Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("[change-password] Error:", error);
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }

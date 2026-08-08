@@ -1,5 +1,5 @@
 /**
- * BDJA Middleware v5.0 — Ghost-free + Edge-safe
+ * BDJA Middleware v6.0 — Bulletproof Auth Flow
  */
 
 import { createServerClient } from "@supabase/ssr";
@@ -18,7 +18,7 @@ const AUTH_PATHS = ["/login", "/reset-password", "/onboarding"];
 
 function getDashboardPath(userCategory: string | null): string {
   if (userCategory === "student") return "/student";
-  if (userCategory === "parent") return "/student";
+  if (userCategory === "parent") return "/parent";
   if (userCategory === "staff") return "/teacher";
   if (userCategory === "admin") return "/admin";
   return "/student";
@@ -42,107 +42,73 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll() { return request.cookies.getAll(); },
-        setAll(cookiesToSet, headers) {
+        setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-          Object.entries(headers).forEach(([key, value]) => response.headers.set(key, value));
         },
       },
     }
   );
 
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
-  const user = claimsData?.claims;
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
 
   if (isPublic) return response;
 
-  if (!user) {
+  // No session → redirect to login
+  if (!session?.user || sessionError) {
+    if (isAuthPath) return response;
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
+  // Has session → check profile
   const admin = getSupabaseAdmin();
   const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("id, role, user_category, is_active, password_changed, onboarding_completed, full_name, email")
-    .eq("id", user.sub)
+    .eq("id", session.user.id)
     .single();
 
   if (profileError || !profile) {
-    console.error(`[middleware] Profile missing for user ${user.sub}. Attempting recovery...`);
-    try {
-      const { data: authUser } = await admin.auth.admin.getUserById(user.sub);
-      if (authUser?.user) {
-        const rawRole = authUser.user.user_metadata?.role || "student";
-        const role = ["student", "parent", "staff", "admin"].includes(rawRole) ? rawRole : "staff";
-        const userCategory = authUser.user.user_metadata?.user_category ||
-          (role === "student" ? "student" : role === "parent" ? "parent" : role === "admin" ? "admin" : "staff");
-        const { error: insertError } = await admin.from("profiles").insert({
-          id: user.sub,
-          email: authUser.user.email || "",
-          full_name: authUser.user.user_metadata?.full_name || "User",
-          role,
-          user_category: userCategory,
-          campus_id: authUser.user.user_metadata?.campus_id || null,
-          is_active: true,
-          password_changed: true,
-          onboarding_completed: true,
-        });
-        if (!insertError) {
-          console.log(`[middleware] Profile auto-recovered for user ${user.sub}`);
-          const { data: newProfile } = await admin
-            .from("profiles")
-            .select("id, role, user_category, is_active, password_changed, onboarding_completed")
-            .eq("id", user.sub)
-            .single();
-          if (newProfile) {
-            return handleAuthenticatedUser(request, response, pathname, newProfile, user.sub);
-          }
-        }
-      }
-    } catch (recoveryError) {
-      console.error("[middleware] Profile recovery failed:", recoveryError);
-    }
+    await supabase.auth.signOut();
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("error", "profile_missing");
     return NextResponse.redirect(loginUrl);
   }
 
-  return handleAuthenticatedUser(request, response, pathname, profile, user.sub);
-}
-
-async function handleAuthenticatedUser(
-  request: NextRequest,
-  response: NextResponse,
-  pathname: string,
-  profile: any,
-  userId: string
-): Promise<NextResponse> {
+  // Account disabled
   if (profile.is_active === false) {
-    if (pathname.startsWith("/login")) return response;
+    await supabase.auth.signOut();
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("error", "suspended");
     return NextResponse.redirect(loginUrl);
   }
 
+  // Must change password (first login)
   if (profile.password_changed === false && !pathname.startsWith("/reset-password")) {
     return NextResponse.redirect(new URL("/reset-password?first=true", request.url));
   }
 
+  // Must complete onboarding
   if (profile.onboarding_completed === false && !pathname.startsWith("/onboarding") && !pathname.startsWith("/reset-password")) {
     return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 
+  // Already authenticated trying to access auth pages → redirect to dashboard
+  if (isAuthPath && profile.password_changed === true && profile.onboarding_completed === true) {
+    return NextResponse.redirect(new URL(getDashboardPath(profile.user_category), request.url));
+  }
+
+  // Route permission check
   if (!pathname.startsWith("/api/")) {
-    const hasAccess = await checkRoutePermission(userId, pathname, profile.user_category);
+    const hasAccess = await checkRoutePermission(session.user.id, pathname, profile.user_category);
     if (!hasAccess) {
-      const dest = getDashboardPath(profile.user_category);
-      return NextResponse.redirect(new URL(dest, request.url));
+      return NextResponse.redirect(new URL(getDashboardPath(profile.user_category), request.url));
     }
   }
 

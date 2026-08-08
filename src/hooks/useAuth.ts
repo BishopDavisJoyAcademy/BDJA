@@ -54,13 +54,12 @@ export function useAuth() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
         if (response.status === 401) {
           await supabase.auth.signOut();
           setState({ user: null, loading: false, error: { type: "session_expired", message: "Session expired" } });
           return;
         }
-        throw new Error(errorData.error || "Failed to load user data");
+        throw new Error("Failed to load user data");
       }
 
       const data = await response.json();
@@ -76,7 +75,6 @@ export function useAuth() {
         return;
       }
 
-      // Map old roles to new simplified roles for safety
       const rawRole = profile.role || "student";
       const role: UserRole = ["student", "parent", "staff", "admin"].includes(rawRole)
         ? rawRole
@@ -115,7 +113,7 @@ export function useAuth() {
     fetchUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
         fetchUser();
       } else if (event === "SIGNED_OUT") {
         setState({ user: null, loading: false, error: null });
@@ -126,7 +124,7 @@ export function useAuth() {
   }, [fetchUser]);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "global" });
     setState({ user: null, loading: false, error: null });
     router.push("/login");
   }, [router]);

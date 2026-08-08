@@ -14,28 +14,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { messages, conversationId, stream = false, image } = body;
-
-    // Build messages with image support
-    const builtMessages: any[] = [
-      { role: "system", content: systemPrompt },
-    ];
-
-    // Add previous messages
-    for (const msg of messages) {
-      if (msg.role === "user" && image && msg === messages[messages.length - 1]) {
-        // Last user message with image
-        builtMessages.push({
-          role: "user",
-          content: [
-            { type: "text", text: msg.content },
-            { type: "image_url", image_url: { url: image } },
-          ],
-        });
-      } else {
-        builtMessages.push({ role: msg.role, content: msg.content });
-      }
-    }
+    const { messages, conversationId, stream = false } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: "Messages array required" }, { status: 400 });

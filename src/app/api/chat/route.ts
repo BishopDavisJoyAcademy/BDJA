@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { chatWithJoy, streamJoy } from "@/lib/aevibron";
 import { buildJoyContext } from "@/lib/joy-context";
 import { executeJoyAction, getAvailableActions } from "@/lib/joy-actions";
-import { searchVora } from "@/lib/vora";
+import { searchVoraContent } from "@/lib/vora";
 import { searchYouTubeAsVora } from "@/lib/youtube";
 import { JoyMessage } from "@/types";
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const lastUserMsg = messages[messages.length - 1]?.content || "";
     let voraResults: any[] = [];
     try {
-      voraResults = await searchVora(lastUserMsg);
+      voraResults = await searchVoraContent(lastUserMsg);
       if (voraResults.length === 0) {
         voraResults = await searchYouTubeAsVora(lastUserMsg);
       }

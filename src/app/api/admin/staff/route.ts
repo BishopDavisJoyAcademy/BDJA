@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       createdBy: user.id,
     });
 
-    return NextResponse.json({ success: true, ...result });
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error("[staff POST] Error:", error);
     return NextResponse.json(

@@ -41,6 +41,7 @@ import { useJoyPreferences } from "@/hooks/useJoyPreferences";
 import { getThemeConfig, THEME_LIST } from "@/lib/joy-themes";
 import { JoyMessage, JoyConversation, JoyTheme } from "@/types/joy";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 interface GreetingPrompt {
   icon: React.ReactNode;

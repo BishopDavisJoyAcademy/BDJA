@@ -85,8 +85,8 @@ export function JoyChat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  const userName = user?.fullName || user?.email?.split("@")[0] || "there";
-  const userCategory = user?.userCategory || "student";
+  const userName = user?.full_name || user?.email?.split("@")[0] || "there";
+  const userCategory = user?.user_category || "student";
 
   // Greeting based on time and user
   const getGreeting = useCallback(() => {

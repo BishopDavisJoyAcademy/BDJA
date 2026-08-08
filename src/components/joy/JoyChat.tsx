@@ -45,7 +45,7 @@ export function JoyChat() {
   const {
     attachments, showBottomSheet, setShowBottomSheet, previewAttachment, setPreviewAttachment,
     addFiles, addLink, addPoll, addWhiteboard, updateAttachment, removeAttachment,
-    clearAttachments, uploadAll, formatFileSize, isUploading,
+    clearAttachments, uploadAll, retryUpload, formatFileSize, isUploading,
   } = useAttachments();
 
   const [isOpen, setIsOpen] = useState(false);

@@ -1,111 +1,210 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase-client";
-import { chatMessageSchema } from "@/lib/validation";
-import { rateLimit, getClientIdentifier } from "@/lib/rate-limiter";
-import { searchVoraContent } from "@/lib/vora";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { chatWithJoy, streamJoy } from "@/lib/aevibron";
+import { buildJoyContext } from "@/lib/joy-context";
+import { executeJoyAction, getAvailableActions } from "@/lib/joy-actions";
+import { searchVora } from "@/lib/vora";
 import { searchYouTubeAsVora } from "@/lib/youtube";
+import { JoyMessage } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+
   try {
-    const identifier = getClientIdentifier(req) + ":chat";
-    const { success } = await rateLimit(identifier, { limit: 20, windowMs: 60000 });
-    if (!success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    const body = await req.json();
+    const { messages, conversationId, stream = false } = body;
+
+    if (!messages || !Array.isArray(messages)) {
+      return NextResponse.json({ error: "Messages array required" }, { status: 400 });
     }
 
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    // Auth
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const body = await req.json() as Record<string, any>;
-    const parseResult = chatMessageSchema.safeParse(body);
-    if (!parseResult.success) {
-      return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });
+    const token = authHeader.slice(7);
+    const admin = getSupabaseAdmin();
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    const { messages, context, stream } = parseResult.data;
+    const userId = user.id;
 
-    const lastUserMessage = messages.filter((m: any) => m.role === "user").pop()?.content || "";
-    const voraResults = searchVoraContent(lastUserMessage, {
-      grade_level: context?.grade_level,
-      subject: context?.subject,
-      limit: 5,
-    });
+    // Get profile
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("full_name, user_category, role, campus_id")
+      .eq("id", userId)
+      .single();
 
-    let youtubeResults: any[] = [];
-    if (voraResults.length === 0 && lastUserMessage.length > 3) {
-      youtubeResults = await searchYouTubeAsVora(lastUserMessage, context?.grade_level, 3);
-    }
+    // Build context
+    const enrichedContext = await buildJoyContext(userId);
+    enrichedContext.availableActions = getAvailableActions(profile?.user_category || "student");
 
-    const enrichedContext = {
-      ...context,
-      voraResults: voraResults.length > 0 ? voraResults : youtubeResults,
-      hasLocalContent: voraResults.length > 0,
-    };
-
-    const endpoint = process.env.NEXT_PUBLIC_AEVIBRON_ENDPOINT || "https://api.aevibron.com/api/v1/chat";
-    const key = process.env.AEVIBRON_API_KEY || "";
-
-    if (!key) {
-      console.error("[Joy AI] AEVIBRON_API_KEY not configured");
-      return NextResponse.json({
-        error: "Joy AI is temporarily unavailable. Please contact the administrator.",
-        code: "CONFIG_MISSING",
-      }, { status: 503 });
-    }
-
-    const payload = {
-      model: context?.model || "aevibron-core-v3",
-      messages,
-      context: enrichedContext,
-      stream: stream || false,
-    };
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Aevibron-Key": key,
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      const status = res.status;
-      const errText = await res.text().catch(() => "Unknown error");
-      console.error(`[Joy AI] Aevibron returned ${status}:`, errText);
-
-      if (status === 401) {
-        return NextResponse.json({ error: "Joy AI authentication failed.", code: "AUTH_FAILED" }, { status: 503 });
+    // Fetch VORA content
+    const lastUserMsg = messages[messages.length - 1]?.content || "";
+    let voraResults: any[] = [];
+    try {
+      voraResults = await searchVora(lastUserMsg);
+      if (voraResults.length === 0) {
+        voraResults = await searchYouTubeAsVora(lastUserMsg);
       }
-      if (status === 429) {
-        return NextResponse.json({ error: "Joy AI is busy. Please try again shortly.", code: "RATE_LIMITED" }, { status: 503 });
-      }
-      return NextResponse.json({ error: "Joy AI service error. Please try again.", code: "SERVICE_ERROR" }, { status: 503 });
+    } catch {
+      voraResults = [];
+    }
+    enrichedContext.voraResults = voraResults;
+
+    // Save user message to conversation
+    if (conversationId) {
+      await admin.from("conversation_messages").insert({
+        conversation_id: conversationId,
+        role: "user",
+        content: lastUserMsg,
+      });
+      await admin.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
     }
 
-    const data = await res.json();
+    // Analytics
+    const category = categorizeQuery(lastUserMsg);
+
+    if (stream) {
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        async start(controller) {
+          let fullResponse = "";
+          try {
+            await streamJoy(messages, (chunk) => {
+              fullResponse += chunk;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`));
+            }, enrichedContext);
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+
+            // Save assistant message
+            if (conversationId) {
+              await admin.from("conversation_messages").insert({
+                conversation_id: conversationId,
+                role: "assistant",
+                content: fullResponse,
+              });
+            }
+
+            // Log analytics
+            await logAnalytics(admin, userId, profile?.user_category || "student", lastUserMsg, category, true, Date.now() - startTime, "aevibron-core-v3");
+          } catch (err: any) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`));
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
+    // Non-streaming
+    const reply = await chatWithJoy(messages, enrichedContext);
+
+    // Extract actions from response
+    const { text, actions } = extractActions(reply);
+
+    // Execute actions
+    const actionResults = [];
+    for (const action of actions) {
+      const result = await executeJoyAction(userId, profile?.user_category || "student", action);
+      actionResults.push(result);
+      // Log action
+      await admin.from("joy_actions").insert({
+        user_id: userId,
+        action_type: action.type,
+        action_data: action,
+        success: result.success,
+        error_message: result.error || null,
+      });
+    }
+
+    // Save assistant message
+    if (conversationId) {
+      await admin.from("conversation_messages").insert({
+        conversation_id: conversationId,
+        role: "assistant",
+        content: text,
+        metadata: { actions: actionResults },
+      });
+    }
+
+    // Log analytics
+    await logAnalytics(admin, userId, profile?.user_category || "student", lastUserMsg, category, true, Date.now() - startTime, "aevibron-core-v3");
+
     return NextResponse.json({
-      ...data,
-      vora_results: voraResults,
-      youtube_results: youtubeResults,
+      reply: text,
+      actions: actionResults,
+      voraResults,
     });
   } catch (error: any) {
-    if (error.name === "AbortError") {
-      console.error("[Joy AI] Request timed out");
-      return NextResponse.json({ error: "Joy AI is taking too long. Please try again.", code: "TIMEOUT" }, { status: 504 });
+    console.error("[chat] Error:", error);
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+  }
+}
+
+function categorizeQuery(query: string): string {
+  const q = query.toLowerCase();
+  if (q.includes("grade") || q.includes("mark") || q.includes("score") || q.includes("exam")) return "academic";
+  if (q.includes("fee") || q.includes("payment") || q.includes("balance")) return "finance";
+  if (q.includes("timetable") || q.includes("schedule") || q.includes("class")) return "schedule";
+  if (q.includes("assignment") || q.includes("homework")) return "academic";
+  if (q.includes("attendance") || q.includes("absent")) return "attendance";
+  if (q.includes("event") || q.includes("calendar")) return "events";
+  if (q.includes("pray") || q.includes("bible") || q.includes("god")) return "spiritual";
+  if (q.includes("video") || q.includes("watch") || q.includes("learn")) return "learning";
+  return "general";
+}
+
+function extractActions(text: string): { text: string; actions: any[] } {
+  const actionRegex = /\n?\s*\{\s*"actions"\s*:\s*\[.*?\]\s*\}\s*$/s;
+  const match = text.match(actionRegex);
+  if (match) {
+    try {
+      const parsed = JSON.parse(match[0].trim());
+      const cleanText = text.replace(actionRegex, "").trim();
+      return { text: cleanText, actions: parsed.actions || [] };
+    } catch {
+      return { text, actions: [] };
     }
-    console.error("[Joy AI] Chat API error:", error);
-    return NextResponse.json({ error: "An unexpected error occurred. Please try again.", code: "SERVER_ERROR" }, { status: 500 });
+  }
+  return { text, actions: [] };
+}
+
+async function logAnalytics(
+  admin: any,
+  userId: string,
+  role: string,
+  query: string,
+  category: string,
+  resolved: boolean,
+  responseTimeMs: number,
+  modelUsed: string
+) {
+  try {
+    await admin.from("joy_analytics").insert({
+      user_id: userId,
+      query: query.slice(0, 500),
+      category,
+      role,
+      resolved,
+      response_time_ms: responseTimeMs,
+      model_used: modelUsed,
+    });
+  } catch (err) {
+    console.error("[analytics] Failed to log:", err);
   }
 }

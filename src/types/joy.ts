@@ -60,6 +60,7 @@ export interface JoyContext {
   calendarEvents?: any[];
   voraResults?: any[];
   children?: any[];
+  availableActions?: string[];
 }
 
 export interface JoyAnalytics {

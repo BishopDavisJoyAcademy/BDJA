@@ -119,7 +119,6 @@ export default function CreateStaffPage() {
           <PermissionSelector
             selectedIds={permissionIds}
             onChange={setPermissionIds}
-            userCategory="staff"
           />
         </Card>
 

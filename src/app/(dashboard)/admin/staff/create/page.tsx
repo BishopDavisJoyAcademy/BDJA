@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { PermissionSelector } from "@/components/permissions/PermissionSelector";
-import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import Link from "next/link";
@@ -14,7 +13,6 @@ import toast from "react-hot-toast";
 
 export default function CreateStaffPage() {
   const router = useRouter();
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [permissionIds, setPermissionIds] = useState<string[]>([]);
@@ -35,7 +33,7 @@ export default function CreateStaffPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        setError("Not authenticated");
+        setError("Not authenticated. Please log in again.");
         setLoading(false);
         return;
       }
@@ -54,6 +52,12 @@ export default function CreateStaffPage() {
 
       const json = await res.json();
       if (!res.ok) {
+        setError(json.error || `Failed to create staff (${res.status})`);
+        setLoading(false);
+        return;
+      }
+
+      if (!json.success) {
         setError(json.error || "Failed to create staff");
         setLoading(false);
         return;
@@ -62,7 +66,7 @@ export default function CreateStaffPage() {
       toast.success("Staff member created successfully!");
       router.push("/admin/staff");
     } catch (err: any) {
-      setError(err.message || "An error occurred");
+      setError(err.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }

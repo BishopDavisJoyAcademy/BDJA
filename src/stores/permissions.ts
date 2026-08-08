@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { Permission, PermissionCategory } from "@/types";
+import { supabase } from "@/lib/supabase";
 
 interface PermissionState {
   permissions: string[];
@@ -23,8 +24,21 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
   fetchPermissions: async () => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch("/api/auth/permissions");
-      if (!res.ok) throw new Error("Failed to fetch permissions");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        set({ error: "Not authenticated", isLoading: false });
+        return;
+      }
+
+      const res = await fetch("/api/auth/permissions", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || `Failed to fetch permissions: ${res.status}`);
+      }
+
       const data = await res.json();
       set({
         permissions: data.permissions || [],

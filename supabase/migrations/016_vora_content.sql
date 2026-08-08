@@ -1,6 +1,7 @@
 -- Migration: VORA content management table
 -- Created for BDJA admin CMS
 
+-- Create table if not exists
 create table if not exists public.vora_content (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -17,21 +18,37 @@ create table if not exists public.vora_content (
   updated_at timestamptz default now()
 );
 
+-- Add is_public column if table exists but column doesn't (for idempotent runs)
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'vora_content' and column_name = 'is_public'
+  ) then
+    alter table public.vora_content add column is_public boolean default true;
+  end if;
+end $$;
+
 -- Enable RLS
 alter table if exists public.vora_content enable row level security;
 
+-- Drop existing policies to avoid conflicts, then recreate
+drop policy if exists "Public can view public vora" on public.vora_content;
+drop policy if exists "Authenticated can view all vora" on public.vora_content;
+drop policy if exists "Admin can manage vora" on public.vora_content;
+
 -- Policies
-create policy if not exists "Public can view public vora"
+create policy "Public can view public vora"
   on public.vora_content
   for select to anon
   using (is_public = true);
 
-create policy if not exists "Authenticated can view all vora"
+create policy "Authenticated can view all vora"
   on public.vora_content
   for select to authenticated
   using (true);
 
-create policy if not exists "Admin can manage vora"
+create policy "Admin can manage vora"
   on public.vora_content
   for all to authenticated
   using (

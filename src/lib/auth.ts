@@ -148,7 +148,7 @@ export interface CreateStaffOptions {
   department?: string;
   designation?: string;
   campusId?: string;
-  permissionIds: string[];
+  permissionIds?: string[];
   createdBy: string;
 }
 
@@ -157,6 +157,15 @@ export interface CreateStaffResult extends CreateUserResult {
 }
 
 export async function createStaff(options: CreateStaffOptions): Promise<CreateStaffResult> {
+  const admin = getSupabaseAdmin();
+
+  // Check if email already exists
+  const { data: existingUsers } = await admin.auth.admin.listUsers();
+  const emailExists = existingUsers?.users?.some((u: any) => u.email?.toLowerCase() === options.email.toLowerCase());
+  if (emailExists) {
+    throw new Error("A user with this email already exists");
+  }
+
   const tempPassword = generateTempPassword();
   const userResult = await createUser({
     email: options.email,
@@ -169,7 +178,9 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
     createdBy: options.createdBy,
   });
 
-  const admin = getSupabaseAdmin();
+  if (!userResult.success) {
+    throw new Error(userResult.error || "Failed to create user");
+  }
 
   const { error: staffError } = await admin.from("staff").insert({
     id: userResult.userId,
@@ -178,9 +189,12 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
     designation: options.designation || "Staff",
     status: "active",
   });
-  if (staffError) console.error("[auth] Staff record creation failed:", staffError);
+  if (staffError) {
+    console.error("[auth] Staff record creation failed:", staffError);
+    // Don't throw - user was created, staff record is secondary
+  }
 
-  if (options.permissionIds.length > 0) {
+  if (options.permissionIds && options.permissionIds.length > 0) {
     await grantPermissions(userResult.userId, options.permissionIds, options.createdBy);
   }
 

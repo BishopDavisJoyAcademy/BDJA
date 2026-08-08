@@ -95,7 +95,7 @@ export function useAttachments() {
         const url = await performUpload(att);
 
         setAttachments((prev) =>
-          prev.map((a) => (a.id === att.id ? { ...a, status: "success", progress: 100, url } : a))
+          prev.map((a) => (a.id === att.id ? { ...a, status: "success", progress: 100, url: url || undefined } : a))
         );
       } catch (err: any) {
         console.error("[useAttachments] Upload failed:", err);
@@ -181,7 +181,7 @@ export function useAttachments() {
 
     try {
       const url = await performUpload(attachment);
-      updateAttachment(attachment.id, { status: "success", progress: 100, url, errorMessage: undefined });
+      updateAttachment(attachment.id, { status: "success", progress: 100, url: url || undefined, errorMessage: undefined });
       return url;
     } catch (err: any) {
       updateAttachment(attachment.id, { status: "error", errorMessage: err.message, progress: 0 });

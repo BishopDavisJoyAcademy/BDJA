@@ -32,9 +32,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Storage configuration error" }, { status: 500 });
     }
 
-    const bucketExists = buckets?.some((b) => b.name === "attachments");
+    const bucketExists = buckets?.some((b: { name: string }) => b.name === "attachments");
     if (!bucketExists) {
-      console.error("[upload] Bucket 'attachments' not found. Available:", buckets?.map((b) => b.name));
+      console.error("[upload] Bucket 'attachments' not found. Available:", buckets?.map((b: { name: string }) => b.name));
       return NextResponse.json(
         { error: "Storage bucket 'attachments' not found. Run: insert into storage.buckets (id, name, public) values ('attachments', 'attachments', true);" },
         { status: 500 }

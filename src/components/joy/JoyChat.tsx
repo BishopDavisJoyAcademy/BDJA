@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { flushSync } from "react-dom";
 import {
   Bot, X, RotateCcw, Send, Maximize2, Minimize2, MessageSquarePlus,
   ChevronLeft, Pin, Trash2, Settings, Mic, MicOff, Plus, Download,
@@ -322,12 +323,15 @@ export function JoyChat() {
       created_at: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setIsLoading(true);
-    setStreamingText("");
-    setSuggestions([]);
-    setPendingActions([]);
+    // Flush sync so UI updates immediately (thinking indicator shows)
+    flushSync(() => {
+      setMessages((prev) => [...prev, userMsg]);
+      setInput("");
+      setIsLoading(true);
+      setStreamingText("");
+      setSuggestions([]);
+      setPendingActions([]);
+    });
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -859,7 +863,7 @@ export function JoyChat() {
           </div>
         )}
 
-        {isLoading && !isStreaming && <ThinkingIndicator />}
+        {isLoading && !streamingText && <ThinkingIndicator />}
 
         <div ref={messagesEndRef} />
       </div>

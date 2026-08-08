@@ -5,7 +5,6 @@ import { buildJoyContext } from "@/lib/joy-context";
 import { executeJoyAction, getAvailableActions } from "@/lib/joy-actions";
 import { searchVoraContent } from "@/lib/vora";
 import { searchYouTubeAsVora } from "@/lib/youtube";
-import { JoyMessage } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -64,12 +63,35 @@ export async function POST(req: NextRequest) {
         conversation_id: conversationId,
         role: "user",
         content: lastUserMsg,
-        metadata: attachments ? { attachments } : undefined,
+        metadata: attachments && attachments.length > 0 ? { attachments } : undefined,
       });
       await admin.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
     }
 
-    // Analytics
+    // Build messages for AI — INCLUDE ATTACHMENTS in the last user message
+    const chatMessages = messages.map((m: any) => ({ role: m.role, content: m.content }));
+
+    // Append attachment descriptions to the last user message so the AI can see them
+    if (attachments && attachments.length > 0) {
+      const lastIdx = chatMessages.length - 1;
+      if (lastIdx >= 0 && chatMessages[lastIdx].role === "user") {
+        const attachmentDesc = attachments.map((a: any) => {
+          if (a.type === "image") return `[Attached Image: ${a.name}\nURL: ${a.url}]`;
+          if (a.type === "video") return `[Attached Video: ${a.name}\nURL: ${a.url}]`;
+          if (a.type === "audio") return `[Attached Audio: ${a.name}\nURL: ${a.url}]`;
+          if (a.type === "document") return `[Attached Document: ${a.name}\nURL: ${a.url}]`;
+          if (a.type === "whiteboard") return `[Attached Whiteboard: ${a.name}\nURL: ${a.url}]`;
+          if (a.type === "link") return `[Attached Link: ${a.url}]`;
+          if (a.type === "poll") return `[Attached Poll: ${a.name}]`;
+          return `[Attached File: ${a.name}\nURL: ${a.url}]`;
+        }).join("\n\n");
+
+        chatMessages[lastIdx].content = chatMessages[lastIdx].content
+          ? `${chatMessages[lastIdx].content}\n\n${attachmentDesc}`
+          : attachmentDesc;
+      }
+    }
+
     const category = categorizeQuery(lastUserMsg);
 
     if (stream) {
@@ -78,22 +100,19 @@ export async function POST(req: NextRequest) {
         async start(controller) {
           let fullResponse = "";
           try {
-            await streamJoy(messages, (chunk) => {
+            await streamJoy(chatMessages, (chunk) => {
               fullResponse += chunk;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`));
             }, enrichedContext);
 
-            // Extract actions from the complete response
             const { text, actions } = extractActions(fullResponse);
 
-            // Send actions via SSE so frontend can execute them immediately
             if (actions.length > 0) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ actions })}\n\n`));
             }
 
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
 
-            // Save assistant message (with actions stripped from content)
             if (conversationId) {
               await admin.from("conversation_messages").insert({
                 conversation_id: conversationId,
@@ -103,7 +122,6 @@ export async function POST(req: NextRequest) {
               });
             }
 
-            // Execute server-side actions
             for (const action of actions) {
               const result = await executeJoyAction(userId, profile?.user_category || "student", action);
               await admin.from("joy_actions").insert({
@@ -115,7 +133,6 @@ export async function POST(req: NextRequest) {
               });
             }
 
-            // Log analytics
             await logAnalytics(admin, userId, profile?.user_category || "student", lastUserMsg, category, true, Date.now() - startTime, "aevibron-core-v3");
           } catch (err: any) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`));
@@ -135,17 +152,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Non-streaming
-    const reply = await chatWithJoy(messages, enrichedContext);
-
-    // Extract actions from response
+    const reply = await chatWithJoy(chatMessages, enrichedContext);
     const { text, actions } = extractActions(reply);
 
-    // Execute actions
     const actionResults = [];
     for (const action of actions) {
       const result = await executeJoyAction(userId, profile?.user_category || "student", action);
       actionResults.push(result);
-      // Log action
       await admin.from("joy_actions").insert({
         user_id: userId,
         action_type: action.type,
@@ -155,7 +168,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Save assistant message
     if (conversationId) {
       await admin.from("conversation_messages").insert({
         conversation_id: conversationId,
@@ -165,7 +177,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Log analytics
     await logAnalytics(admin, userId, profile?.user_category || "student", lastUserMsg, category, true, Date.now() - startTime, "aevibron-core-v3");
 
     return NextResponse.json({
@@ -193,8 +204,6 @@ function categorizeQuery(query: string): string {
 }
 
 function extractActions(text: string): { text: string; actions: any[] } {
-  // Look for JSON action blocks anywhere in the text
-  // Handles: inline, code blocks, at end, with extra whitespace
   const patterns = [
     /\n?\s*\{\s*"actions"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/,
     /```(?:json)?\s*\n?\s*\{\s*"actions"\s*:\s*\[[\s\S]*?\]\s*\}\s*\n?```/,

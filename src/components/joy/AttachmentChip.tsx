@@ -9,10 +9,11 @@ interface AttachmentChipProps {
   formatFileSize: (bytes: number) => string;
   onRemove: (id: string) => void;
   onPreview: (attachment: AttachmentFile) => void;
+  onUpload?: (id: string) => void;
   theme: any;
 }
 
-export function AttachmentChip({ attachment, formatFileSize, onRemove, onPreview, theme }: AttachmentChipProps) {
+export function AttachmentChip({ attachment, formatFileSize, onRemove, onPreview, onUpload, theme }: AttachmentChipProps) {
   const getIcon = () => {
     switch (attachment.type) {
       case "image": return <Image className="w-3.5 h-3.5" />;
@@ -45,11 +46,19 @@ export function AttachmentChip({ attachment, formatFileSize, onRemove, onPreview
     }
   };
 
+  const handleClick = () => {
+    if (attachment.status === "error" && onUpload) {
+      onUpload(attachment.id);
+    } else {
+      onPreview(attachment);
+    }
+  };
+
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-all cursor-pointer hover:scale-[1.02]",
-        attachment.status === "error" && "border-red-300 bg-red-50"
+        "group flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-all hover:scale-[1.02]",
+        attachment.status === "error" && onUpload ? "cursor-pointer border-red-300 bg-red-50" : "cursor-pointer"
       )}
       style={{
         background: theme.surface,
@@ -57,7 +66,7 @@ export function AttachmentChip({ attachment, formatFileSize, onRemove, onPreview
         color: theme.text,
         maxWidth: "200px",
       }}
-      onClick={() => onPreview(attachment)}
+      onClick={handleClick}
     >
       {attachment.thumbnail ? (
         <img src={attachment.thumbnail} alt="" className="w-6 h-6 rounded object-cover shrink-0" />

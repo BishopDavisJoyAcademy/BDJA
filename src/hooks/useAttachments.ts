@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { AttachmentFile, PollData, WhiteboardData } from "@/types/attachments";
+import toast from "react-hot-toast";
 
 export function useAttachments() {
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
@@ -34,6 +35,34 @@ export function useAttachments() {
     });
   };
 
+  const performUpload = async (att: AttachmentFile): Promise<string | null> => {
+    try {
+      const formData = new FormData();
+      if (att.dataUrl && att.type === "whiteboard") {
+        const blob = await fetch(att.dataUrl).then((r) => r.blob());
+        formData.append("file", blob, "whiteboard.png");
+      } else {
+        formData.append("file", att.file);
+      }
+      formData.append("type", att.type);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Upload failed: ${res.status}`);
+      }
+      const json = await res.json();
+      if (!json.url) throw new Error("No URL returned from server");
+      return json.url;
+    } catch (err: any) {
+      throw err;
+    }
+  };
+
   const addFiles = useCallback(async (files: FileList | null, source: "camera" | "photos" | "documents" | "scanner") => {
     if (!files || files.length === 0) return;
     const newAttachments: AttachmentFile[] = [];
@@ -59,28 +88,21 @@ export function useAttachments() {
     setIsUploading(true);
     for (const att of newAttachments) {
       try {
-        const formData = new FormData();
-        formData.append("file", att.file);
-        formData.append("type", att.type);
-
         setAttachments((prev) =>
-          prev.map((a) => (a.id === att.id ? { ...a, status: "uploading", progress: 0 } : a))
+          prev.map((a) => (a.id === att.id ? { ...a, status: "uploading", progress: 10 } : a))
         );
 
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        const url = await performUpload(att);
 
-        if (!res.ok) throw new Error("Upload failed");
-        const json = await res.json();
         setAttachments((prev) =>
-          prev.map((a) => (a.id === att.id ? { ...a, status: "success", progress: 100, url: json.url } : a))
+          prev.map((a) => (a.id === att.id ? { ...a, status: "success", progress: 100, url } : a))
         );
       } catch (err: any) {
+        console.error("[useAttachments] Upload failed:", err);
         setAttachments((prev) =>
-          prev.map((a) => (a.id === att.id ? { ...a, status: "error", errorMessage: err.message } : a))
+          prev.map((a) => (a.id === att.id ? { ...a, status: "error", errorMessage: err.message, progress: 0 } : a))
         );
+        toast.error(`Failed to upload ${att.name}: ${err.message}`);
       }
     }
     setIsUploading(false);
@@ -155,41 +177,45 @@ export function useAttachments() {
 
   const uploadAttachment = useCallback(async (attachment: AttachmentFile): Promise<string | null> => {
     if (attachment.status === "success" && attachment.url) return attachment.url;
-    updateAttachment(attachment.id, { status: "uploading", progress: 0 });
+    updateAttachment(attachment.id, { status: "uploading", progress: 10, errorMessage: undefined });
 
     try {
-      const formData = new FormData();
-      if (attachment.dataUrl && attachment.type === "whiteboard") {
-        const blob = await fetch(attachment.dataUrl).then((r) => r.blob());
-        formData.append("file", blob, "whiteboard.png");
-      } else {
-        formData.append("file", attachment.file);
-      }
-      formData.append("type", attachment.type);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error("Upload failed");
-      const json = await res.json();
-      updateAttachment(attachment.id, { status: "success", progress: 100, url: json.url });
-      return json.url;
+      const url = await performUpload(attachment);
+      updateAttachment(attachment.id, { status: "success", progress: 100, url, errorMessage: undefined });
+      return url;
     } catch (err: any) {
-      updateAttachment(attachment.id, { status: "error", errorMessage: err.message });
+      updateAttachment(attachment.id, { status: "error", errorMessage: err.message, progress: 0 });
+      toast.error(`Upload failed: ${err.message}`);
       return null;
     }
   }, [updateAttachment]);
 
+  const retryUpload = useCallback(async (id: string) => {
+    const attachment = attachments.find((a) => a.id === id);
+    if (!attachment) {
+      toast.error("Attachment not found");
+      return;
+    }
+    toast.loading("Retrying upload...", { id: `retry-${id}` });
+    const url = await uploadAttachment(attachment);
+    toast.dismiss(`retry-${id}`);
+    if (url) {
+      toast.success("Upload successful!");
+    }
+  }, [attachments, uploadAttachment]);
+
   const uploadAll = useCallback(async (): Promise<AttachmentFile[]> => {
-    const results = await Promise.all(
-      attachments.map(async (a) => {
-        if (a.status === "success" && a.url) return a;
-        const url = await uploadAttachment(a);
-        return { ...a, url: url || undefined };
-      })
-    );
+    setIsUploading(true);
+    const results: AttachmentFile[] = [];
+    for (const a of attachments) {
+      if (a.status === "success" && a.url) {
+        results.push(a);
+        continue;
+      }
+      const url = await uploadAttachment(a);
+      results.push({ ...a, url: url || undefined });
+    }
+    setIsUploading(false);
     return results;
   }, [attachments, uploadAttachment]);
 
@@ -208,6 +234,7 @@ export function useAttachments() {
     removeAttachment,
     clearAttachments,
     uploadAttachment,
+    retryUpload,
     uploadAll,
     formatFileSize,
     generateId,

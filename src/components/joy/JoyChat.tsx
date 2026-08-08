@@ -879,7 +879,7 @@ export function JoyChat() {
         {attachments.length > 0 && (
           <div className="flex gap-2 flex-wrap px-1">
             {attachments.map((att) => (
-              <AttachmentChip key={att.id} attachment={att} formatFileSize={formatFileSize} onRemove={removeAttachment} onPreview={setPreviewAttachment} theme={theme} />
+              <AttachmentChip key={att.id} attachment={att} formatFileSize={formatFileSize} onRemove={removeAttachment} onPreview={setPreviewAttachment} onUpload={retryUpload} theme={theme} />
             ))}
           </div>
         )}
@@ -966,7 +966,7 @@ export function JoyChat() {
       </div>
 
       {/* Hidden file inputs - support ALL file types */}
-      <input ref={cameraInputRef} type="file" accept="*/*" capture="environment" className="hidden" onChange={(e) => { addFiles(e.target.files, "camera"); if (e.target.value) e.target.value = ""; }} />
+      <input ref={cameraInputRef} type="file" accept="image/*,video/*" capture="environment" className="hidden" onChange={(e) => { addFiles(e.target.files, "camera"); if (e.target.value) e.target.value = ""; }} />
       <input ref={photosInputRef} type="file" accept="*/*" multiple className="hidden" onChange={(e) => { addFiles(e.target.files, "photos"); if (e.target.value) e.target.value = ""; }} />
       <input ref={docsInputRef} type="file" accept="*/*" multiple className="hidden" onChange={(e) => { addFiles(e.target.files, "documents"); if (e.target.value) e.target.value = ""; }} />
       <input ref={scannerInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { addFiles(e.target.files, "scanner"); if (e.target.value) e.target.value = ""; }} />

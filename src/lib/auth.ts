@@ -139,12 +139,14 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
       }
     }
 
-    await admin.from("password_history").insert({
-      user_id: authUserId,
-      password_hash: passwordHash,
-    }).catch((err: any) => {
+    try {
+      await admin.from("password_history").insert({
+        user_id: authUserId,
+        password_hash: passwordHash,
+      });
+    } catch (err: any) {
       console.error("[auth] Password history insert failed:", err);
-    });
+    }
 
     await logAudit({
       user_id: options.createdBy || authUserId,

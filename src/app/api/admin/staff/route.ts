@@ -50,8 +50,6 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-
-    // Validate required fields
     if (!body.email || !body.full_name) {
       return NextResponse.json({ error: "Email and full name are required" }, { status: 400 });
     }
@@ -67,7 +65,7 @@ export async function POST(req: NextRequest) {
       createdBy: user.id,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     console.error("[staff POST] Error:", error);
     return NextResponse.json(

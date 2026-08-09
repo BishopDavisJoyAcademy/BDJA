@@ -23,6 +23,11 @@ export function useJoyPreferences() {
   const [loading, setLoading] = useState(true);
 
   const fetchPreferences = useCallback(async () => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      setLoading(false);
+      return;
+    }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       setLoading(false);
@@ -44,6 +49,8 @@ export function useJoyPreferences() {
   }, []);
 
   const updatePreferences = useCallback(async (updates: Partial<JoyUserPreferences>) => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     try {

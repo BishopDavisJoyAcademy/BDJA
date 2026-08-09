@@ -17,6 +17,8 @@ export function useJoyConversations() {
   const fetchConversations = useCallback(async () => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) { isFetchingRef.current = false; return; }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { isFetchingRef.current = false; return; }
     try {
@@ -48,6 +50,8 @@ export function useJoyConversations() {
   }, []);
 
   const createConversation = useCallback(async (title?: string) => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return null;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return null;
     try {
@@ -112,6 +116,8 @@ export function useJoyConversations() {
   }, [loadMessages]);
 
   const updateConversation = useCallback(async (id: string, updates: Partial<JoyConversation>) => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     try {
@@ -138,6 +144,10 @@ export function useJoyConversations() {
   }, [currentConversation]);
 
   const deleteConversation = useCallback(async (id: string) => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return;
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     try {

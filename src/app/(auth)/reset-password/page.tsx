@@ -23,9 +23,9 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     let cancelled = false;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
       if (cancelled) return;
-      if (!session?.user) {
+      if (userError || !user) {
         toast.error("Please log in first");
         router.replace("/login");
         return;
@@ -55,9 +55,14 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error("Session expired. Please log in again.");
+        router.push("/login");
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-
       if (!token) {
         toast.error("Session expired. Please log in again.");
         router.push("/login");

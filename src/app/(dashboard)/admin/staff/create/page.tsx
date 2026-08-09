@@ -31,9 +31,19 @@ export default function CreateStaffPage() {
     setError("");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      // Secure auth check using getUser()
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
         setError("Not authenticated. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
+      // Get session token for API call
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setError("Session expired. Please log in again.");
         setLoading(false);
         return;
       }
@@ -42,7 +52,7 @@ export default function CreateStaffPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           ...form,
@@ -93,46 +103,72 @@ export default function CreateStaffPage() {
         <Card className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-            <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="John Doe" required />
+            <Input
+              value={form.full_name}
+              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              placeholder="e.g. John Doe"
+              required
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@bdja.ac.ke" required />
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="john.doe@bdja.ac.ke"
+              required
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="0712345678" />
+            <Input
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              placeholder="+254 700 000 000"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Mathematics" />
+            <Input
+              value={form.department}
+              onChange={(e) => setForm({ ...form, department: e.target.value })}
+              placeholder="e.g. Mathematics"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-            <Input value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} placeholder="Teacher" />
+            <Input
+              value={form.designation}
+              onChange={(e) => setForm({ ...form, designation: e.target.value })}
+              placeholder="e.g. Senior Teacher"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Campus ID</label>
-            <Input value={form.campus_id} onChange={(e) => setForm({ ...form, campus_id: e.target.value })} placeholder="UUID" />
+            <Input
+              value={form.campus_id}
+              onChange={(e) => setForm({ ...form, campus_id: e.target.value })}
+              placeholder="UUID of campus"
+            />
           </div>
         </Card>
 
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Permissions</h3>
-          <p className="text-sm text-gray-500 mb-4">Select the modules this staff member can access. They will see only what you allow.</p>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Permissions</h3>
           <PermissionSelector
-            selectedIds={permissionIds}
+            selected={permissionIds}
             onChange={setPermissionIds}
           />
         </Card>
 
-        <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Create Staff"}
+        <div className="flex items-center gap-3">
+          <Button type="submit" isLoading={loading} disabled={loading}>
+            Create Staff Account
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.push("/admin/staff")}>
-            Cancel
-          </Button>
+          <Link href="/admin/staff">
+            <Button variant="outline" type="button">Cancel</Button>
+          </Link>
         </div>
       </form>
     </div>

@@ -52,15 +52,15 @@ export default function VoraPublicPage() {
   // Check auth and redirect if logged in
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        setIsLoggedIn(false);
+      } else {
         setIsLoggedIn(true);
         // Small delay so user sees the redirect message
         setTimeout(() => {
           router.push("/manage/vora");
         }, 1500);
-      } else {
-        setIsLoggedIn(false);
       }
     };
     checkAuth();

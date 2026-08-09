@@ -58,9 +58,10 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Secure auth check using getUser()
+    supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
       if (cancelled) return;
-      if (!session?.user) {
+      if (userError || !user) {
         toast.error("Please log in first");
         router.replace("/login");
         return;
@@ -77,14 +78,23 @@ export default function OnboardingPage() {
     setCompleting(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+      // Secure auth check using getUser()
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
         toast.error("Session lost. Please log in again.");
         router.push("/login");
         return;
       }
 
-      const { profile } = await completeOnboarding(session.access_token);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        toast.error("Session expired. Please log in again.");
+        router.push("/login");
+        return;
+      }
+
+      const { profile } = await completeOnboarding(token);
 
       setIsOnboarding(false);
       toast.success("Welcome to BDJA!");

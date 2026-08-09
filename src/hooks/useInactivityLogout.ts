@@ -43,7 +43,7 @@ export function useInactivityLogout() {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         // If tab was hidden for a while, check if session still exists
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
           if (!session) {
             window.location.href = "/login";
           }

@@ -48,6 +48,8 @@ export default function VoraAdminPage() {
   const fetchVideos = async () => {
     setLoading(true);
     try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) { toast.error("Not authenticated"); setLoading(false); return; }
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/admin/vora", {
         headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
@@ -71,8 +73,11 @@ export default function VoraAdminPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) { toast.error("Not authenticated"); return; }
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast.error("Not authenticated"); return; }
+      const token = session?.access_token;
+      if (!token) { toast.error("Session expired"); return; }
 
       const url = editingId ? `/api/admin/vora?id=${editingId}` : "/api/admin/vora";
       const method = editingId ? "PUT" : "POST";
@@ -81,7 +86,7 @@ export default function VoraAdminPage() {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
@@ -101,6 +106,8 @@ export default function VoraAdminPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this video?")) return;
     try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) { toast.error("Not authenticated"); return; }
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`/api/admin/vora?id=${id}`, {
         method: "DELETE",

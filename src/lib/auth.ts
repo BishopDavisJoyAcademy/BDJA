@@ -226,7 +226,7 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
       user_id: userResult.userId,
       permission_id: pid,
     }));
-    const { error: permError } = await admin.from("user_permissions").insert(permissionRecords);
+    const { error: permError } = await admin.from("staff_permissions").insert(permissionRecords);
     if (permError) {
       console.error("[auth] Permission insert failed:", permError);
     }

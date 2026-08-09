@@ -43,14 +43,23 @@ export function useAuth() {
 
   const fetchUser = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+      // Secure auth check using getUser() instead of getSession()
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !authUser) {
         setState({ user: null, loading: false, error: null });
         return;
       }
 
+      // Get session token for API call
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setState({ user: null, loading: false, error: { type: "session_expired", message: "Session expired" } });
+        return;
+      }
+
       const response = await fetch("/api/auth/me", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) {

@@ -1,17 +1,12 @@
 -- ============================================================
--- BDJA Migration 020: DEFINITIVE FIX
+-- BDJA Migration 020: DEFINITIVE FIX (v2 — skips RI triggers)
 -- 
--- Problems this solves:
--- 1. Auth user creation fails (trigger conflict / CHECK violation)
--- 2. get_user_permissions UNION ORDER BY error
--- 3. has_permission using wrong table reference
---
 -- Run this ENTIRE script in Supabase SQL Editor.
--- It uses DROP + CREATE (not REPLACE) to guarantee old code is gone.
 -- ============================================================
 
 -- ============================================
--- STEP 1: NUKE all triggers on auth.users
+-- STEP 1: Drop only USER-DEFINED triggers on auth.users
+-- (Skip RI_ConstraintTrigger_* — they are system FK triggers)
 -- ============================================
 DO $$
 DECLARE
@@ -21,24 +16,22 @@ BEGIN
     SELECT tgname
     FROM pg_trigger
     WHERE tgrelid = 'auth.users'::regclass
-      AND tgname NOT LIKE 'ri_%'  -- skip referential integrity triggers
+      AND tgname NOT LIKE 'RI_ConstraintTrigger_%'
+      AND tgname NOT LIKE 'pg_%'
   LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS %I ON auth.users', t.tgname);
   END LOOP;
 END $$;
 
 -- ============================================
--- STEP 2: NUKE all functions that touch auth.users triggers
+-- STEP 2: Drop old functions
 -- ============================================
 DROP FUNCTION IF EXISTS auto_create_profile() CASCADE;
 DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
 
 -- ============================================
 -- STEP 3: Create ONE bulletproof trigger function
--- 
--- CRITICAL: Maps 'teacher' -> 'staff' for user_category CHECK constraint.
--- The CHECK is: user_category IN ('student','parent','staff','admin')
--- Raw metadata role can be 'teacher', 'principal', etc.
+-- Maps raw roles to user_category CHECK values
 -- ============================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -48,7 +41,6 @@ DECLARE
 BEGIN
   v_raw_role := COALESCE(NEW.raw_user_meta_data->>'role', 'student');
 
-  -- Map old role names to new user_category values
   v_user_category := CASE v_raw_role
     WHEN 'student' THEN 'student'
     WHEN 'parent'  THEN 'parent'
@@ -93,20 +85,18 @@ CREATE TRIGGER on_auth_user_created
   EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================
--- STEP 4: Fix get_user_permissions — NO UNION, two RETURN QUERY blocks
+-- STEP 4: Fix get_user_permissions — NO UNION
 -- ============================================
 DROP FUNCTION IF EXISTS get_user_permissions(UUID);
 
 CREATE OR REPLACE FUNCTION get_user_permissions(p_user_id UUID)
 RETURNS TABLE (permission_key TEXT) AS $$
 BEGIN
-  -- Admins get every permission key
   IF EXISTS (SELECT 1 FROM profiles WHERE id = p_user_id AND user_category = 'admin') THEN
     RETURN QUERY SELECT p.key FROM permissions p ORDER BY p.category, p.key;
     RETURN;
   END IF;
 
-  -- Non-admins get only assigned permissions
   RETURN QUERY
     SELECT perm.key
     FROM staff_permissions sp
@@ -117,7 +107,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
--- STEP 5: Fix has_permission — clean rebuild
+-- STEP 5: Fix has_permission
 -- ============================================
 DROP FUNCTION IF EXISTS has_permission(UUID, TEXT);
 
@@ -137,7 +127,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
--- STEP 6: Ensure staff table exists (code references it but schema didn't create it)
+-- STEP 6: Ensure staff table exists
 -- ============================================
 CREATE TABLE IF NOT EXISTS staff (
   id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
@@ -162,8 +152,7 @@ CREATE POLICY "staff_admin_all" ON staff FOR ALL USING (
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_staff_updated_at'
+    SELECT 1 FROM pg_trigger WHERE tgname = 'update_staff_updated_at'
   ) THEN
     CREATE TRIGGER update_staff_updated_at
       BEFORE UPDATE ON staff
@@ -207,4 +196,3 @@ ALTER TABLE profiles ADD CONSTRAINT chk_user_category
 -- SELECT tgname, proname
 -- FROM pg_trigger t JOIN pg_proc p ON t.tgfoid = p.oid
 -- WHERE tgrelid = 'auth.users'::regclass;
--- Should show ONLY: on_auth_user_created -> handle_new_user

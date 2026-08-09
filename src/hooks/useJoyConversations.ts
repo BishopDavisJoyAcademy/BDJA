@@ -146,8 +146,6 @@ export function useJoyConversations() {
   const deleteConversation = useCallback(async (id: string) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) return;
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     try {

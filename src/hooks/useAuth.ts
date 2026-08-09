@@ -44,8 +44,8 @@ export function useAuth() {
   const fetchUser = useCallback(async () => {
     try {
       // Secure auth check using getUser() instead of getSession()
-      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
-      if (userError || !authUser) {
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !currentUser) {
         setState({ user: null, loading: false, error: null });
         return;
       }

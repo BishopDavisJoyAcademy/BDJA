@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Table } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
-import { Plus, Search } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { Plus, Search, Pencil, ArrowUp, Key } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -42,10 +41,7 @@ export default function StudentManagement() {
 
   const fetchStudents = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/admin/students", {
-        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
-      });
+      const res = await fetch("/api/admin/students");
       if (!res.ok) throw new Error("Failed to fetch students");
       const data = await res.json();
       setStudents(data.students || []);
@@ -53,6 +49,39 @@ export default function StudentManagement() {
       toast.error(err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResetPin = async (id: string) => {
+    if (!confirm("Reset this student's PIN to 0000?")) return;
+    try {
+      const res = await fetch(`/api/admin/students?id=${id}&action=reset-pin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed to reset PIN");
+      toast.success("PIN reset to 0000");
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const handlePromote = async (id: string, currentGrade: string) => {
+    const grades = ["playgroup", "pp1", "pp2", "grade1", "grade2", "grade3", "grade4", "grade5", "grade6"];
+    const idx = grades.indexOf(currentGrade);
+    const nextGrade = idx >= 0 && idx < grades.length - 1 ? grades[idx + 1] : currentGrade;
+    if (!confirm(`Promote student to ${nextGrade}?`)) return;
+    try {
+      const res = await fetch(`/api/admin/students?id=${id}&action=promote`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ grade_level: nextGrade }),
+      });
+      if (!res.ok) throw new Error("Failed to promote");
+      toast.success(`Promoted to ${nextGrade}`);
+      fetchStudents();
+    } catch (err: any) {
+      toast.error(err.message);
     }
   };
 
@@ -90,7 +119,7 @@ export default function StudentManagement() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <Input
-          placeholder="Search students..."
+          placeholder="Search students by name, admission number..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -102,10 +131,10 @@ export default function StudentManagement() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Admission No</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -119,13 +148,37 @@ export default function StudentManagement() {
               filtered.map((s) => (
                 <tr key={s.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.full_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{s.email}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{s.students?.admission_number || "—"}</td>
                   <td className="px-4 py-3 text-sm text-gray-500 capitalize">{s.students?.grade_level || "—"}</td>
                   <td className="px-4 py-3">
                     <Badge variant={s.is_active ? "success" : "secondary"}>
                       {s.is_active ? "Active" : "Inactive"}
                     </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Link href={`/admin/students/edit/${s.id}`}>
+                        <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                          <Pencil className="w-3 h-3" /> Edit
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex items-center gap-1"
+                        onClick={() => handlePromote(s.id, s.students?.grade_level || "")}
+                      >
+                        <ArrowUp className="w-3 h-3" /> Promote
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex items-center gap-1 text-amber-600"
+                        onClick={() => handleResetPin(s.id)}
+                      >
+                        <Key className="w-3 h-3" /> Reset PIN
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))

@@ -1,29 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { PermissionSelector } from "@/components/permissions/PermissionSelector";
 import { supabase } from "@/lib/supabase";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import CredentialModal from "@/components/staff/CredentialModal";
 
-export default function CreateStaffPage() {
+export default function EditStaffPage() {
   const router = useRouter();
+  const params = useParams();
+  const staffId = params.id as string;
+
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [permissionIds, setPermissionIds] = useState<string[]>([]);
-  const [credModal, setCredModal] = useState<{
-    open: boolean;
-    email: string;
-    tempPassword: string;
-    fullName: string;
-    phone?: string;
-  }>({ open: false, email: "", tempPassword: "", fullName: "" });
+  const [originalPermissions, setOriginalPermissions] = useState<string[]>([]);
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -31,21 +28,17 @@ export default function CreateStaffPage() {
     department: "",
     designation: "",
     campus_id: "",
+    is_active: true,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (!staffId) return;
+    loadStaff();
+  }, [staffId]);
+
+  const loadStaff = async () => {
     setLoading(true);
-    setError("");
-
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        setError("Not authenticated. Please log in again.");
-        setLoading(false);
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
@@ -54,8 +47,58 @@ export default function CreateStaffPage() {
         return;
       }
 
-      const res = await fetch("/api/admin/staff", {
-        method: "POST",
+      // Fetch staff profile
+      const res = await fetch(`/api/admin/staff?id=${staffId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to load staff");
+      const data = await res.json();
+      const member = data.staff;
+      if (!member) throw new Error("Staff not found");
+
+      setForm({
+        full_name: member.full_name || "",
+        email: member.email || "",
+        phone: member.phone || "",
+        department: member.staff?.department || "",
+        designation: member.staff?.designation || "",
+        campus_id: member.campus_id || "",
+        is_active: member.is_active ?? true,
+      });
+
+      // Fetch current permissions
+      const permRes = await fetch(`/api/admin/staff/permissions?staffId=${staffId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (permRes.ok) {
+        const permData = await permRes.json();
+        const ids = permData.permissions?.map((p: any) => p.permission_id) || [];
+        setPermissionIds(ids);
+        setOriginalPermissions(ids);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setError("Session expired. Please log in again.");
+        setSaving(false);
+        return;
+      }
+
+      const res = await fetch(`/api/admin/staff?id=${staffId}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -68,33 +111,27 @@ export default function CreateStaffPage() {
 
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error || `Failed to create staff (${res.status})`);
-        setLoading(false);
+        setError(json.error || `Failed to update staff (${res.status})`);
+        setSaving(false);
         return;
       }
 
-      if (!json.success) {
-        setError(json.error || "Failed to create staff");
-        setLoading(false);
-        return;
-      }
-
-      // Show credential modal instead of immediate redirect
-      setCredModal({
-        open: true,
-        email: json.email,
-        tempPassword: json.tempPassword,
-        fullName: form.full_name,
-        phone: form.phone || undefined,
-      });
-
-      toast.success("Staff member created successfully!");
+      toast.success("Staff member updated successfully!");
+      router.push("/admin/staff");
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-bdja-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -102,8 +139,8 @@ export default function CreateStaffPage() {
         <Link href="/admin/staff" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">
           <ArrowLeft className="w-4 h-4" /> Back to Staff
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Add Staff Member</h1>
-        <p className="text-gray-500">Create a new staff account with permissions</p>
+        <h1 className="text-2xl font-bold text-gray-900">Edit Staff Member</h1>
+        <p className="text-gray-500">Update staff details and permissions</p>
       </div>
 
       {error && (
@@ -166,6 +203,16 @@ export default function CreateStaffPage() {
               placeholder="UUID of campus"
             />
           </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="is_active"
+              checked={form.is_active}
+              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+              className="w-4 h-4 rounded border-gray-300 text-bdja-primary focus:ring-bdja-primary"
+            />
+            <label htmlFor="is_active" className="text-sm text-gray-700">Account Active</label>
+          </div>
         </Card>
 
         <Card className="p-6">
@@ -177,26 +224,14 @@ export default function CreateStaffPage() {
         </Card>
 
         <div className="flex items-center gap-3">
-          <Button type="submit" isLoading={loading} disabled={loading}>
-            Create Staff Account
+          <Button type="submit" isLoading={saving} disabled={saving}>
+            Save Changes
           </Button>
           <Link href="/admin/staff">
             <Button variant="outline" type="button">Cancel</Button>
           </Link>
         </div>
       </form>
-
-      <CredentialModal
-        isOpen={credModal.open}
-        onClose={() => {
-          setCredModal({ ...credModal, open: false });
-          router.push("/admin/staff");
-        }}
-        email={credModal.email}
-        tempPassword={credModal.tempPassword}
-        fullName={credModal.fullName}
-        phone={credModal.phone}
-      />
     </div>
   );
 }

@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Table } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
-import { Plus, Search, Shield } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { Plus, Search, Shield, Pencil } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import CredentialModal from "@/components/staff/CredentialModal";
 
 interface StaffMember {
   id: string;
@@ -33,6 +33,13 @@ export default function StaffManagement() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [credModal, setCredModal] = useState<{
+    open: boolean;
+    email: string;
+    tempPassword: string;
+    fullName: string;
+    phone?: string;
+  }>({ open: false, email: "", tempPassword: "", fullName: "" });
 
   useEffect(() => {
     if (!loading && user?.user_category !== "admin") {
@@ -46,10 +53,7 @@ export default function StaffManagement() {
 
   const fetchStaff = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/admin/staff", {
-        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
-      });
+      const res = await fetch("/api/admin/staff");
       if (!res.ok) throw new Error("Failed to fetch staff");
       const data = await res.json();
       setStaff(data.staff || []);
@@ -57,6 +61,21 @@ export default function StaffManagement() {
       toast.error(err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (id: string, current: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/staff?id=${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !current }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      toast.success(`Staff ${!current ? "activated" : "deactivated"}`);
+      fetchStaff();
+    } catch (err: any) {
+      toast.error(err.message);
     }
   };
 
@@ -133,9 +152,20 @@ export default function StaffManagement() {
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/admin/staff/create?edit=${member.id}`}>
-                      <Button variant="ghost" size="sm">Edit</Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/admin/staff/edit/${member.id}`}>
+                        <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                          <Pencil className="w-3 h-3" /> Edit
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleActive(member.id, member.is_active)}
+                      >
+                        {member.is_active ? "Deactivate" : "Activate"}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -143,6 +173,15 @@ export default function StaffManagement() {
           </tbody>
         </Table>
       </div>
+
+      <CredentialModal
+        isOpen={credModal.open}
+        onClose={() => setCredModal({ ...credModal, open: false })}
+        email={credModal.email}
+        tempPassword={credModal.tempPassword}
+        fullName={credModal.fullName}
+        phone={credModal.phone}
+      />
     </div>
   );
 }

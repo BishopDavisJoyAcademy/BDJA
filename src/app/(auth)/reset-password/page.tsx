@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Eye, EyeOff, Shield, Check, X } from "lucide-react";
+import { Eye, EyeOff, Lock, AlertCircle, CheckCircle, ArrowLeft, Loader2 } from "lucide-react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 
 export default function ResetPasswordPage() {
@@ -13,16 +14,17 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const isFirstLogin = searchParams.get("first") === "true";
 
-  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-
     supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
       if (cancelled) return;
       if (userError || !user) {
@@ -32,40 +34,56 @@ export default function ResetPasswordPage() {
       }
       setChecking(false);
     });
-
     return () => { cancelled = true; };
   }, [router]);
 
-  const checks = {
-    length: password.length >= 8,
-    upper: /[A-Z]/.test(password),
-    lower: /[a-z]/.test(password),
-    number: /[0-9]/.test(password),
-    special: /[^A-Za-z0-9]/.test(password),
-    match: password === confirmPassword && password.length > 0,
+  const validatePassword = (pwd: string) => {
+    if (isFirstLogin) {
+      // PIN validation for students/first login
+      if (pwd.length < 4) return "PIN must be at least 4 characters";
+      if (!/^\d+$/.test(pwd)) return "PIN must contain only numbers";
+      return "";
+    }
+    // Standard password validation
+    if (pwd.length < 8) return "Password must be at least 8 characters";
+    if (!/[A-Z]/.test(pwd)) return "Must contain an uppercase letter";
+    if (!/[a-z]/.test(pwd)) return "Must contain a lowercase letter";
+    if (!/[0-9]/.test(pwd)) return "Must contain a number";
+    if (!/[^A-Za-z0-9]/.test(pwd)) return "Must contain a special character";
+    return "";
   };
-  const allValid = Object.values(checks).every(Boolean);
 
-  const handleReset = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!allValid) {
-      toast.error("Please meet all password requirements");
+    setError("");
+
+    const validationError = validatePassword(password);
+    if (validationError) {
+      setError(validationError);
       return;
     }
+
+    if (password !== confirmPassword) {
+      setError(isFirstLogin ? "PINs do not match" : "Passwords do not match");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // Secure auth check
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
-        toast.error("Session expired. Please log in again.");
-        router.push("/login");
+        setError("Session expired. Please log in again.");
+        setLoading(false);
         return;
       }
+
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
-        toast.error("Session expired. Please log in again.");
-        router.push("/login");
+        setError("Session expired. Please log in again.");
+        setLoading(false);
         return;
       }
 
@@ -74,25 +92,39 @@ export default function ResetPasswordPage() {
         confirm_password: confirmPassword,
         is_first_login: isFirstLogin,
       };
-      if (!isFirstLogin) body.current_password = currentPassword;
+      // For non-first-login, send current password
+      if (!isFirstLogin) {
+        body.current_password = currentPassword;
+      }
 
       const res = await fetch("/api/auth/change-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update password");
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update password");
+      }
 
-      toast.success("Password updated successfully!");
-      router.push(isFirstLogin ? "/onboarding" : "/");
-    } catch (error: any) {
-      console.error("[reset-password] Error:", error);
-      toast.error(error.message || "Failed to update password");
+      setSuccess(true);
+      toast.success(data.message || "Updated successfully!");
+
+      // For first login, keep session and go to onboarding
+      // For normal change, user was signed out globally — go to login
+      setTimeout(() => {
+        if (isFirstLogin) {
+          router.push("/onboarding");
+        } else {
+          router.push("/login");
+        }
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -100,60 +132,112 @@ export default function ResetPasswordPage() {
 
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-bdja-primary via-bdja-accent to-bdja-dark">
-        <div className="text-white text-sm animate-pulse">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-bdja-primary to-bdja-dark">
+        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-bdja-primary to-bdja-dark px-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center space-y-4">
+          <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
+          <h2 className="text-xl font-bold text-gray-900">
+            {isFirstLogin ? "PIN Set Successfully!" : "Password Updated!"}
+          </h2>
+          <p className="text-gray-500">
+            {isFirstLogin
+              ? "Redirecting you to onboarding..."
+              : "Please log in with your new password."}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-bdja-primary via-bdja-accent to-bdja-dark p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 bg-bdja-secondary rounded-xl flex items-center justify-center">
-              <Shield className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-bdja-dark">
-              {isFirstLogin ? "Set Your Password" : "Change Password"}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-bdja-primary to-bdja-dark px-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+        <div className="mb-6">
+          <Link href="/login" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
+            <ArrowLeft className="w-4 h-4" /> Back to login
+          </Link>
+          <div className="flex items-center gap-3 mb-2">
+            <Lock className="w-6 h-6 text-bdja-primary" />
+            <h1 className="text-xl font-bold text-gray-900">
+              {isFirstLogin ? "Set Your PIN" : "Reset Password"}
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {isFirstLogin ? "Create a strong password to secure your account" : "Update your password for security"}
-            </p>
           </div>
-          <form onSubmit={handleReset} className="space-y-5">
-            {!isFirstLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Current Password</label>
-                <Input type="password" placeholder="Your current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="w-full" />
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">New Password</label>
-              <div className="relative">
-                <Input type={showPassword ? "text" : "password"} placeholder="Minimum 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full pr-10" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
-              <Input type="password" placeholder="Re-enter new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full" />
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">{checks.length ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.length ? "text-green-600" : "text-gray-500"}>At least 8 characters</span></div>
-              <div className="flex items-center gap-2">{checks.upper ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.upper ? "text-green-600" : "text-gray-500"}>One uppercase letter</span></div>
-              <div className="flex items-center gap-2">{checks.lower ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.lower ? "text-green-600" : "text-gray-500"}>One lowercase letter</span></div>
-              <div className="flex items-center gap-2">{checks.number ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.number ? "text-green-600" : "text-gray-500"}>One number</span></div>
-              <div className="flex items-center gap-2">{checks.special ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.special ? "text-green-600" : "text-gray-500"}>One special character</span></div>
-              <div className="flex items-center gap-2">{checks.match ? <Check className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-red-400" />}<span className={checks.match ? "text-green-600" : "text-gray-500"}>Passwords match</span></div>
-            </div>
-            <Button type="submit" disabled={loading || !allValid} className="w-full py-3 bg-bdja-secondary hover:bg-bdja-accent text-white font-medium rounded-xl transition-all">
-              {loading ? "Updating..." : isFirstLogin ? "Set Password" : "Update Password"}
-            </Button>
-          </form>
+          <p className="text-sm text-gray-500">
+            {isFirstLogin
+              ? "Create a secure PIN for your student account."
+              : "Enter your current password and choose a new one."}
+          </p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {!isFirstLogin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+              <Input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                required={!isFirstLogin}
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {isFirstLogin ? "New PIN" : "New Password"}
+            </label>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={isFirstLogin ? "Enter 4+ digit PIN" : "Min 8 chars, upper, lower, number, special"}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {isFirstLogin ? "Confirm PIN" : "Confirm Password"}
+            </label>
+            <Input
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder={isFirstLogin ? "Re-enter PIN" : "Re-enter password"}
+              required
+            />
+          </div>
+
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading
+              ? (isFirstLogin ? "Setting PIN..." : "Updating...")
+              : (isFirstLogin ? "Set PIN" : "Update Password")}
+          </Button>
+        </form>
       </div>
     </div>
   );

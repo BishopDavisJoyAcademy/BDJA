@@ -41,6 +41,8 @@ export default function StudentManagement() {
   }, [user, loading, router]);
 
   const getToken = async () => {
+    const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+    if (userError || !currentUser) return "";
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token || "";
   };
@@ -48,9 +50,19 @@ export default function StudentManagement() {
   const fetchStudents = async () => {
     try {
       const token = await getToken();
+      if (!token) {
+        toast.error("Session expired. Please log in again.");
+        router.push("/login");
+        return;
+      }
       const res = await fetch("/api/admin/students", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        toast.error("Session expired. Please log in again.");
+        router.push("/login");
+        return;
+      }
       if (!res.ok) throw new Error("Failed to fetch students");
       const data = await res.json();
       setStudents(data.students || []);
@@ -65,6 +77,7 @@ export default function StudentManagement() {
     if (!confirm("Reset this student's PIN to 0000?")) return;
     try {
       const token = await getToken();
+      if (!token) { toast.error("Session expired"); return; }
       const res = await fetch(`/api/admin/students?id=${id}&action=reset-pin`, {
         method: "PATCH",
         headers: {
@@ -86,6 +99,7 @@ export default function StudentManagement() {
     if (!confirm(`Promote student to ${nextGrade}?`)) return;
     try {
       const token = await getToken();
+      if (!token) { toast.error("Session expired"); return; }
       const res = await fetch(`/api/admin/students?id=${id}&action=promote`, {
         method: "PATCH",
         headers: {

@@ -53,6 +53,8 @@ export default function StaffManagement() {
   }, [user, loading, router]);
 
   const getToken = async () => {
+    const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+    if (userError || !currentUser) return "";
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token || "";
   };
@@ -60,9 +62,19 @@ export default function StaffManagement() {
   const fetchStaff = async () => {
     try {
       const token = await getToken();
+      if (!token) {
+        toast.error("Session expired. Please log in again.");
+        router.push("/login");
+        return;
+      }
       const res = await fetch("/api/admin/staff", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        toast.error("Session expired. Please log in again.");
+        router.push("/login");
+        return;
+      }
       if (!res.ok) throw new Error("Failed to fetch staff");
       const data = await res.json();
       setStaff(data.staff || []);
@@ -76,6 +88,7 @@ export default function StaffManagement() {
   const handleToggleActive = async (id: string, current: boolean) => {
     try {
       const token = await getToken();
+      if (!token) { toast.error("Session expired"); return; }
       const res = await fetch(`/api/admin/staff?id=${id}`, {
         method: "PATCH",
         headers: {

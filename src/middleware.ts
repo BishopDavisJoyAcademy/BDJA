@@ -1,122 +1,159 @@
-/**
- * BDJA Middleware v6.0 — Bulletproof Auth Flow
- */
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { checkRoutePermission } from "@/lib/permissions";
-
-const PUBLIC_PATHS = [
-  "/", "/about", "/academics", "/admissions", "/students", "/news-events",
-  "/contact", "/notices", "/gallery", "/policies", "/faqs", "/downloads",
-  "/calendar", "/library", "/help", "/vora", "/login", "/reset-password",
-  "/onboarding", "/api/health", "/api/vora/public",
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/contact",
+  "/about",
+  "/academics",
+  "/admissions",
+  "/news-events",
+  "/notices",
+  "/downloads",
+  "/library",
+  "/vora",
+  "/help",
+  "/api/auth/student-login",
+  "/api/auth/first-login",
+  "/api/auth/change-password",
+  "/api/auth/me",
+  "/api/auth/permissions",
+  "/api/auth/onboarding",
+  "/api/health",
 ];
 
-const AUTH_PATHS = ["/login", "/reset-password", "/onboarding"];
+const STATIC_ASSETS = ["/_next", "/static", "/favicon.ico", "/logo", "/images"];
 
-function getDashboardPath(userCategory: string | null): string {
-  if (userCategory === "student") return "/student";
-  if (userCategory === "parent") return "/parent";
-  if (userCategory === "staff") return "/teacher";
-  if (userCategory === "admin") return "/admin";
-  return "/student";
-}
+// Admin route segment from env (obfuscated)
+const ADMIN_SEGMENT = process.env.NEXT_PUBLIC_ADMIN_SEGMENT || "admin";
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
-  const pathname = request.nextUrl.pathname;
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-  if (
-    pathname.startsWith("/_next/") ||
-    pathname.startsWith("/api/") ||
-    /\.(?:png|jpg|jpeg|svg|ico|css|js|json|woff|woff2|ttf|eot|webp|avif)$/.test(pathname)
-  ) {
-    return response;
+  // Skip static assets
+  if (STATIC_ASSETS.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll(); },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        },
-      },
-    }
-  );
+  // Public routes
+  if (PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) {
+    return NextResponse.next();
+  }
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
+  // Use getUser() for secure validation
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (isPublic) return response;
-
-  // No session → redirect to login
   if (userError || !user) {
-    if (isAuthPath) return response;
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Has session → check profile
-  const admin = getSupabaseAdmin();
-  const { data: profile, error: profileError } = await admin
+  // Fetch profile
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, role, user_category, is_active, password_changed, onboarding_completed, full_name, email")
+    .select("user_category, password_changed, onboarding_completed, is_active")
     .eq("id", user.id)
     .single();
 
   if (profileError || !profile) {
     await supabase.auth.signOut();
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("error", "profile_missing");
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // Account disabled
+  // Account suspended
   if (profile.is_active === false) {
     await supabase.auth.signOut();
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("error", "suspended");
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL("/login?error=account_suspended", req.url));
   }
 
-  // Must change password (first login)
-  if (profile.password_changed === false && !pathname.startsWith("/reset-password")) {
-    return NextResponse.redirect(new URL("/reset-password?first=true", request.url));
+  // First login — must set password/PIN
+  if (profile.password_changed === false) {
+    const type = profile.user_category === "student" ? "student" : "staff";
+    const resetUrl = new URL("/reset-password", req.url);
+    resetUrl.searchParams.set("first", "true");
+    resetUrl.searchParams.set("type", type);
+    return NextResponse.redirect(resetUrl);
   }
 
-  // Must complete onboarding
-  if (profile.onboarding_completed === false && !pathname.startsWith("/onboarding") && !pathname.startsWith("/reset-password")) {
-    return NextResponse.redirect(new URL("/onboarding", request.url));
+  // Onboarding not completed
+  if (profile.onboarding_completed === false) {
+    return NextResponse.redirect(new URL("/onboarding", req.url));
   }
 
-  // Already authenticated trying to access auth pages → redirect to dashboard
-  if (isAuthPath && profile.password_changed === true && profile.onboarding_completed === true) {
-    return NextResponse.redirect(new URL(getDashboardPath(profile.user_category), request.url));
-  }
+  // Route access control
+  const category = profile.user_category;
 
-  // Route permission check
-  if (!pathname.startsWith("/api/")) {
-    const hasAccess = await checkRoutePermission(user.id, pathname, profile.user_category);
-    if (!hasAccess) {
-      return NextResponse.redirect(new URL(getDashboardPath(profile.user_category), request.url));
+  // Admin routes (obfuscated)
+  if (pathname.startsWith(`/${ADMIN_SEGMENT}/`)) {
+    if (category !== "admin") {
+      return NextResponse.redirect(new URL("/unauthorized", req.url));
     }
+    return res;
   }
 
-  return response;
+  // Student routes
+  if (pathname.startsWith("/student/") || pathname === "/student") {
+    if (category !== "student" && category !== "admin") {
+      return NextResponse.redirect(new URL("/unauthorized", req.url));
+    }
+    return res;
+  }
+
+  // Parent routes
+  if (pathname.startsWith("/parent/") || pathname === "/parent") {
+    if (category !== "parent" && category !== "admin") {
+      return NextResponse.redirect(new URL("/unauthorized", req.url));
+    }
+    return res;
+  }
+
+  // Staff/Teacher routes
+  if (pathname.startsWith("/teacher/") || pathname === "/teacher") {
+    if (category !== "staff" && category !== "admin") {
+      return NextResponse.redirect(new URL("/unauthorized", req.url));
+    }
+    return res;
+  }
+
+  // Bursar routes
+  if (pathname.startsWith("/bursar/") || pathname === "/bursar") {
+    if (category !== "staff" && category !== "admin") {
+      return NextResponse.redirect(new URL("/unauthorized", req.url));
+    }
+    return res;
+  }
+
+  // Librarian routes
+  if (pathname.startsWith("/librarian/") || pathname === "/librarian") {
+    if (category !== "staff" && category !== "admin") {
+      return NextResponse.redirect(new URL("/unauthorized", req.url));
+    }
+    return res;
+  }
+
+  // Dashboard root redirects
+  if (pathname === "/dashboard") {
+    if (category === "admin") return NextResponse.redirect(new URL(`/${ADMIN_SEGMENT}`, req.url));
+    if (category === "student") return NextResponse.redirect(new URL("/student", req.url));
+    if (category === "parent") return NextResponse.redirect(new URL("/parent", req.url));
+    if (category === "staff") return NextResponse.redirect(new URL("/teacher", req.url));
+  }
+
+  return res;
 }
 
 export const config = {
-  matcher: [
-    "/((?!api/|_next/static|_next/image|.*\.(?:png|jpg|jpeg|svg|ico|css|js|json|woff|woff2|ttf|eot|webp|avif)$).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

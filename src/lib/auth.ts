@@ -226,7 +226,7 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
       user_id: userResult.userId,
       permission_id: pid,
     }));
-    const { error: permError } = await admin.from("user_permissions").insert(permissionRecords);
+    const { error: permError } = await admin.from("staff_permissions").insert(permissionRecords);
     if (permError) {
       console.error("[auth] Permission insert failed:", permError);
     }
@@ -250,6 +250,7 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
 }
 
 interface CreateStudentOptions {
+  email: string;
   fullName: string;
   phone?: string;
   admissionNumber: string;
@@ -257,7 +258,6 @@ interface CreateStudentOptions {
   classId?: string;
   campusId?: string;
   parentId?: string;
-  pin?: string;
   createdBy: string;
 }
 
@@ -266,13 +266,10 @@ export interface CreateStudentResult extends CreateUserResult {
 }
 
 export async function createStudent(options: CreateStudentOptions): Promise<CreateStudentResult> {
-  // Generate a deterministic fake email from admission number
-  const generatedEmail = `${options.admissionNumber.toLowerCase().replace(/[^a-z0-9]/g, "-")}@student.bdja.ac.ke`;
-  const pin = options.pin || generateTempPassword();
-
+  const tempPassword = generateTempPassword();
   const userResult = await createUser({
-    email: generatedEmail,
-    password: pin,
+    email: options.email,
+    password: tempPassword,
     fullName: options.fullName,
     role: "student",
     userCategory: "student",
@@ -311,14 +308,12 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
     action: "STUDENT_CREATED",
     target_type: "student",
     target_id: userResult.userId,
-    metadata: { admission_number: options.admissionNumber, grade_level: options.gradeLevel, pin_used: !!options.pin },
+    metadata: { admission_number: options.admissionNumber, grade_level: options.gradeLevel },
   }).catch(() => {});
 
   return {
     ...userResult,
     studentId: userResult.userId,
-    email: generatedEmail,
-    tempPassword: pin,
   };
 }
 

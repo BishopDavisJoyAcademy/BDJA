@@ -43,14 +43,14 @@ export function useAuth() {
 
   const fetchUser = useCallback(async () => {
     try {
-      // Secure auth check using getUser() instead of getSession()
+      // Secure: use getUser() to validate JWT with Supabase Auth server
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
       if (userError || !currentUser) {
         setState({ user: null, loading: false, error: null });
         return;
       }
 
-      // Get session token for API call
+      // Get token for API call
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {

@@ -42,6 +42,7 @@ export default function LoginPage() {
       }
 
       if (data.user && data.session) {
+        // Fetch profile to check status
         const { data: profile } = await supabase
           .from("profiles")
           .select("user_category, password_changed, onboarding_completed, is_active")
@@ -55,15 +56,19 @@ export default function LoginPage() {
           return;
         }
 
-        if (!profile?.password_changed) {
-          router.push("/reset-password?first=true");
+        // First login — redirect to set password
+        if (profile?.password_changed === false) {
+          router.push(`/reset-password?first=true&type=staff`);
           return;
         }
-        if (!profile?.onboarding_completed) {
+
+        // Onboarding
+        if (profile?.onboarding_completed === false) {
           router.push("/onboarding");
           return;
         }
 
+        // Redirect after login
         if (redirect && redirect !== "/login" && redirect !== "/reset-password") {
           router.push(redirect);
           return;
@@ -73,7 +78,10 @@ export default function LoginPage() {
         if (category === "student") router.push("/student");
         else if (category === "parent") router.push("/parent");
         else if (category === "staff") router.push("/teacher");
-        else if (category === "admin") router.push("/admin");
+        else if (category === "admin") {
+          const adminSegment = process.env.NEXT_PUBLIC_ADMIN_SEGMENT || "admin";
+          router.push(`/${adminSegment}`);
+        }
         else router.push("/student");
       }
     } catch (err: any) {
@@ -102,6 +110,7 @@ export default function LoginPage() {
         return;
       }
 
+      // Set session in client
       const { error: sessionError } = await supabase.auth.setSession({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
@@ -113,6 +122,7 @@ export default function LoginPage() {
         return;
       }
 
+      // Check profile status
       const { data: profile } = await supabase
         .from("profiles")
         .select("password_changed, onboarding_completed, is_active")
@@ -126,11 +136,14 @@ export default function LoginPage() {
         return;
       }
 
-      if (!profile?.password_changed) {
-        router.push("/reset-password?first=true");
+      // First login — redirect to set PIN
+      if (profile?.password_changed === false) {
+        router.push("/reset-password?first=true&type=student");
         return;
       }
-      if (!profile?.onboarding_completed) {
+
+      // Onboarding
+      if (profile?.onboarding_completed === false) {
         router.push("/onboarding");
         return;
       }

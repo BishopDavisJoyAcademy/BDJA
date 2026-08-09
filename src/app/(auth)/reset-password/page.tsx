@@ -13,6 +13,8 @@ export default function ResetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isFirstLogin = searchParams.get("first") === "true";
+  const userType = searchParams.get("type") || "staff"; // "staff" or "student"
+  const isStudent = userType === "student";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -38,13 +40,11 @@ export default function ResetPasswordPage() {
   }, [router]);
 
   const validatePassword = (pwd: string) => {
-    if (isFirstLogin) {
-      // PIN validation for students/first login
-      if (pwd.length < 4) return "PIN must be at least 4 characters";
+    if (isStudent) {
+      if (pwd.length < 4) return "PIN must be at least 4 digits";
       if (!/^\d+$/.test(pwd)) return "PIN must contain only numbers";
       return "";
     }
-    // Standard password validation
     if (pwd.length < 8) return "Password must be at least 8 characters";
     if (!/[A-Z]/.test(pwd)) return "Must contain an uppercase letter";
     if (!/[a-z]/.test(pwd)) return "Must contain a lowercase letter";
@@ -64,14 +64,13 @@ export default function ResetPasswordPage() {
     }
 
     if (password !== confirmPassword) {
-      setError(isFirstLogin ? "PINs do not match" : "Passwords do not match");
+      setError(isStudent ? "PINs do not match" : "Passwords do not match");
       return;
     }
 
     setLoading(true);
 
     try {
-      // Secure auth check
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         setError("Session expired. Please log in again.");
@@ -87,17 +86,16 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      const body: any = {
-        new_password: password,
-        confirm_password: confirmPassword,
-        is_first_login: isFirstLogin,
-      };
-      // For non-first-login, send current password
-      if (!isFirstLogin) {
-        body.current_password = currentPassword;
-      }
+      // First login uses /api/auth/first-login (no current_password needed)
+      // Normal change uses /api/auth/change-password (requires current_password)
+      const endpoint = isFirstLogin ? "/api/auth/first-login" : "/api/auth/change-password";
+      const body: any = isFirstLogin
+        ? (isStudent
+            ? { new_pin: password, confirm_pin: confirmPassword }
+            : { new_password: password, confirm_password: confirmPassword })
+        : { current_password: currentPassword, new_password: password, confirm_password: confirmPassword };
 
-      const res = await fetch("/api/auth/change-password", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -114,14 +112,9 @@ export default function ResetPasswordPage() {
       setSuccess(true);
       toast.success(data.message || "Updated successfully!");
 
-      // For first login, keep session and go to onboarding
-      // For normal change, user was signed out globally — go to login
+      // After first login, session is kept alive — go to onboarding
       setTimeout(() => {
-        if (isFirstLogin) {
-          router.push("/onboarding");
-        } else {
-          router.push("/login");
-        }
+        router.push("/onboarding");
       }, 1500);
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
@@ -144,13 +137,9 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center space-y-4">
           <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
           <h2 className="text-xl font-bold text-gray-900">
-            {isFirstLogin ? "PIN Set Successfully!" : "Password Updated!"}
+            {isStudent ? "PIN Set Successfully!" : "Password Set Successfully!"}
           </h2>
-          <p className="text-gray-500">
-            {isFirstLogin
-              ? "Redirecting you to onboarding..."
-              : "Please log in with your new password."}
-          </p>
+          <p className="text-gray-500">Redirecting you to onboarding...</p>
         </div>
       </div>
     );
@@ -166,12 +155,16 @@ export default function ResetPasswordPage() {
           <div className="flex items-center gap-3 mb-2">
             <Lock className="w-6 h-6 text-bdja-primary" />
             <h1 className="text-xl font-bold text-gray-900">
-              {isFirstLogin ? "Set Your PIN" : "Reset Password"}
+              {isFirstLogin
+                ? (isStudent ? "Set Your PIN" : "Set Your Password")
+                : (isStudent ? "Reset PIN" : "Reset Password")}
             </h1>
           </div>
           <p className="text-sm text-gray-500">
             {isFirstLogin
-              ? "Create a secure PIN for your student account."
+              ? (isStudent
+                  ? "Create a secure PIN for your student account."
+                  : "Create a secure password for your staff account.")
               : "Enter your current password and choose a new one."}
           </p>
         </div>
@@ -199,14 +192,14 @@ export default function ResetPasswordPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {isFirstLogin ? "New PIN" : "New Password"}
+              {isStudent ? "New PIN" : "New Password"}
             </label>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={isFirstLogin ? "Enter 4+ digit PIN" : "Min 8 chars, upper, lower, number, special"}
+                placeholder={isStudent ? "Enter 4+ digit PIN" : "Min 8 chars, upper, lower, number, special"}
                 required
               />
               <button
@@ -221,21 +214,21 @@ export default function ResetPasswordPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {isFirstLogin ? "Confirm PIN" : "Confirm Password"}
+              {isStudent ? "Confirm PIN" : "Confirm Password"}
             </label>
             <Input
               type={showPassword ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder={isFirstLogin ? "Re-enter PIN" : "Re-enter password"}
+              placeholder={isStudent ? "Re-enter PIN" : "Re-enter password"}
               required
             />
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading
-              ? (isFirstLogin ? "Setting PIN..." : "Updating...")
-              : (isFirstLogin ? "Set PIN" : "Update Password")}
+              ? (isStudent ? "Setting PIN..." : "Setting Password...")
+              : (isStudent ? "Set PIN" : "Set Password")}
           </Button>
         </form>
       </div>

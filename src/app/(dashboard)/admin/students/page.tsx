@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Plus, Search, Pencil, ArrowUp, Key } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { supabase } from "@/lib/supabase";
 
 interface StudentRecord {
   id: string;
@@ -39,9 +40,17 @@ export default function StudentManagement() {
     }
   }, [user, loading, router]);
 
+  const getToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || "";
+  };
+
   const fetchStudents = async () => {
     try {
-      const res = await fetch("/api/admin/students");
+      const token = await getToken();
+      const res = await fetch("/api/admin/students", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) throw new Error("Failed to fetch students");
       const data = await res.json();
       setStudents(data.students || []);
@@ -55,9 +64,13 @@ export default function StudentManagement() {
   const handleResetPin = async (id: string) => {
     if (!confirm("Reset this student's PIN to 0000?")) return;
     try {
+      const token = await getToken();
       const res = await fetch(`/api/admin/students?id=${id}&action=reset-pin`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (!res.ok) throw new Error("Failed to reset PIN");
       toast.success("PIN reset to 0000");
@@ -72,9 +85,13 @@ export default function StudentManagement() {
     const nextGrade = idx >= 0 && idx < grades.length - 1 ? grades[idx + 1] : currentGrade;
     if (!confirm(`Promote student to ${nextGrade}?`)) return;
     try {
+      const token = await getToken();
       const res = await fetch(`/api/admin/students?id=${id}&action=promote`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ grade_level: nextGrade }),
       });
       if (!res.ok) throw new Error("Failed to promote");

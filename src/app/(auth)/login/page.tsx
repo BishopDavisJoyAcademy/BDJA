@@ -102,7 +102,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Set session in client
       const { error: sessionError } = await supabase.auth.setSession({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
@@ -114,7 +113,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Check if password needs changing (first login)
       const { data: profile } = await supabase
         .from("profiles")
         .select("password_changed, onboarding_completed, is_active")
@@ -154,7 +152,6 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500">Bishop Davis Joy Academy</p>
         </div>
 
-        {/* Tabs */}
         <div className="flex rounded-lg bg-gray-100 p-1 mb-6">
           <button
             type="button"
@@ -165,7 +162,7 @@ export default function LoginPage() {
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            <Shield className="w-4 h-4" /> Staff / Admin
+            <Shield className="w-4 h-4" /> Staff
           </button>
           <button
             type="button"

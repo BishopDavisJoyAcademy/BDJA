@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Table } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
-import { Plus, Search, Shield, Pencil } from "lucide-react";
+import { Plus, Search, Pencil } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import CredentialModal from "@/components/staff/CredentialModal";
+import { supabase } from "@/lib/supabase";
 
 interface StaffMember {
   id: string;
@@ -51,9 +52,17 @@ export default function StaffManagement() {
     }
   }, [user, loading, router]);
 
+  const getToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || "";
+  };
+
   const fetchStaff = async () => {
     try {
-      const res = await fetch("/api/admin/staff");
+      const token = await getToken();
+      const res = await fetch("/api/admin/staff", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) throw new Error("Failed to fetch staff");
       const data = await res.json();
       setStaff(data.staff || []);
@@ -66,9 +75,13 @@ export default function StaffManagement() {
 
   const handleToggleActive = async (id: string, current: boolean) => {
     try {
+      const token = await getToken();
       const res = await fetch(`/api/admin/staff?id=${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ is_active: !current }),
       });
       if (!res.ok) throw new Error("Failed to update");

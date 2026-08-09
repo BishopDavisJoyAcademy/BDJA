@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Table } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Plus, Search, Shield } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -45,7 +46,10 @@ export default function StaffManagement() {
 
   const fetchStaff = async () => {
     try {
-      const res = await fetch("/api/admin/staff");
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/staff", {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
       if (!res.ok) throw new Error("Failed to fetch staff");
       const data = await res.json();
       setStaff(data.staff || []);

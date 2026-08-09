@@ -51,7 +51,7 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
   if (isPublic) return response;
 
   // No session → redirect to login
-  if (!session?.user || sessionError) {
+  if (userError || !user) {
     if (isAuthPath) return response;
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
@@ -71,7 +71,7 @@ export async function middleware(request: NextRequest) {
   const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("id, role, user_category, is_active, password_changed, onboarding_completed, full_name, email")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (profileError || !profile) {
@@ -106,7 +106,7 @@ export async function middleware(request: NextRequest) {
 
   // Route permission check
   if (!pathname.startsWith("/api/")) {
-    const hasAccess = await checkRoutePermission(session.user.id, pathname, profile.user_category);
+    const hasAccess = await checkRoutePermission(user.id, pathname, profile.user_category);
     if (!hasAccess) {
       return NextResponse.redirect(new URL(getDashboardPath(profile.user_category), request.url));
     }

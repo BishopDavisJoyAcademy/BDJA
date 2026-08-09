@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { MessageSquare, CheckCircle, XCircle, Clock } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 
 interface Suggestion {
@@ -45,8 +46,11 @@ export default function SuggestionsManagement() {
 
   const fetchSuggestions = async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const url = filter !== "all" ? `/api/admin/suggestions?status=${filter}` : "/api/admin/suggestions";
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
       const data = await res.json();
       if (res.ok) {
         setSuggestions(data.suggestions || []);
@@ -64,9 +68,13 @@ export default function SuggestionsManagement() {
 
   const updateStatus = async (id: string, status: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/admin/suggestions", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ id, status }),
       });
       if (res.ok) {

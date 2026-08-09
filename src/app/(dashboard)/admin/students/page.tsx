@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Table } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Plus, Search } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -41,7 +42,10 @@ export default function StudentManagement() {
 
   const fetchStudents = async () => {
     try {
-      const res = await fetch("/api/admin/students");
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/students", {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
       if (!res.ok) throw new Error("Failed to fetch students");
       const data = await res.json();
       setStudents(data.students || []);

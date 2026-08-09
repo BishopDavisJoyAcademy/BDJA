@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Save } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 
 const PAGE_SLUGS = ["about", "admissions", "contact", "policies", "faqs"];
@@ -33,7 +34,10 @@ export default function CmsPages() {
 
   const fetchPages = async () => {
     try {
-      const res = await fetch("/api/admin/pages");
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/pages", {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
       if (res.ok) {
         const data = await res.json();
         const pageMap: Record<string, any> = {};
@@ -48,9 +52,13 @@ export default function CmsPages() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/admin/pages", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           slug: activeSlug,
           title: title || activeSlug,

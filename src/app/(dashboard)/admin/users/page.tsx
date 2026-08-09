@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Table } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Search, UserPlus } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -40,12 +41,15 @@ export default function UsersManagement() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch("/api/admin/stats");
-      // For now, fetch from a generic endpoint or build one
-      // Using admin/staff and admin/students as proxies
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const [staffRes, studentsRes] = await Promise.all([
-        fetch("/api/admin/staff"),
-        fetch("/api/admin/students"),
+        fetch("/api/admin/staff", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }),
+        fetch("/api/admin/students", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }),
       ]);
       const staffData = staffRes.ok ? await staffRes.json() : { staff: [] };
       const studentsData = studentsRes.ok ? await studentsRes.json() : { students: [] };

@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
     }
 
-    if (targetProfile.user_category === "admin" && targetUserId !== session.userId) {
+    const tp = targetProfile as any;
+
+    if (tp.user_category === "admin" && targetUserId !== session.userId) {
       return NextResponse.json({ error: "Cannot impersonate other admins" }, { status: 403 });
     }
 
@@ -58,16 +60,16 @@ export async function POST(req: NextRequest) {
       viewToken,
       expiresAt,
       targetUser: {
-        id: targetProfile.id,
-        email: targetProfile.email,
-        full_name: targetProfile.full_name,
-        role: targetProfile.role,
-        user_category: targetProfile.user_category,
-        campus_id: targetProfile.campus_id,
-        department: targetProfile.staff?.department || null,
-        designation: targetProfile.staff?.designation || null,
-        admission_number: targetProfile.students?.admission_number || null,
-        grade_level: targetProfile.students?.grade_level || null,
+        id: tp.id,
+        email: tp.email,
+        full_name: tp.full_name,
+        role: tp.role,
+        user_category: tp.user_category,
+        campus_id: tp.campus_id,
+        department: tp.staff?.department || null,
+        designation: tp.staff?.designation || null,
+        admission_number: tp.students?.admission_number || null,
+        grade_level: tp.students?.grade_level || null,
       },
     });
   } catch (error: any) {

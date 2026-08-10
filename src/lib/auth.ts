@@ -204,7 +204,7 @@ export interface CreateStudentResult extends CreateUserResult {
 }
 
 export async function createStudent(options: CreateStudentOptions): Promise<CreateStudentResult> {
-  const pin = generatePIN(4);
+  const pin = generatePIN();
   const admin = getSupabaseAdmin();
 
   const userResult = await createUser({

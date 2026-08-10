@@ -117,10 +117,12 @@ export interface CmsPage {
   slug: string;
   title: string;
   content: string;
-  meta_description?: string;
-  published: boolean;
-  updated_by?: string;
-  updated_at?: string;
+  meta_description?: string | null;
+  is_published: boolean | null;
+  last_edited_by?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
+  meta_keywords?: string | null;
 }
 
 export interface CalendarEvent {

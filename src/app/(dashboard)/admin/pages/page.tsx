@@ -9,7 +9,7 @@ interface CmsPage {
   id: string;
   slug: string;
   title: string;
-  published: boolean;
+  is_published: boolean | null;
   updated_at: string;
 }
 
@@ -18,7 +18,7 @@ export default function CmsPagesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<CmsPage | null>(null);
-  const [form, setForm] = useState({ slug: "", title: "", content: "", meta_description: "", published: false });
+  const [form, setForm] = useState({ slug: "", title: "", content: "", meta_description: "", is_published: false });
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
 
@@ -56,7 +56,7 @@ export default function CmsPagesPage() {
       if (!res.ok) throw new Error(data.error || "Failed to save");
       setSuccess(editing ? "Page updated!" : "Page created!");
       setEditing(null);
-      setForm({ slug: "", title: "", content: "", meta_description: "", published: false });
+      setForm({ slug: "", title: "", content: "", meta_description: "", is_published: false });
       fetchPages();
     } catch (err: any) {
       setError(err.message);
@@ -67,7 +67,7 @@ export default function CmsPagesPage() {
 
   const startEdit = (page: CmsPage) => {
     setEditing(page);
-    setForm({ slug: page.slug, title: page.title, content: "", meta_description: "", published: page.published });
+    setForm({ slug: page.slug, title: page.title, content: "", meta_description: "", is_published: page.is_published });
     fetch(`/api/admin/pages?slug=${page.slug}`)
       .then((r) => r.json())
       .then((data) => {
@@ -77,7 +77,7 @@ export default function CmsPagesPage() {
             title: data.page.title,
             content: data.page.content || "",
             meta_description: data.page.meta_description || "",
-            published: data.page.published,
+            is_published: data.page.is_published,
           });
         }
       });
@@ -89,7 +89,7 @@ export default function CmsPagesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">CMS Pages</h1>
-        <button onClick={() => { setEditing(null); setForm({ slug: "", title: "", content: "", meta_description: "", published: false }); }}
+        <button onClick={() => { setEditing(null); setForm({ slug: "", title: "", content: "", meta_description: "", is_published: false }); }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
           <Plus className="w-4 h-4" /> New Page
         </button>
@@ -125,8 +125,8 @@ export default function CmsPagesPage() {
                   <td className="px-4 py-3 font-medium text-gray-900">{page.title}</td>
                   <td className="px-4 py-3 text-gray-600 font-mono text-xs">/{page.slug}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${page.published ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                      {page.published ? "Published" : "Draft"}
+                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${page.is_published ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                      {page.is_published ? "Published" : "Draft"}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -167,9 +167,9 @@ export default function CmsPagesPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" />
             </div>
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="published" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })}
+              <input type="checkbox" id="is_published" checked={form.is_published} onChange={(e) => setForm({ ...form, is_published: e.target.checked })}
                 className="w-4 h-4 text-blue-600 rounded" />
-              <label htmlFor="published" className="text-sm font-medium text-gray-700">Published</label>
+              <label htmlFor="is_published" className="text-sm font-medium text-gray-700">Published</label>
             </div>
             <button type="submit" disabled={saving}
               className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">

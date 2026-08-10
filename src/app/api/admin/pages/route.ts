@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { slug, title, content, meta_description, published } = body;
+    const { slug, title, content, meta_description, is_published } = body;
 
     if (!slug || !title || !content) {
       return NextResponse.json({ error: "Slug, title, and content are required" }, { status: 400 });
@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
       title,
       content,
       meta_description,
-      published: published ?? false,
-      updated_by: session.userId,
+      is_published: is_published ?? false,
+      last_edited_by: session.userId,
     }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create page" }, { status: 500 });
@@ -69,7 +69,7 @@ export async function PUT(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { id, slug, title, content, meta_description, published } = body;
+    const { id, slug, title, content, meta_description, is_published } = body;
 
     if (!id) return NextResponse.json({ error: "Page ID required" }, { status: 400 });
 
@@ -78,8 +78,8 @@ export async function PUT(req: NextRequest) {
       title,
       content,
       meta_description,
-      published,
-      updated_by: session.userId,
+      is_published,
+      last_edited_by: session.userId,
       updated_at: new Date().toISOString(),
     }).eq("id", id).select().maybeSingle();
 

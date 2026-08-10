@@ -66,12 +66,23 @@ export async function executeJoyAction(
         if (!action.payload?.user_id || !action.payload?.message) {
           return { success: false, message: "Missing notification data", error: "Invalid payload" };
         }
+        interface NotificationInsertRow {
+          user_id: string;
+          title: string;
+          message: string;
+          type: string;
+          action_url: string | null;
+          is_read: boolean;
+        }
+
         const { error } = await admin.from("notifications").insert({
           user_id: action.payload.user_id,
           title: action.payload.title || "Joy AI",
           message: action.payload.message,
           type: action.payload.type || "info",
-        });
+          action_url: action.payload.action_url || null,
+          is_read: false,
+        } as NotificationInsertRow);
         if (error) throw error;
         return { success: true, message: "Notification sent" };
       }

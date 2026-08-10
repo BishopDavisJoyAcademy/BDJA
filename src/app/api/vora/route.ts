@@ -14,7 +14,6 @@ export async function GET(req: NextRequest) {
     const query = searchParams.get("q") || "";
     const gradeLevel = searchParams.get("grade_level") || "all";
     const subject = searchParams.get("subject") || "";
-    const category = searchParams.get("category") || "";
     const limit = parseInt(searchParams.get("limit") || "10", 10);
 
     let dbQuery = admin.from("vora_content").select("*");
@@ -29,10 +28,6 @@ export async function GET(req: NextRequest) {
     if (subject) {
       dbQuery = dbQuery.eq("subject", subject);
     }
-    if (category) {
-      dbQuery = dbQuery.eq("category", category);
-    }
-
     const { data, error } = await dbQuery.limit(limit).order("created_at", { ascending: false });
     if (error) return NextResponse.json({ error: "Failed to fetch content" }, { status: 500 });
     return NextResponse.json({ content: data || [] });

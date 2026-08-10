@@ -56,11 +56,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "targetUserId required" }, { status: 400 });
     }
 
-    const { data: profileRaw, error: profileError } = await admin
+    const { data: profileRows, error: profileError } = await admin
       .from("profiles")
       .select("id, email, full_name, role, user_category, campus_id, is_active")
       .eq("id", targetUserId)
-      .maybeSingle();
+      .limit(1);
+    const profileRaw = profileRows?.[0] ?? null;
 
     if (profileError || !profileRaw) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
@@ -72,19 +73,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Cannot impersonate other admins" }, { status: 403 });
     }
 
-    const { data: staffRaw } = await admin
+    const { data: staffRows } = await admin
       .from("staff")
       .select("department, designation")
       .eq("id", targetUserId)
-      .maybeSingle();
+      .limit(1);
+    const staffRaw = staffRows?.[0] ?? null;
 
     const staff = staffRaw as StaffRow | null;
 
-    const { data: studentRaw } = await admin
+    const { data: studentRows } = await admin
       .from("students")
       .select("admission_number, grade_level")
       .eq("id", targetUserId)
-      .maybeSingle();
+      .limit(1);
+    const studentRaw = studentRows?.[0] ?? null;
 
     const student = studentRaw as StudentRow | null;
 

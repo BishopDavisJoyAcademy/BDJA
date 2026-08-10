@@ -40,11 +40,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Check profile
-    const { data: profile } = await supabase
+    const { data: profileRows } = await supabase
       .from("profiles")
       .select("is_active, password_changed, onboarding_completed, user_category")
       .eq("id", userId)
-      .maybeSingle();
+      .limit(1);
+    const profile = profileRows?.[0] ?? null;
 
     if (!profile) {
       await recordFailedLogin(userId, email, ip, req.headers.get("user-agent") || "");

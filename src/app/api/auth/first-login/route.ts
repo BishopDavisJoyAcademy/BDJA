@@ -11,11 +11,12 @@ export async function POST(req: NextRequest) {
     const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
 
-    const { data: profile, error: profileError } = await admin
+    const { data: profileRows, error: profileError } = await admin
       .from("profiles")
       .select("id, user_category, password_changed")
       .eq("id", session.userId)
-      .maybeSingle();
+      .limit(1);
+    const profile = profileRows?.[0] ?? null;
 
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });

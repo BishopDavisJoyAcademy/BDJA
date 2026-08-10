@@ -18,11 +18,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    const { data: profile } = await admin
+    const { data: profileRows } = await admin
       .from("profiles")
       .select("user_category")
       .eq("id", user.id)
-      .maybeSingle();
+      .limit(1);
+    const profile = profileRows?.[0] ?? null;
 
     if (!profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });

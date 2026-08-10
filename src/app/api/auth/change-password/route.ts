@@ -28,11 +28,12 @@ export async function POST(req: NextRequest) {
 
     const { current_password, new_password } = parseResult.data;
 
-    const { data: profile, error: profileError } = await admin
+    const { data: profileRows, error: profileError } = await admin
       .from("profiles")
       .select("id, temp_password_hash, user_category")
       .eq("id", session.userId)
-      .maybeSingle();
+      .limit(1);
+    const profile = profileRows?.[0] ?? null;
 
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });

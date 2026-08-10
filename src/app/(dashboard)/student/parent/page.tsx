@@ -1,180 +1,115 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { GraduationCap, Wallet, UserCheck, Calendar, Bell } from "lucide-react";
+import { Users, GraduationCap, Wallet, UserCheck, Loader2 } from "lucide-react";
 
-interface ParentData {
-  grades: any[];
-  fees: any[];
-  attendance: any[];
-  announcements: any[];
+interface Child {
+  id: string;
+  full_name: string;
+  grade_level: string;
+  admission_number: string;
 }
 
-export default function StudentParentView() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-  const [data, setData] = useState<ParentData>({ grades: [], fees: [], attendance: [], announcements: [] });
-  const [activeTab, setActiveTab] = useState("grades");
+export default function ParentPortal() {
+  const { user } = useAuth();
+  const [children, setChildren] = useState<Child[]>([]);
+  const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    if (!loading && user?.user_category !== "student" && user?.user_category !== "parent") {
-      router.push("/unauthorized");
-      return;
-    }
-    if (user) {
-      fetchParentData();
-    }
-  }, [user, loading, router]);
+    if (user) fetchChildren();
+  }, [user]);
 
-  const fetchParentData = async () => {
+  async function fetchChildren() {
     try {
-      const [gradesRes, feesRes, announcementsRes] = await Promise.all([
-        fetch("/api/parent/grades"),
-        fetch("/api/parent/fees"),
-        fetch("/api/parent/announcements"),
-      ]);
-
-      const grades = gradesRes.ok ? await gradesRes.json() : { grades: [] };
-      const fees = feesRes.ok ? await feesRes.json() : { fees: [] };
-      const announcements = announcementsRes.ok ? await announcementsRes.json() : { announcements: [] };
-
-      setData({
-        grades: grades.grades || [],
-        fees: fees.fees || [],
-        attendance: [],
-        announcements: announcements.announcements || [],
-      });
+      setFetching(true);
+      const res = await fetch("/api/parent/children");
+      const data = await res.json();
+      setChildren(data.children || []);
     } catch (err) {
-      console.error("Failed to fetch parent data:", err);
+      console.error(err);
+    } finally {
+      setFetching(false);
     }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
   }
-
-  const tabs = [
-    { key: "grades", label: "Academic Reports", icon: GraduationCap },
-    { key: "fees", label: "Fee Balance", icon: Wallet },
-    { key: "attendance", label: "Attendance", icon: UserCheck },
-    { key: "announcements", label: "Announcements", icon: Bell },
-  ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Parent Information</h1>
-        <p className="text-gray-500">View your child's academic and school information</p>
+        <h1 className="text-2xl font-bold text-gray-900">Parent Portal</h1>
+        <p className="text-gray-500">View your children's progress and school information</p>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === tab.key
-                ? "bg-bdja-primary text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+              <Users className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Children</p>
+              <p className="text-xl font-bold text-gray-900">{children.length}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Grades</p>
+              <p className="text-xl font-bold text-gray-900">View</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
+              <Wallet className="w-5 h-5 text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Fees</p>
+              <p className="text-xl font-bold text-gray-900">View</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+              <UserCheck className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Attendance</p>
+              <p className="text-xl font-bold text-gray-900">View</p>
+            </div>
+          </div>
+        </Card>
       </div>
 
-      {activeTab === "grades" && (
-        <Card className="p-6">
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-bdja-primary" />
-            Academic Reports
-          </h3>
-          {data.grades.length === 0 ? (
-            <p className="text-gray-500 text-sm">No grades available yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {data.grades.map((g: any, i: number) => (
-                <div key={i} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                  <div>
-                    <p className="font-medium text-sm">{g.subjects?.name || "Subject"}</p>
-                    <p className="text-xs text-gray-500">{g.strand} - {g.sub_strand}</p>
-                  </div>
-                  <Badge variant={g.performance_level === "exceeds" ? "success" : "default"}>
-                    {g.performance_level}
-                  </Badge>
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">Your Children</h3>
+        {fetching ? (
+          <div className="flex items-center justify-center h-32"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>
+        ) : children.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">No children linked to your account.</div>
+        ) : (
+          <div className="space-y-3">
+            {children.map((child) => (
+              <div key={child.id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg hover:bg-gray-50">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-blue-600" />
                 </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {activeTab === "fees" && (
-        <Card className="p-6">
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-bdja-primary" />
-            Fee Balance
-          </h3>
-          {data.fees.length === 0 ? (
-            <p className="text-gray-500 text-sm">No fee records found.</p>
-          ) : (
-            <div className="space-y-3">
-              {data.fees.map((f: any, i: number) => (
-                <div key={i} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                  <div>
-                    <p className="font-medium text-sm">{f.term} - {f.academic_year}</p>
-                    <p className="text-xs text-gray-500">Balance: KES {f.balance}</p>
-                  </div>
-                  <Badge variant={f.status === "paid" ? "success" : f.status === "partial" ? "warning" : "destructive"}>
-                    {f.status}
-                  </Badge>
+                <div>
+                  <h4 className="font-medium text-gray-900">{child.full_name}</h4>
+                  <p className="text-xs text-gray-500">Grade {child.grade_level} · Admission #{child.admission_number}</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {activeTab === "attendance" && (
-        <Card className="p-6">
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <UserCheck className="w-5 h-5 text-bdja-primary" />
-            Attendance
-          </h3>
-          <p className="text-gray-500 text-sm">Attendance records will appear here.</p>
-        </Card>
-      )}
-
-      {activeTab === "announcements" && (
-        <Card className="p-6">
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <Bell className="w-5 h-5 text-bdja-primary" />
-            Announcements
-          </h3>
-          {data.announcements.length === 0 ? (
-            <p className="text-gray-500 text-sm">No announcements at this time.</p>
-          ) : (
-            <div className="space-y-3">
-              {data.announcements.map((a: any, i: number) => (
-                <div key={i} className="p-3 bg-gray-50 rounded-lg">
-                  <p className="font-medium text-sm">{a.title}</p>
-                  <p className="text-xs text-gray-500 mt-1">{a.description}</p>
-                  <p className="text-xs text-gray-400 mt-1">{new Date(a.start_date).toLocaleDateString()}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

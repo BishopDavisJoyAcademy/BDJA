@@ -8,9 +8,9 @@ if (!url || !serviceKey) {
   throw new Error("Missing Supabase server environment variables");
 }
 
-let _admin: ReturnType<typeof createClient<Database>> | null = null;
+let _admin: ReturnType<typeof createClient<Database>> | undefined;
 
-export function getSupabaseAdmin() {
+export function getSupabaseAdmin(): ReturnType<typeof createClient<Database>> {
   if (!_admin) {
     _admin = createClient<Database>(url, serviceKey, {
       auth: {

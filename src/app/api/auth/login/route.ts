@@ -33,13 +33,11 @@ export async function POST(req: NextRequest) {
 
     const userId = authData.user.id;
 
-    // Check lockout
     const lockout = await checkAccountLockout(userId);
     if (lockout.isLocked) {
       return NextResponse.json({ error: lockout.message || "Account locked" }, { status: 403 });
     }
 
-    // Check profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("is_active, password_changed, onboarding_completed, user_category")
@@ -51,33 +49,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Account profile missing" }, { status: 500 });
     }
 
-    if (profile.is_active === false) {
+    if (!profile.is_active) {
+      await supabase.auth.signOut();
       return NextResponse.json({ error: "Account suspended" }, { status: 403 });
     }
 
     await recordSuccessfulLogin(userId, email, ip, req.headers.get("user-agent") || "");
 
-    // Record session server-side
-    const expiresAt = new Date(Date.now() + 10 * 60 * 60 * 1000); // 10 hours
-    await recordSession(userId, authData.session.access_token, deviceInfo, ip, expiresAt);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 60 * 1000);
+    await recordSession(userId, authData.session.access_token, ip, req.headers.get("user-agent") || "", expiresAt);
 
     return NextResponse.json({
-      success: true,
+      user: {
+        id: userId,
+        email: authData.user.email,
+        role: profile.user_category,
+        password_changed: profile.password_changed,
+        onboarding_completed: profile.onboarding_completed,
+      },
       session: {
         access_token: authData.session.access_token,
         refresh_token: authData.session.refresh_token,
         expires_at: authData.session.expires_at,
       },
-      user: {
-        id: userId,
-        email: authData.user.email,
-        user_category: profile.user_category,
-        password_changed: profile.password_changed,
-        onboarding_completed: profile.onboarding_completed,
-      },
     });
   } catch (error: any) {
-    console.error("[api/auth/login] Error:", error);
-    return NextResponse.json({ error: "Login failed" }, { status: 500 });
+    console.error("[login] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

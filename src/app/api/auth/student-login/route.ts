@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { recordFailedLogin, recordSuccessfulLogin, checkAccountLockout, extractDeviceInfo, getClientIP, recordSession } from "@/lib/security";
+import { recordFailedLogin, recordSuccessfulLogin, checkAccountLockout, getClientIP, recordSession } from "@/lib/security";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +24,9 @@ export async function POST(req: NextRequest) {
     const ip = getClientIP(req);
     const ua = req.headers.get("user-agent") || "";
 
-    // Look up student by admission number
     const { data: student, error: studentError } = await admin
       .from("students")
-      .select("id, admission_number, profile_id, profiles!inner(id, email)")
+      .select("id, admission_number, profiles!inner(id, email)")
       .eq("admission_number", admission_number)
       .single();
 
@@ -44,13 +43,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Student account not properly configured" }, { status: 500 });
     }
 
-    // Check lockout
     const lockout = await checkAccountLockout(userId);
     if (lockout.isLocked) {
       return NextResponse.json({ error: lockout.message || "Account locked" }, { status: 403 });
     }
 
-    // Sign in with email + PIN
     const { data: authData, error: authError } = await admin.auth.signInWithPassword({ email, password: pin });
 
     if (authError || !authData.session) {
@@ -61,19 +58,24 @@ export async function POST(req: NextRequest) {
     await recordSuccessfulLogin(userId, email, ip, ua);
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 60 * 1000);
-    await recordSession(userId, authData.session.access_token, extractDeviceInfo(req), ip, expiresAt);
+    await recordSession(userId, authData.session.access_token, ip, ua, expiresAt);
 
     return NextResponse.json({
-      success: true,
+      user: {
+        id: userId,
+        email,
+        role: "student",
+        password_changed: true,
+        onboarding_completed: true,
+      },
       session: {
         access_token: authData.session.access_token,
         refresh_token: authData.session.refresh_token,
         expires_at: authData.session.expires_at,
       },
-      user: { id: userId, email },
     });
   } catch (error: any) {
     console.error("[student-login] Error:", error);
-    return NextResponse.json({ error: error.message || "Login failed" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

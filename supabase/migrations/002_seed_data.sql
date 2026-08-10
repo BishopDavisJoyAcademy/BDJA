@@ -1,4 +1,13 @@
--- Seed default permission categories and permissions
+-- ============================================================
+-- BDJA Platform — Seed Data (v3.0)
+-- Permission categories, permissions, default campus
+-- Run AFTER 001_initial_schema.sql
+-- ============================================================
+
+-- ============================================
+-- PERMISSION CATEGORIES
+-- ============================================
+
 INSERT INTO permission_categories (key, name, icon, sort_order) VALUES
   ('admin', 'Administration', 'shield', 1),
   ('academics', 'Academics', 'book-open', 2),
@@ -7,6 +16,10 @@ INSERT INTO permission_categories (key, name, icon, sort_order) VALUES
   ('content', 'Content', 'file-text', 5),
   ('system', 'System', 'settings', 6)
 ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- PERMISSIONS
+-- ============================================
 
 INSERT INTO permissions (key, name, category, description) VALUES
   ('admin.access', 'Full Admin Access', 'admin', 'Complete platform administration'),
@@ -39,17 +52,47 @@ INSERT INTO permissions (key, name, category, description) VALUES
   ('content.view', 'View Content', 'content', 'View educational content'),
   ('pages.edit', 'Edit Pages', 'content', 'Edit CMS pages'),
   ('pages.view', 'View Pages', 'content', 'View CMS pages'),
-  ('suggestions.manage', 'Manage Suggestions', 'system', 'Review and respond to suggestions'),
+  ('suggestions.manage', 'Manage Suggestions', 'system', 'Manage user suggestions and feedback'),
   ('suggestions.view', 'View Suggestions', 'system', 'View suggestions'),
-  ('settings.manage', 'Manage Settings', 'system', 'Configure platform settings'),
-  ('settings.view', 'View Settings', 'system', 'View platform settings'),
-  ('impersonate.users', 'Impersonate Users', 'admin', 'Impersonate other user accounts'),
-  ('campuses.manage', 'Manage Campuses', 'admin', 'Add and manage school campuses'),
-  ('subjects.manage', 'Manage Subjects', 'academics', 'Add and manage subjects'),
-  ('classes.manage', 'Manage Classes', 'academics', 'Add and manage classes')
+  ('impersonate', 'Impersonate Users', 'admin', 'Log in as another user for support'),
+  ('god.mode', 'God Mode', 'admin', 'Full unrestricted access to all features')
 ON CONFLICT (key) DO NOTHING;
 
--- Create default campus
-INSERT INTO campuses (name, location) VALUES
-  ('Main Campus', 'Nairobi, Kenya')
+-- ============================================
+-- DEFAULT CAMPUS
+-- ============================================
+
+INSERT INTO campuses (name, location, phone, email)
+VALUES ('Main Campus', 'Nairobi, Kenya', '+254 700 000000', 'info@bdja.ac.ke')
 ON CONFLICT DO NOTHING;
+
+-- ============================================
+-- DEFAULT CMS PAGES (fallback content)
+-- ============================================
+
+INSERT INTO cms_pages (slug, title, content, published, meta_description) VALUES
+  ('about', 'About BDJA', '<h1>About Bishop Davis Joy Academy</h1><p>Welcome to BDJA, a place of excellence in education.</p>', true, 'Learn about Bishop Davis Joy Academy'),
+  ('admissions', 'Admissions', '<h1>Admissions</h1><p>Join our family of learners. Apply today!</p>', true, 'Apply to Bishop Davis Joy Academy'),
+  ('contact', 'Contact Us', '<h1>Contact Us</h1><p>Email: info@bdja.ac.ke<br>Phone: +254 700 000000</p>', true, 'Contact Bishop Davis Joy Academy'),
+  ('policies', 'School Policies', '<h1>School Policies</h1><p>Our policies ensure a safe learning environment.</p>', true, 'School policies at BDJA'),
+  ('faqs', 'FAQs', '<h1>Frequently Asked Questions</h1><p>Find answers to common questions here.</p>', true, 'Frequently asked questions about BDJA')
+ON CONFLICT (slug) DO NOTHING;
+
+-- ============================================
+-- DEFAULT GRADE LEVELS
+-- ============================================
+
+INSERT INTO grade_levels (name, sort_order) VALUES
+  ('Playgroup', 1),
+  ('Pre-Primary 1', 2),
+  ('Pre-Primary 2', 3),
+  ('Grade 1', 4),
+  ('Grade 2', 5),
+  ('Grade 3', 6),
+  ('Grade 4', 7),
+  ('Grade 5', 8),
+  ('Grade 6', 9),
+  ('Grade 7', 10),
+  ('Grade 8', 11),
+  ('Grade 9', 12)
+ON CONFLICT (name) DO NOTHING;

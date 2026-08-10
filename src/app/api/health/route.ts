@@ -6,7 +6,7 @@ export async function GET() {
   return NextResponse.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
-    version: process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0",
+    version: process.env.NEXT_PUBLIC_APP_VERSION || "2.0.0",
     environment: process.env.NODE_ENV,
   });
 }

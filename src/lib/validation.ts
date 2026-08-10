@@ -24,7 +24,7 @@ export const createUserSchema = z.object({
   phone: z.string().max(20).optional(),
   admission_number: z.string().max(50).optional(),
   class_id: z.string().uuid().optional(),
-  grade_level: z.enum(["playgroup", "pp1", "pp2", "grade1", "grade2", "grade3", "grade4", "grade5", "grade6"]).optional(),
+  grade_level: z.string().max(20).optional(),
   parent_name: z.string().max(100).optional(),
   parent_email: z.string().email().optional().or(z.literal("")),
   parent_phone: z.string().max(20).optional(),
@@ -57,39 +57,3 @@ export const firstLoginPinSchema = z.object({
   message: "PINs do not match",
   path: ["confirm_pin"],
 });
-
-export const chatMessageSchema = z.object({
-  messages: z.array(z.object({
-    role: z.enum(["user", "assistant", "system"]),
-    content: z.string().min(1).max(10000),
-  })).max(50),
-  context: z.record(z.any()).optional(),
-  stream: z.boolean().optional(),
-});
-
-export const voraSearchSchema = z.object({
-  query: z.string().min(1).max(200),
-  grade_level: z.enum(["playgroup", "pp1", "pp2", "grade1", "grade2", "grade3", "grade4", "grade5", "grade6", "all"]).optional(),
-  subject: z.string().optional(),
-  category: z.string().optional(),
-  limit: z.number().min(1).max(20).optional().default(10),
-});
-
-export const saveVideoSchema = z.object({
-  video_id: z.string().min(1),
-  title: z.string().min(1),
-  subject: z.string().optional(),
-  grade_level: z.string().optional(),
-  youtube_url: z.string().url(),
-  summary: z.string().optional(),
-  thumbnail_url: z.string().url().optional(),
-  duration_seconds: z.number().optional(),
-  difficulty: z.string().optional(),
-});
-
-export type CreateUserInput = z.infer<typeof createUserSchema>;
-export type CreateHeadteacherInput = z.infer<typeof createHeadteacherSchema>;
-export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
-export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
-export type VoraSearchInput = z.infer<typeof voraSearchSchema>;
-export type SaveVideoInput = z.infer<typeof saveVideoSchema>;

@@ -13,7 +13,6 @@ export async function rateLimit(identifier: string, options: RateLimitOptions = 
   const windowStart = new Date(now - options.windowMs).toISOString();
 
   try {
-    // Count attempts in window using login_attempts table (or dedicated rate_limit table)
     const { data: attempts, error } = await admin
       .from("login_attempts")
       .select("id, created_at")
@@ -33,7 +32,6 @@ export async function rateLimit(identifier: string, options: RateLimitOptions = 
 
     return { success: true, remaining: options.limit - count - 1, resetAt: now + options.windowMs };
   } catch (err) {
-    // Fallback: allow request if DB rate limit fails
     console.error("[rate-limit] DB rate limit failed:", err);
     return { success: true, remaining: options.limit - 1, resetAt: now + options.windowMs };
   }

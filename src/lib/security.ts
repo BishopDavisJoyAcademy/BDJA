@@ -62,11 +62,11 @@ export async function recordFailedLogin(userId: string | null, email: string, ip
       p_user_id: userId,
       p_email: email,
       p_success: false,
-      p_ip_address: ipAddress,
-      p_user_agent: userAgent,
+      p_ip_address: ipAddress || null,
+      p_user_agent: userAgent || null,
     });
-  } catch (err) {
-    console.error("[security] Failed to record failed login:", err);
+  } catch (error) {
+    console.error("[security] recordFailedLogin error:", error);
   }
 }
 
@@ -77,254 +77,100 @@ export async function recordSuccessfulLogin(userId: string, email: string, ipAdd
       p_user_id: userId,
       p_email: email,
       p_success: true,
-      p_ip_address: ipAddress,
-      p_user_agent: userAgent,
+      p_ip_address: ipAddress || null,
+      p_user_agent: userAgent || null,
     });
-  } catch (err) {
-    console.error("[security] Failed to record successful login:", err);
+  } catch (error) {
+    console.error("[security] recordSuccessfulLogin error:", error);
   }
 }
 
-export async function unlockAccount(adminId: string, targetUserId: string, reason: string): Promise<{ success: boolean; error?: string }> {
+export async function recordSession(userId: string, token: string, ipAddress: string, userAgent: string, expiresAt: Date): Promise<void> {
   const admin = getSupabaseAdmin();
-  try {
-    await admin.rpc("unlock_account", { p_user_id: targetUserId, p_admin_id: adminId, p_reason: reason });
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to unlock account" };
-  }
-}
-
-export function hashSessionToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-export async function recordSession(userId: string, token: string, deviceInfo: DeviceInfo, ipAddress: string, expiresAt: Date): Promise<void> {
-  const admin = getSupabaseAdmin();
-  const tokenHash = hashSessionToken(token);
+  const tokenHash = createHash("sha256").update(token).digest("hex");
   try {
     await admin.rpc("record_session", {
       p_user_id: userId,
       p_token_hash: tokenHash,
-      p_device_info: deviceInfo,
-      p_ip_address: ipAddress,
+      p_device_info: { user_agent: userAgent },
+      p_ip_address: ipAddress || null,
       p_expires_at: expiresAt.toISOString(),
     });
-  } catch (err) {
-    console.error("[security] Failed to record session:", err);
+  } catch (error) {
+    console.error("[security] recordSession error:", error);
   }
-}
-
-export async function revokeAllSessions(userId: string, adminId: string, reason: string): Promise<void> {
-  const admin = getSupabaseAdmin();
-  try {
-    await admin.rpc("force_logout_all_sessions", { p_user_id: userId, p_admin_id: adminId, p_reason: reason });
-  } catch (err) {
-    console.error("[security] Failed to revoke sessions:", err);
-  }
-}
-
-export async function getActiveSessions(userId: string) {
-  const admin = getSupabaseAdmin();
-  const { data, error } = await admin
-    .from("user_sessions")
-    .select("id, device_info, ip_address, last_active_at, expires_at, created_at")
-    .eq("user_id", userId)
-    .is("revoked_at", null)
-    .gt("expires_at", new Date().toISOString())
-    .order("last_active_at", { ascending: false });
-  if (error) {
-    console.error("[security] Failed to get active sessions:", error);
-    return [];
-  }
-  return data || [];
-}
-
-export interface DeviceInfo {
-  browser?: string;
-  os?: string;
-  device?: string;
-}
-
-export function extractDeviceInfo(req: Request): DeviceInfo {
-  const ua = req.headers.get("user-agent") || "";
-  return {
-    browser: detectBrowser(ua),
-    os: detectOS(ua),
-    device: detectDevice(ua),
-  };
-}
-
-function detectBrowser(ua: string): string {
-  if (ua.includes("Chrome/")) return "Chrome";
-  if (ua.includes("Firefox/")) return "Firefox";
-  if (ua.includes("Safari/") && !ua.includes("Chrome")) return "Safari";
-  if (ua.includes("Edge/")) return "Edge";
-  if (ua.includes("Opera") || ua.includes("OPR/")) return "Opera";
-  return "Unknown";
-}
-
-function detectOS(ua: string): string {
-  if (ua.includes("Windows")) return "Windows";
-  if (ua.includes("Mac OS")) return "macOS";
-  if (ua.includes("Linux")) return "Linux";
-  if (ua.includes("Android")) return "Android";
-  if (ua.includes("iPhone") || ua.includes("iPad")) return "iOS";
-  return "Unknown";
-}
-
-function detectDevice(ua: string): string {
-  if (ua.includes("Mobile")) return "Mobile";
-  if (ua.includes("Tablet")) return "Tablet";
-  return "Desktop";
 }
 
 export function getClientIP(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  const realIP = req.headers.get("x-real-ip");
-  if (realIP) return realIP;
-  return "unknown";
+  const ip = forwarded ? forwarded.split(",")[0].trim() : req.headers.get("x-real-ip") || "127.0.0.1";
+  return ip;
 }
 
-export async function isPasswordReused(userId: string, plainPassword: string): Promise<boolean> {
-  const admin = getSupabaseAdmin();
-  const { data, error } = await admin
-    .from("password_history")
-    .select("password_hash")
-    .eq("user_id", userId)
-    .order("changed_at", { ascending: false })
-    .limit(SECURITY_CONFIG.PASSWORD_HISTORY_COUNT);
-  if (error || !data) return false;
-  for (const row of data) {
-    if (await verifyPassword(plainPassword, row.password_hash)) return true;
-  }
-  return false;
+export function extractDeviceInfo(req: Request): Record<string, string> {
+  const ua = req.headers.get("user-agent") || "";
+  return {
+    user_agent: ua,
+    platform: "unknown",
+  };
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  const { hash } = await import("bcryptjs");
+  return hash(password, 12);
+}
+
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  const { compare } = await import("bcryptjs");
+  return compare(password, hash);
 }
 
 export async function addPasswordToHistory(userId: string, passwordHash: string): Promise<void> {
   const admin = getSupabaseAdmin();
   try {
-    await admin.from("password_history").insert({ user_id: userId, password_hash: passwordHash });
+    await admin.from("password_history").insert({
+      user_id: userId,
+      password_hash: passwordHash,
+    });
     const { data: old } = await admin
       .from("password_history")
       .select("id")
       .eq("user_id", userId)
       .order("changed_at", { ascending: false })
-      .range(SECURITY_CONFIG.PASSWORD_HISTORY_COUNT, 1000);
-    if (old && old.length > 0) {
-      await admin.from("password_history").delete().in("id", old.map((p) => p.id));
+      .limit(100);
+    if (old && old.length > SECURITY_CONFIG.PASSWORD_HISTORY_COUNT) {
+      const toDelete = old.slice(SECURITY_CONFIG.PASSWORD_HISTORY_COUNT).map((r: any) => r.id);
+      await admin.from("password_history").delete().in("id", toDelete);
     }
-  } catch (err) {
-    console.error("[security] Failed to add password to history:", err);
+  } catch (error) {
+    console.error("[security] addPasswordToHistory error:", error);
   }
 }
 
-export interface PasswordStrength {
-  score: number;
-  label: string;
-  requirements: { length: boolean; uppercase: boolean; lowercase: boolean; number: boolean; special: boolean };
-  allMet: boolean;
-}
-
-export function calculatePasswordStrength(password: string): PasswordStrength {
-  const requirements = {
-    length: password.length >= SECURITY_CONFIG.PASSWORD_MIN_LENGTH,
-    uppercase: /[A-Z]/.test(password),
-    lowercase: /[a-z]/.test(password),
-    number: /[0-9]/.test(password),
-    special: /[^A-Za-z0-9]/.test(password),
-  };
-  const met = Object.values(requirements).filter(Boolean).length;
-  let score = met;
-  if (password.length >= 12) score += 1;
-  if (password.length >= 16) score += 1;
-  const labels = ["Very Weak", "Weak", "Fair", "Good", "Strong", "Very Strong"];
-  return { score: Math.min(score, 5), label: labels[Math.min(score, 5)], requirements, allMet: met >= 5 };
-}
-
-export async function detectSuspiciousActivity(userId: string, ipAddress: string): Promise<{ isSuspicious: boolean; reason?: string }> {
+export async function isPasswordReused(userId: string, newPassword: string): Promise<boolean> {
   const admin = getSupabaseAdmin();
-  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  const { data, error } = await admin
-    .from("login_audit")
-    .select("ip_address, created_at")
-    .eq("user_id", userId)
-    .eq("action", "login_failed")
-    .gte("created_at", fiveMinAgo)
-    .order("created_at", { ascending: false })
-    .limit(20);
-  if (error || !data) return { isSuspicious: false };
-  if (data.length >= 10) return { isSuspicious: true, reason: "Too many failed attempts in 5 minutes" };
-  const uniqueIPs = new Set(data.map((d) => d.ip_address));
-  if (uniqueIPs.size >= 3) return { isSuspicious: true, reason: "Login attempts from multiple IPs" };
-  return { isSuspicious: false };
-}
-
-export function generateSecureToken(length: number = 32): string {
-  return randomBytes(length).toString("hex");
-}
-
-export function generateTempPassword(length: number = 12): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-  const bytes = randomBytes(length);
-  let password = "";
-  for (let i = 0; i < length; i++) {
-    password += chars[bytes[i] % chars.length];
+  try {
+    const { data: history } = await admin
+      .from("password_history")
+      .select("password_hash")
+      .eq("user_id", userId)
+      .order("changed_at", { ascending: false })
+      .limit(SECURITY_CONFIG.PASSWORD_HISTORY_COUNT);
+    if (!history) return false;
+    for (const row of history) {
+      if (await verifyPassword(newPassword, row.password_hash)) return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("[security] isPasswordReused error:", error);
+    return false;
   }
-  return password;
 }
 
-export function generatePIN(length: number = 4): string {
-  const bytes = randomBytes(length);
-  let pin = "";
-  for (let i = 0; i < length; i++) {
-    pin += (bytes[i] % 10).toString();
-  }
-  return pin;
+export function generateTempPassword(): string {
+  return randomBytes(16).toString("hex").slice(0, 12) + "A1!";
 }
 
-// ============================================
-// PASSWORD HASHING — bcrypt via Web Crypto API
-// ============================================
-
-export async function hashPassword(plain: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const salt = randomBytes(16);
-  const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(plain), "PBKDF2", false, ["deriveBits"]);
-  const derived = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
-    keyMaterial,
-    256
-  );
-  const hash = Buffer.from(derived).toString("base64");
-  const saltB64 = salt.toString("base64");
-  return `$pbkdf2$100000$${saltB64}$${hash}`;
-}
-
-export async function verifyPassword(plain: string, hashed: string): Promise<boolean> {
-  if (!hashed || !hashed.startsWith("$pbkdf2$")) return false;
-  const parts = hashed.split("$");
-  if (parts.length !== 5) return false;
-  const iterations = parseInt(parts[2], 10);
-  const salt = Buffer.from(parts[3], "base64");
-  const expectedHash = parts[4];
-  const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(plain), "PBKDF2", false, ["deriveBits"]);
-  const derived = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
-    keyMaterial,
-    256
-  );
-  const actualHash = Buffer.from(derived).toString("base64");
-  return timingSafeEqual(Buffer.from(expectedHash), Buffer.from(actualHash));
-}
-
-function timingSafeEqual(a: Buffer, b: Buffer): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a[i] ^ b[i];
-  }
-  return result === 0;
+export function generatePIN(): string {
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }

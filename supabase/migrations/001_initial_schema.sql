@@ -1,12 +1,18 @@
--- Initial clean schema for BDJA Platform
--- No conflicting triggers, proper defaults, clean RLS
+-- ============================================================
+-- BDJA Platform — Unified Initial Schema (v3.0)
+-- All tables, functions, triggers, RLS policies, indexes
+-- Run this ONCE in a fresh Supabase project SQL Editor
+-- ============================================================
 
 -- Enable extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Campuses
+-- ============================================
+-- TABLES
+-- ============================================
+
 CREATE TABLE IF NOT EXISTS campuses (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
   location VARCHAR(200),
   phone VARCHAR(20),
@@ -15,26 +21,26 @@ CREATE TABLE IF NOT EXISTS campuses (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Profiles (linked to auth.users)
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email VARCHAR(255) NOT NULL,
   full_name VARCHAR(100) NOT NULL,
   phone VARCHAR(20),
   avatar_url TEXT,
-  role VARCHAR(20) DEFAULT 'student' CHECK (role IN ('student', 'parent', 'staff', 'admin')),
-  user_category VARCHAR(20) DEFAULT 'student' CHECK (user_category IN ('student', 'parent', 'staff', 'admin')),
+  role VARCHAR(20) DEFAULT 'student',
+  user_category VARCHAR(20) DEFAULT 'student',
   campus_id UUID REFERENCES campuses(id) ON DELETE SET NULL,
   is_active BOOLEAN DEFAULT true,
   password_changed BOOLEAN DEFAULT false,
   onboarding_completed BOOLEAN DEFAULT false,
   temp_password_hash TEXT,
+  created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by UUID REFERENCES profiles(id) ON DELETE SET NULL
+  CONSTRAINT chk_role CHECK (role IN ('student', 'parent', 'staff', 'admin')),
+  CONSTRAINT chk_user_category CHECK (user_category IN ('student', 'parent', 'staff', 'admin'))
 );
 
--- Staff
 CREATE TABLE IF NOT EXISTS staff (
   id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
   employee_id VARCHAR(50) NOT NULL UNIQUE,
@@ -45,7 +51,6 @@ CREATE TABLE IF NOT EXISTS staff (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Students
 CREATE TABLE IF NOT EXISTS students (
   id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
   admission_number VARCHAR(50) NOT NULL UNIQUE,
@@ -57,9 +62,8 @@ CREATE TABLE IF NOT EXISTS students (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Parent-Student links
 CREATE TABLE IF NOT EXISTS parent_students (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   relationship VARCHAR(50) DEFAULT 'parent',
@@ -68,9 +72,8 @@ CREATE TABLE IF NOT EXISTS parent_students (
   UNIQUE(parent_id, student_id)
 );
 
--- Permission categories
 CREATE TABLE IF NOT EXISTS permission_categories (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key VARCHAR(50) NOT NULL UNIQUE,
   name VARCHAR(100) NOT NULL,
   icon VARCHAR(50),
@@ -78,9 +81,8 @@ CREATE TABLE IF NOT EXISTS permission_categories (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Permissions
 CREATE TABLE IF NOT EXISTS permissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key VARCHAR(50) NOT NULL UNIQUE,
   name VARCHAR(100) NOT NULL,
   category VARCHAR(50) NOT NULL,
@@ -88,9 +90,8 @@ CREATE TABLE IF NOT EXISTS permissions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Staff permissions
 CREATE TABLE IF NOT EXISTS staff_permissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
   granted_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
@@ -98,9 +99,8 @@ CREATE TABLE IF NOT EXISTS staff_permissions (
   UNIQUE(profile_id, permission_id)
 );
 
--- User sessions (server-side tracking)
 CREATE TABLE IF NOT EXISTS user_sessions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   session_token_hash VARCHAR(64) NOT NULL,
   device_info JSONB,
@@ -113,17 +113,15 @@ CREATE TABLE IF NOT EXISTS user_sessions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Password history
 CREATE TABLE IF NOT EXISTS password_history (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   password_hash TEXT NOT NULL,
   changed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Audit logs
 CREATE TABLE IF NOT EXISTS audit_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   action VARCHAR(50) NOT NULL,
   target_type VARCHAR(50) NOT NULL,
@@ -135,9 +133,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Login attempts (for rate limiting and security)
 CREATE TABLE IF NOT EXISTS login_attempts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   email VARCHAR(255),
   ip_address INET,
@@ -146,9 +143,8 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Account lockouts
 CREATE TABLE IF NOT EXISTS account_lockouts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   failed_attempts INTEGER DEFAULT 0,
   locked_at TIMESTAMPTZ,
@@ -160,9 +156,8 @@ CREATE TABLE IF NOT EXISTS account_lockouts (
   UNIQUE(user_id)
 );
 
--- Suggestions
 CREATE TABLE IF NOT EXISTS suggestions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   type VARCHAR(20) NOT NULL CHECK (type IN ('idea', 'feedback', 'bug', 'improvement', 'complaint')),
   title VARCHAR(200) NOT NULL,
@@ -176,9 +171,8 @@ CREATE TABLE IF NOT EXISTS suggestions (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- CMS Pages
 CREATE TABLE IF NOT EXISTS cms_pages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   slug VARCHAR(100) NOT NULL UNIQUE,
   title VARCHAR(200) NOT NULL,
   content TEXT NOT NULL,
@@ -189,9 +183,8 @@ CREATE TABLE IF NOT EXISTS cms_pages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Calendar events
 CREATE TABLE IF NOT EXISTS calendar_events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(200) NOT NULL,
   description TEXT,
   start_date TIMESTAMPTZ NOT NULL,
@@ -205,9 +198,8 @@ CREATE TABLE IF NOT EXISTS calendar_events (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Timetable
 CREATE TABLE IF NOT EXISTS timetable_entries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id UUID NOT NULL,
   subject_id UUID NOT NULL,
   teacher_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
@@ -220,9 +212,8 @@ CREATE TABLE IF NOT EXISTS timetable_entries (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Assessments
 CREATE TABLE IF NOT EXISTS assessments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   class_id UUID NOT NULL,
   subject_id UUID NOT NULL,
@@ -238,9 +229,8 @@ CREATE TABLE IF NOT EXISTS assessments (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Assignments
 CREATE TABLE IF NOT EXISTS assignments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id UUID NOT NULL,
   subject_id UUID NOT NULL,
   teacher_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -253,9 +243,8 @@ CREATE TABLE IF NOT EXISTS assignments (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Fee payments
 CREATE TABLE IF NOT EXISTS fee_payments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   amount NUMERIC(10,2) NOT NULL,
   balance NUMERIC(10,2) DEFAULT 0,
@@ -269,9 +258,8 @@ CREATE TABLE IF NOT EXISTS fee_payments (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Library books
 CREATE TABLE IF NOT EXISTS library_books (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(200) NOT NULL,
   author VARCHAR(100),
   isbn VARCHAR(20),
@@ -282,9 +270,8 @@ CREATE TABLE IF NOT EXISTS library_books (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Admissions
 CREATE TABLE IF NOT EXISTS admissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_name VARCHAR(100) NOT NULL,
   parent_name VARCHAR(100),
   parent_email VARCHAR(255),
@@ -296,9 +283,8 @@ CREATE TABLE IF NOT EXISTS admissions (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Messages
 CREATE TABLE IF NOT EXISTS messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   recipient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   subject VARCHAR(200),
@@ -307,9 +293,8 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Notifications
 CREATE TABLE IF NOT EXISTS notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   title VARCHAR(200) NOT NULL,
   message TEXT NOT NULL,
@@ -318,13 +303,12 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Vora content
 CREATE TABLE IF NOT EXISTS vora_content (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(200) NOT NULL,
   summary TEXT,
-  subject VARCHAR(50),
-  grade_level VARCHAR(20),
+  subject VARCHAR(50) NOT NULL DEFAULT 'General',
+  grade_level VARCHAR(20) NOT NULL DEFAULT 'Grade 1',
   category VARCHAR(50),
   topic VARCHAR(100),
   tags TEXT[],
@@ -332,31 +316,249 @@ CREATE TABLE IF NOT EXISTS vora_content (
   duration_seconds INTEGER,
   thumbnail_url TEXT,
   youtube_url TEXT,
+  is_public BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS saved_videos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  vora_content_id UUID NOT NULL REFERENCES vora_content(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, vora_content_id)
+);
+
+-- Homepage CMS tables
+CREATE TABLE IF NOT EXISTS homepage_carousel (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  subtitle TEXT,
+  image_url TEXT,
+  button_text TEXT,
+  button_link TEXT,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS homepage_director_message (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  director_name TEXT NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  image_url TEXT,
+  is_active BOOLEAN DEFAULT true,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS homepage_notices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  priority INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS homepage_stats (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  label TEXT NOT NULL,
+  value TEXT NOT NULL,
+  icon TEXT,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS homepage_testimonials (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  author_name TEXT NOT NULL,
+  author_role TEXT,
+  content TEXT NOT NULL,
+  image_url TEXT,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS homepage_upcoming_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT,
+  event_date TIMESTAMPTZ NOT NULL,
+  location TEXT,
+  image_url TEXT,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Academic structure tables
+CREATE TABLE IF NOT EXISTS grade_levels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(50) NOT NULL UNIQUE,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS subjects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) NOT NULL,
+  code VARCHAR(20) UNIQUE,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS classes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(50) NOT NULL,
+  grade_level_id UUID REFERENCES grade_levels(id) ON DELETE SET NULL,
+  campus_id UUID REFERENCES campuses(id) ON DELETE SET NULL,
+  class_teacher_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  capacity INTEGER DEFAULT 40,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS class_subjects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+  teacher_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(class_id, subject_id)
+);
+
+-- Joy AI tables
+CREATE TABLE IF NOT EXISTS conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  title VARCHAR(200) DEFAULT 'New Conversation',
+  is_pinned BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+  content TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS joy_user_preferences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE UNIQUE,
+  theme VARCHAR(20) DEFAULT 'light',
+  personality_mode VARCHAR(20) DEFAULT 'auto',
+  language_preference VARCHAR(20) DEFAULT 'auto',
+  show_timestamps BOOLEAN DEFAULT true,
+  enable_sound BOOLEAN DEFAULT false,
+  enable_streaming BOOLEAN DEFAULT true,
+  font_size VARCHAR(10) DEFAULT 'medium',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS joy_analytics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  query TEXT NOT NULL,
+  category VARCHAR(50),
+  role VARCHAR(20),
+  resolved BOOLEAN DEFAULT false,
+  response_time_ms INTEGER,
+  model_used VARCHAR(50),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS joy_action_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  action_type VARCHAR(50) NOT NULL,
+  action_data JSONB DEFAULT '{}',
+  success BOOLEAN DEFAULT true,
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================
+-- INDEXES
+-- ============================================
+
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);
+CREATE INDEX IF NOT EXISTS idx_profiles_user_category ON profiles(user_category);
+CREATE INDEX IF NOT EXISTS idx_profiles_campus ON profiles(campus_id);
+CREATE INDEX IF NOT EXISTS idx_staff_employee_id ON staff(employee_id);
+CREATE INDEX IF NOT EXISTS idx_students_admission ON students(admission_number);
+CREATE INDEX IF NOT EXISTS idx_students_grade ON students(grade_level);
+CREATE INDEX IF NOT EXISTS idx_parent_students_parent ON parent_students(parent_id);
+CREATE INDEX IF NOT EXISTS idx_parent_students_student ON parent_students(student_id);
+CREATE INDEX IF NOT EXISTS idx_staff_permissions_profile ON staff_permissions(profile_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token_hash);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_impersonated ON audit_logs(impersonated_user_id);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts(email);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address);
+CREATE INDEX IF NOT EXISTS idx_account_lockouts_user ON account_lockouts(user_id);
+CREATE INDEX IF NOT EXISTS idx_suggestions_user ON suggestions(user_id);
+CREATE INDEX IF NOT EXISTS idx_suggestions_status ON suggestions(status);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(start_date);
+CREATE INDEX IF NOT EXISTS idx_assessments_student ON assessments(student_id);
+CREATE INDEX IF NOT EXISTS idx_fee_payments_student ON fee_payments(student_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_vora_subject ON vora_content(subject);
+CREATE INDEX IF NOT EXISTS idx_vora_grade ON vora_content(grade_level);
+CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conv_messages_conv ON conversation_messages(conversation_id);
 
 -- ============================================
 -- FUNCTIONS
 -- ============================================
 
 CREATE OR REPLACE FUNCTION get_user_permissions(p_user_id UUID)
-RETURNS TABLE(permission_key VARCHAR) AS $$
+RETURNS TABLE(permission_key TEXT) AS $$
 BEGIN
+  IF EXISTS (SELECT 1 FROM profiles WHERE id = p_user_id AND user_category = 'admin') THEN
+    RETURN QUERY SELECT p.key::TEXT FROM permissions p ORDER BY p.category, p.key;
+    RETURN;
+  END IF;
   RETURN QUERY
-  SELECT p.key::VARCHAR
-  FROM staff_permissions sp
-  JOIN permissions p ON sp.permission_id = p.id
-  WHERE sp.profile_id = p_user_id;
+    SELECT perm.key::TEXT
+    FROM staff_permissions sp
+    JOIN permissions perm ON perm.id = sp.permission_id
+    WHERE sp.profile_id = p_user_id
+    ORDER BY perm.category, perm.key;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE FUNCTION has_permission(p_user_id UUID, p_permission_key VARCHAR)
+CREATE OR REPLACE FUNCTION has_permission(p_user_id UUID, p_permission_key TEXT)
 RETURNS BOOLEAN AS $$
 BEGIN
+  IF EXISTS (SELECT 1 FROM profiles WHERE id = p_user_id AND user_category = 'admin') THEN
+    RETURN true;
+  END IF;
   RETURN EXISTS (
     SELECT 1 FROM staff_permissions sp
-    JOIN permissions p ON sp.permission_id = p.id
+    JOIN permissions p ON p.id = sp.permission_id
     WHERE sp.profile_id = p_user_id AND p.key = p_permission_key
   );
 END;
@@ -414,7 +616,6 @@ BEGIN
     RETURN QUERY SELECT false::BOOLEAN, NULL::TIMESTAMPTZ, 0::INTEGER, 5::INTEGER;
     RETURN;
   END IF;
-
   IF v_record.locked_until IS NOT NULL AND v_record.locked_until > NOW() THEN
     RETURN QUERY SELECT true::BOOLEAN, v_record.locked_until, v_record.failed_attempts, 0::INTEGER;
   ELSE
@@ -462,6 +663,91 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_raw_role TEXT;
+  v_user_category TEXT;
+BEGIN
+  v_raw_role := COALESCE(NEW.raw_user_meta_data->>'role', 'student');
+  v_user_category := CASE v_raw_role
+    WHEN 'student' THEN 'student'
+    WHEN 'parent'  THEN 'parent'
+    WHEN 'teacher' THEN 'staff'
+    WHEN 'class_prefect' THEN 'staff'
+    WHEN 'bursar'  THEN 'staff'
+    WHEN 'librarian' THEN 'staff'
+    WHEN 'principal' THEN 'admin'
+    WHEN 'super_admin' THEN 'admin'
+    ELSE 'student'
+  END;
+
+  INSERT INTO public.profiles (
+    id, email, full_name, role, user_category,
+    is_active, password_changed, onboarding_completed,
+    created_at, updated_at
+  )
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+    v_raw_role,
+    v_user_category,
+    true,
+    false,
+    false,
+    NOW(),
+    NOW()
+  )
+  ON CONFLICT (id) DO NOTHING;
+
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'handle_new_user trigger error: %', SQLERRM;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- TRIGGERS
+-- ============================================
+
+DO $$
+DECLARE
+  t RECORD;
+BEGIN
+  FOR t IN
+    SELECT tgname FROM pg_trigger
+    WHERE tgrelid = 'auth.users'::regclass
+      AND tgname NOT LIKE 'RI_ConstraintTrigger_%'
+      AND tgname NOT LIKE 'pg_%'
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON auth.users', t.tgname);
+  END LOOP;
+END $$;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+DO $$
+DECLARE
+  t TEXT;
+BEGIN
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'schema_migrations' LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I_updated_at ON %I', t, t);
+    EXECUTE format('CREATE TRIGGER %I_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION update_updated_at()', t, t);
+  END LOOP;
+END $$;
+
 -- ============================================
 -- RLS POLICIES
 -- ============================================
@@ -470,6 +756,8 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parent_students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE permission_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE password_history ENABLE ROW LEVEL SECURITY;
@@ -488,124 +776,245 @@ ALTER TABLE admissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vora_content ENABLE ROW LEVEL SECURITY;
+ALTER TABLE saved_videos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE homepage_carousel ENABLE ROW LEVEL SECURITY;
+ALTER TABLE homepage_director_message ENABLE ROW LEVEL SECURITY;
+ALTER TABLE homepage_notices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE homepage_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE homepage_testimonials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE homepage_upcoming_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grade_levels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subjects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE classes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE class_subjects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE joy_user_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE joy_analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE joy_action_logs ENABLE ROW LEVEL SECURITY;
 
--- Profiles: users can read their own, staff can read all
+-- Profiles
+DROP POLICY IF EXISTS "profiles_select_own" ON profiles;
+DROP POLICY IF EXISTS "profiles_select_staff" ON profiles;
+DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
+DROP POLICY IF EXISTS "profiles_update_staff" ON profiles;
 CREATE POLICY "profiles_select_own" ON profiles FOR SELECT USING (id = auth.uid());
 CREATE POLICY "profiles_select_staff" ON profiles FOR SELECT USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'staff.manage'));
 CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (id = auth.uid());
 CREATE POLICY "profiles_update_staff" ON profiles FOR UPDATE USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'staff.manage'));
 
--- Staff: staff can read all
+-- Staff
+DROP POLICY IF EXISTS "staff_select_all" ON staff;
+DROP POLICY IF EXISTS "staff_manage" ON staff;
 CREATE POLICY "staff_select_all" ON staff FOR SELECT USING (true);
 CREATE POLICY "staff_manage" ON staff FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'staff.manage'));
 
--- Students: staff can read all, parents can read their children
+-- Students
+DROP POLICY IF EXISTS "students_select_all" ON students;
+DROP POLICY IF EXISTS "students_manage" ON students;
 CREATE POLICY "students_select_all" ON students FOR SELECT USING (true);
 CREATE POLICY "students_manage" ON students FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'students.manage'));
 
--- Permission categories: authenticated read
+-- Permission categories
+DROP POLICY IF EXISTS "perm_cat_select" ON permission_categories;
 CREATE POLICY "perm_cat_select" ON permission_categories FOR SELECT USING (auth.role() = 'authenticated');
 
--- Permissions: authenticated read
+-- Permissions
+DROP POLICY IF EXISTS "perms_select" ON permissions;
 CREATE POLICY "perms_select" ON permissions FOR SELECT USING (auth.role() = 'authenticated');
 
--- Staff permissions: staff can read own, manage with permission
+-- Staff permissions
+DROP POLICY IF EXISTS "staff_perms_select_own" ON staff_permissions;
+DROP POLICY IF EXISTS "staff_perms_manage" ON staff_permissions;
 CREATE POLICY "staff_perms_select_own" ON staff_permissions FOR SELECT USING (profile_id = auth.uid());
 CREATE POLICY "staff_perms_manage" ON staff_permissions FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'staff.manage'));
 
--- User sessions: own only
+-- User sessions
+DROP POLICY IF EXISTS "sessions_own" ON user_sessions;
 CREATE POLICY "sessions_own" ON user_sessions FOR ALL USING (user_id = auth.uid());
 
--- Password history: own only
+-- Password history
+DROP POLICY IF EXISTS "pw_history_own" ON password_history;
 CREATE POLICY "pw_history_own" ON password_history FOR ALL USING (user_id = auth.uid());
 
--- Audit logs: admin only
+-- Audit logs
+DROP POLICY IF EXISTS "audit_admin" ON audit_logs;
 CREATE POLICY "audit_admin" ON audit_logs FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
--- Login attempts: admin only
+-- Login attempts
+DROP POLICY IF EXISTS "login_attempts_admin" ON login_attempts;
 CREATE POLICY "login_attempts_admin" ON login_attempts FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
--- Account lockouts: admin only
+-- Account lockouts
+DROP POLICY IF EXISTS "lockouts_admin" ON account_lockouts;
 CREATE POLICY "lockouts_admin" ON account_lockouts FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
--- Suggestions: own + admin
+-- Suggestions
+DROP POLICY IF EXISTS "suggestions_own" ON suggestions;
+DROP POLICY IF EXISTS "suggestions_admin" ON suggestions;
 CREATE POLICY "suggestions_own" ON suggestions FOR ALL USING (user_id = auth.uid());
 CREATE POLICY "suggestions_admin" ON suggestions FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
--- CMS pages: public read, admin write
+-- CMS pages
+DROP POLICY IF EXISTS "cms_public" ON cms_pages;
+DROP POLICY IF EXISTS "cms_admin" ON cms_pages;
 CREATE POLICY "cms_public" ON cms_pages FOR SELECT USING (published = true);
 CREATE POLICY "cms_admin" ON cms_pages FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
--- Calendar: authenticated read, admin write
+-- Calendar
+DROP POLICY IF EXISTS "calendar_read" ON calendar_events;
+DROP POLICY IF EXISTS "calendar_admin" ON calendar_events;
 CREATE POLICY "calendar_read" ON calendar_events FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "calendar_admin" ON calendar_events FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
--- Assessments: own + staff
+-- Timetable
+DROP POLICY IF EXISTS "timetable_read" ON timetable_entries;
+DROP POLICY IF EXISTS "timetable_admin" ON timetable_entries;
+CREATE POLICY "timetable_read" ON timetable_entries FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "timetable_admin" ON timetable_entries FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+-- Assessments
+DROP POLICY IF EXISTS "assessments_own" ON assessments;
+DROP POLICY IF EXISTS "assessments_staff" ON assessments;
 CREATE POLICY "assessments_own" ON assessments FOR SELECT USING (student_id = auth.uid());
 CREATE POLICY "assessments_staff" ON assessments FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'grades.manage'));
 
--- Fee payments: own + staff
+-- Assignments
+DROP POLICY IF EXISTS "assignments_staff" ON assignments;
+DROP POLICY IF EXISTS "assignments_student" ON assignments;
+CREATE POLICY "assignments_staff" ON assignments FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'assignments.manage'));
+CREATE POLICY "assignments_student" ON assignments FOR SELECT USING (EXISTS (SELECT 1 FROM students s WHERE s.id = auth.uid() AND s.class_id = assignments.class_id));
+
+-- Fee payments
+DROP POLICY IF EXISTS "fees_own" ON fee_payments;
+DROP POLICY IF EXISTS "fees_staff" ON fee_payments;
 CREATE POLICY "fees_own" ON fee_payments FOR SELECT USING (student_id = auth.uid());
 CREATE POLICY "fees_staff" ON fee_payments FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'fees.manage'));
 
--- Messages: own
+-- Library books
+DROP POLICY IF EXISTS "library_read" ON library_books;
+DROP POLICY IF EXISTS "library_admin" ON library_books;
+CREATE POLICY "library_read" ON library_books FOR SELECT USING (true);
+CREATE POLICY "library_admin" ON library_books FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+-- Admissions
+DROP POLICY IF EXISTS "admissions_admin" ON admissions;
+CREATE POLICY "admissions_admin" ON admissions FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+-- Messages
+DROP POLICY IF EXISTS "messages_own" ON messages;
 CREATE POLICY "messages_own" ON messages FOR ALL USING (sender_id = auth.uid() OR recipient_id = auth.uid());
 
--- Notifications: own
+-- Notifications
+DROP POLICY IF EXISTS "notifications_own" ON notifications;
 CREATE POLICY "notifications_own" ON notifications FOR ALL USING (user_id = auth.uid());
 
--- Vora: public read, admin write
-CREATE POLICY "vora_public" ON vora_content FOR SELECT USING (true);
+-- Vora content
+DROP POLICY IF EXISTS "vora_public" ON vora_content;
+DROP POLICY IF EXISTS "vora_admin" ON vora_content;
+CREATE POLICY "vora_public" ON vora_content FOR SELECT USING (is_public = true);
 CREATE POLICY "vora_admin" ON vora_content FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
+-- Saved videos
+DROP POLICY IF EXISTS "saved_videos_own" ON saved_videos;
+CREATE POLICY "saved_videos_own" ON saved_videos FOR ALL USING (user_id = auth.uid());
+
+-- Homepage tables
+DROP POLICY IF EXISTS "homepage_carousel_public" ON homepage_carousel;
+DROP POLICY IF EXISTS "homepage_carousel_admin" ON homepage_carousel;
+CREATE POLICY "homepage_carousel_public" ON homepage_carousel FOR SELECT USING (is_active = true);
+CREATE POLICY "homepage_carousel_admin" ON homepage_carousel FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "homepage_director_public" ON homepage_director_message;
+DROP POLICY IF EXISTS "homepage_director_admin" ON homepage_director_message;
+CREATE POLICY "homepage_director_public" ON homepage_director_message FOR SELECT USING (is_active = true);
+CREATE POLICY "homepage_director_admin" ON homepage_director_message FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "homepage_notices_public" ON homepage_notices;
+DROP POLICY IF EXISTS "homepage_notices_admin" ON homepage_notices;
+CREATE POLICY "homepage_notices_public" ON homepage_notices FOR SELECT USING (is_active = true AND (expires_at IS NULL OR expires_at > NOW()));
+CREATE POLICY "homepage_notices_admin" ON homepage_notices FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "homepage_stats_public" ON homepage_stats;
+DROP POLICY IF EXISTS "homepage_stats_admin" ON homepage_stats;
+CREATE POLICY "homepage_stats_public" ON homepage_stats FOR SELECT USING (is_active = true);
+CREATE POLICY "homepage_stats_admin" ON homepage_stats FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "homepage_testimonials_public" ON homepage_testimonials;
+DROP POLICY IF EXISTS "homepage_testimonials_admin" ON homepage_testimonials;
+CREATE POLICY "homepage_testimonials_public" ON homepage_testimonials FOR SELECT USING (is_active = true);
+CREATE POLICY "homepage_testimonials_admin" ON homepage_testimonials FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "homepage_events_public" ON homepage_upcoming_events;
+DROP POLICY IF EXISTS "homepage_events_admin" ON homepage_upcoming_events;
+CREATE POLICY "homepage_events_public" ON homepage_upcoming_events FOR SELECT USING (is_active = true);
+CREATE POLICY "homepage_events_admin" ON homepage_upcoming_events FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+-- Academic structure
+DROP POLICY IF EXISTS "grade_levels_public" ON grade_levels;
+DROP POLICY IF EXISTS "grade_levels_admin" ON grade_levels;
+CREATE POLICY "grade_levels_public" ON grade_levels FOR SELECT USING (true);
+CREATE POLICY "grade_levels_admin" ON grade_levels FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "subjects_public" ON subjects;
+DROP POLICY IF EXISTS "subjects_admin" ON subjects;
+CREATE POLICY "subjects_public" ON subjects FOR SELECT USING (true);
+CREATE POLICY "subjects_admin" ON subjects FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "classes_public" ON classes;
+DROP POLICY IF EXISTS "classes_admin" ON classes;
+CREATE POLICY "classes_public" ON classes FOR SELECT USING (true);
+CREATE POLICY "classes_admin" ON classes FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "class_subjects_public" ON class_subjects;
+DROP POLICY IF EXISTS "class_subjects_admin" ON class_subjects;
+CREATE POLICY "class_subjects_public" ON class_subjects FOR SELECT USING (true);
+CREATE POLICY "class_subjects_admin" ON class_subjects FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+-- Joy AI
+DROP POLICY IF EXISTS "conversations_own" ON conversations;
+DROP POLICY IF EXISTS "conversations_admin" ON conversations;
+CREATE POLICY "conversations_own" ON conversations FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "conversations_admin" ON conversations FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "conv_messages_own" ON conversation_messages;
+DROP POLICY IF EXISTS "conv_messages_admin" ON conversation_messages;
+CREATE POLICY "conv_messages_own" ON conversation_messages FOR ALL USING (EXISTS (SELECT 1 FROM conversations c WHERE c.id = conversation_messages.conversation_id AND c.user_id = auth.uid()));
+CREATE POLICY "conv_messages_admin" ON conversation_messages FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "joy_prefs_own" ON joy_user_preferences;
+CREATE POLICY "joy_prefs_own" ON joy_user_preferences FOR ALL USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "joy_analytics_admin" ON joy_analytics;
+CREATE POLICY "joy_analytics_admin" ON joy_analytics FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+DROP POLICY IF EXISTS "joy_action_logs_own" ON joy_action_logs;
+CREATE POLICY "joy_action_logs_own" ON joy_action_logs FOR ALL USING (user_id = auth.uid());
+
 -- ============================================
--- TRIGGERS
+-- SERVICE ROLE PRIVILEGES
 -- ============================================
 
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO profiles (id, email, full_name, role, user_category, is_active, password_changed, onboarding_completed)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', 'User'),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'student'),
-    COALESCE(NEW.raw_user_meta_data->>'user_category', COALESCE(NEW.raw_user_meta_data->>'role', 'student')),
-    true,
-    false,
-    false
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    email = EXCLUDED.email,
-    full_name = EXCLUDED.full_name,
-    role = EXCLUDED.role,
-    user_category = EXCLUDED.user_category,
-    updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
 
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+-- ============================================
+-- STORAGE BUCKET SETUP
+-- ============================================
 
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('attachments', 'attachments', true)
+ON CONFLICT (id) DO NOTHING;
 
--- Apply updated_at to all tables
-DO $$
-DECLARE
-  t TEXT;
-BEGIN
-  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'schema_migrations' LOOP
-    EXECUTE format('DROP TRIGGER IF EXISTS %I_updated_at ON %I', t, t);
-    EXECUTE format('CREATE TRIGGER %I_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION update_updated_at()', t, t);
-  END LOOP;
-END $$;
+CREATE POLICY IF NOT EXISTS "Allow authenticated uploads" ON storage.objects
+  FOR INSERT TO authenticated WITH CHECK (bucket_id = 'attachments');
+
+CREATE POLICY IF NOT EXISTS "Allow public read" ON storage.objects
+  FOR SELECT TO anon USING (bucket_id = 'attachments');
+
+CREATE POLICY IF NOT EXISTS "Allow authenticated read" ON storage.objects
+  FOR SELECT TO authenticated USING (bucket_id = 'attachments');
+
+CREATE POLICY IF NOT EXISTS "Allow authenticated delete own" ON storage.objects
+  FOR DELETE TO authenticated USING (bucket_id = 'attachments' AND owner = auth.uid());

@@ -67,7 +67,7 @@ export default function CmsPagesPage() {
 
   const startEdit = (page: CmsPage) => {
     setEditing(page);
-    setForm({ slug: page.slug, title: page.title, content: "", meta_description: "", is_published: page.is_published });
+    setForm({ slug: page.slug, title: page.title, content: "", meta_description: "", is_published: page.is_published ?? false });
     fetch(`/api/admin/pages?slug=${page.slug}`)
       .then((r) => r.json())
       .then((data) => {
@@ -77,7 +77,7 @@ export default function CmsPagesPage() {
             title: data.page.title,
             content: data.page.content || "",
             meta_description: data.page.meta_description || "",
-            is_published: data.page.is_published,
+            is_published: data.page.is_published ?? false,
           });
         }
       });

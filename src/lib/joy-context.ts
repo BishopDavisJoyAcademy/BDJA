@@ -30,13 +30,17 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
     }
 
     // Timetable
-    const { data: timetable } = await admin
-      .from("timetable")
-      .select("*, subjects(name), profiles(full_name)")
-      .eq("class_id", student?.class_id)
-      .order("day_of_week", { ascending: true })
-      .limit(20);
-    ctx.timetable = timetable || [];
+    if (student.class_id) {
+      const { data: timetable } = await admin
+        .from("timetable")
+        .select("*, subjects(name), profiles(full_name)")
+        .eq("class_id", student.class_id)
+        .order("day_of_week", { ascending: true })
+        .limit(20);
+      ctx.timetable = timetable || [];
+    } else {
+      ctx.timetable = [];
+    }
 
     // Grades
     const { data: grades } = await admin

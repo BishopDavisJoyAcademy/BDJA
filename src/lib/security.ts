@@ -129,7 +129,7 @@ export async function addPasswordToHistory(userId: string, passwordHash: string)
     await admin.from("password_history").insert({
       user_id: userId,
       password_hash: passwordHash,
-    });
+    } as { user_id: string; password_hash: string; changed_at: string | null });
     const { data: old } = await admin
       .from("password_history")
       .select("id")

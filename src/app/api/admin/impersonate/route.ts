@@ -25,21 +25,13 @@ interface StudentRow {
   grade_level: string | null;
 }
 
-interface ImpersonationResponse {
-  viewToken: string;
-  expiresAt: string;
-  targetUser: {
-    id: string;
-    email: string;
-    full_name: string;
-    role: string;
-    user_category: string;
-    campus_id: string | null;
-    department: string | null;
-    designation: string | null;
-    admission_number: string | null;
-    grade_level: string | null;
-  };
+interface SessionInsert {
+  user_id: string;
+  session_token_hash: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  is_active: boolean;
+  expires_at: string;
 }
 
 export const dynamic = "force-dynamic";
@@ -98,18 +90,20 @@ export async function POST(req: NextRequest) {
     const viewToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    await admin.from("user_sessions").insert({
+    const sessionPayload: SessionInsert = {
       user_id: session.userId,
       session_token_hash: viewToken,
       ip_address: getClientIP(req),
       user_agent: req.headers.get("user-agent") || null,
       is_active: true,
       expires_at: expiresAt,
-    });
+    };
+
+    await admin.from("user_sessions").insert(sessionPayload);
 
     await logImpersonation(session.userId, targetUserId, "start", getClientIP(req), req.headers.get("user-agent") || undefined);
 
-    const response: ImpersonationResponse = {
+    return NextResponse.json({
       viewToken,
       expiresAt,
       targetUser: {
@@ -124,9 +118,7 @@ export async function POST(req: NextRequest) {
         admission_number: student?.admission_number || null,
         grade_level: student?.grade_level || null,
       },
-    };
-
-    return NextResponse.json(response);
+    });
   } catch (error: any) {
     if (error.name === "AuthRequiredError") {
       return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });

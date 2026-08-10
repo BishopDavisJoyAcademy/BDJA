@@ -109,7 +109,7 @@ export default function SettingsPage() {
           <div className="space-y-3">
             <div className="p-3 border border-gray-100 rounded-lg">
               <p className="text-xs text-gray-500">Name</p>
-              <p className="text-sm font-medium text-gray-900">{user?.fullName || "—"}</p>
+              <p className="text-sm font-medium text-gray-900">{user?.full_name || "—"}</p>
             </div>
             <div className="p-3 border border-gray-100 rounded-lg">
               <p className="text-xs text-gray-500">Email</p>
@@ -117,7 +117,7 @@ export default function SettingsPage() {
             </div>
             <div className="p-3 border border-gray-100 rounded-lg">
               <p className="text-xs text-gray-500">Role</p>
-              <p className="text-sm font-medium text-gray-900 capitalize">{user?.userCategory || "—"}</p>
+              <p className="text-sm font-medium text-gray-900 capitalize">{user?.user_category || "—"}</p>
             </div>
           </div>
         </Card>

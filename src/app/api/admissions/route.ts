@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { data, error } = await (admin.from("admissions") as any).insert(body).select().single();
+    const { data, error } = await admin.from("admissions").insert(body).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create admission" }, { status: 500 });
     return NextResponse.json({ success: true, admission: data });

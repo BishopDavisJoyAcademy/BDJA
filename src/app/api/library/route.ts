@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { data, error } = await (admin.from("library_books") as any).insert(body).select().single();
+    const { data, error } = await admin.from("library_books").insert(body).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to add book" }, { status: 500 });
     return NextResponse.json({ success: true, book: data });

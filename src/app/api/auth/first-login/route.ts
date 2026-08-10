@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       .from("profiles")
       .select("id, user_category, password_changed")
       .eq("id", session.userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
     }
 
     const newCredential = isStudent
-      ? (parseResult.data).new_pin
-      : (parseResult.data).new_password;
+      ? (parseResult.data as any).new_pin
+      : (parseResult.data as any).new_password;
 
     const passwordHash = await hashPassword(newCredential);
 

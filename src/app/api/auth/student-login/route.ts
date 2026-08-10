@@ -29,14 +29,14 @@ export async function POST(req: NextRequest) {
       .from("students")
       .select("id, admission_number, profile_id, profiles!inner(id, email)")
       .eq("admission_number", admission_number)
-      .single();
+      .maybeSingle();
 
     if (studentError || !student) {
       await recordFailedLogin(null, admission_number, ip, ua);
       return NextResponse.json({ error: "Invalid admission number or PIN" }, { status: 401 });
     }
 
-    const profile = (student).profiles;
+    const profile = (student as any).profiles;
     const email = profile?.email;
     const userId = profile?.id;
 

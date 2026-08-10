@@ -51,9 +51,9 @@ export async function POST(req: NextRequest) {
     const admin = getSupabaseAdmin();
     const body = await req.json();
 
-    const { data, error } = await (admin.from("vora_content") as any).insert({
+    const { data, error } = await admin.from("vora_content").insert({
       ...body,
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create content" }, { status: 500 });
     return NextResponse.json({ success: true, content: data });

@@ -36,10 +36,10 @@ export async function POST(req: NextRequest) {
     const admin = getSupabaseAdmin();
     const body = await req.json();
 
-    const { data, error } = await (admin.from("messages") as any).insert({
+    const { data, error } = await admin.from("messages").insert({
       ...body,
       sender_id: session.userId,
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
     return NextResponse.json({ success: true, message: data });

@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       .from("profiles")
       .select("*, staff(department, designation), students(admission_number, grade_level)")
       .eq("id", session.userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });

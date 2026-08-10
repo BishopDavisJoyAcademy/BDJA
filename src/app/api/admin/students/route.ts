@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
         .select("*, students(*)")
         .eq("id", id)
         .eq("user_category", "student")
-        .single();
+        .maybeSingle();
       if (error) return NextResponse.json({ error: "Student not found" }, { status: 404 });
       return NextResponse.json({ student });
     }

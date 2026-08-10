@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       .select("id")
       .eq("user_category", "admin")
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (existingAdmin) {
       return NextResponse.json({ error: "An admin already exists. Please contact them to create additional accounts." }, { status: 403 });
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     // Upgrade to admin
     await admin
       .from("profiles")
-      .update({ role: "admin", user_category: "admin" } as any)
+      .update({ role: "admin", user_category: "admin" })
       .eq("id", result.staffId);
 
     return NextResponse.json(result);

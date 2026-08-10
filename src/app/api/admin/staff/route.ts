@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
         .select("*, staff(*)")
         .eq("id", id)
         .eq("user_category", "staff")
-        .single();
+        .maybeSingle();
       if (error) return NextResponse.json({ error: "Staff not found" }, { status: 404 });
       return NextResponse.json({ staff });
     }
@@ -97,7 +97,7 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
 
-    const { error: profileError } = await (admin.from("profiles") as any).update({
+    const { error: profileError } = await admin.from("profiles").update({
       full_name: body.full_name,
       email: body.email,
       phone: body.phone,
@@ -110,7 +110,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
     }
 
-    await (admin.from("staff") as any).update({
+    await admin.from("staff").update({
       department: body.department || "General",
       designation: body.designation || "Staff",
       updated_at: new Date().toISOString(),
@@ -149,7 +149,7 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "Staff ID required" }, { status: 400 });
 
     const body = await req.json();
-    const { error } = await (admin.from("profiles") as any).update({
+    const { error } = await admin.from("profiles").update({
       is_active: body.is_active,
       updated_at: new Date().toISOString(),
     }).eq("id", id);

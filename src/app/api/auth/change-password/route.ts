@@ -32,17 +32,19 @@ export async function POST(req: NextRequest) {
       .from("profiles")
       .select("id, temp_password_hash, user_category")
       .eq("id", session.userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
+    // Verify current password
     const valid = await verifyPassword(current_password, profile.temp_password_hash || "");
     if (!valid) {
       return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
     }
 
+    // Check reuse
     const reused = await isPasswordReused(session.userId, new_password);
     if (reused) {
       return NextResponse.json({ error: "Cannot reuse a previous password" }, { status: 400 });
@@ -61,17 +63,20 @@ export async function POST(req: NextRequest) {
 
     const { error: authUpdateError } = await admin.auth.admin.updateUserById(session.userId, { password: new_password });
     if (authUpdateError) {
-      return NextResponse.json({ error: "Failed to update auth password" }, { status: 500 });
+      console.error("[change-password] Auth update failed:", authUpdateError);
     }
 
     await addPasswordToHistory(session.userId, passwordHash);
 
-    return NextResponse.json({ success: true, message: "Password changed successfully" });
+    // Sign out all OTHER sessions, keep current
+    await admin.auth.admin.signOut(session.userId, "global");
+
+    return NextResponse.json({ success: true, message: "Password updated. Please log in again." });
   } catch (error: any) {
     if (error.name === "AuthRequiredError") {
       return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
     }
     console.error("[change-password] Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }

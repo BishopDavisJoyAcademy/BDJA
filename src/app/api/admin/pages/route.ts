@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const slug = searchParams.get("slug");
 
     if (slug) {
-      const { data, error } = await admin.from("cms_pages").select("*").eq("slug", slug).single();
+      const { data, error } = await admin.from("cms_pages").select("*").eq("slug", slug).maybeSingle();
       if (error) return NextResponse.json({ error: "Page not found" }, { status: 404 });
       return NextResponse.json({ page: data });
     }
@@ -42,14 +42,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Slug, title, and content are required" }, { status: 400 });
     }
 
-    const { data, error } = await (admin.from("cms_pages") as any).insert({
+    const { data, error } = await admin.from("cms_pages").insert({
       slug,
       title,
       content,
       meta_description,
       published: published ?? false,
       updated_by: session.userId,
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create page" }, { status: 500 });
     return NextResponse.json({ success: true, page: data });
@@ -73,7 +73,7 @@ export async function PUT(req: NextRequest) {
 
     if (!id) return NextResponse.json({ error: "Page ID required" }, { status: 400 });
 
-    const { data, error } = await (admin.from("cms_pages") as any).update({
+    const { data, error } = await admin.from("cms_pages").update({
       slug,
       title,
       content,
@@ -81,7 +81,7 @@ export async function PUT(req: NextRequest) {
       published,
       updated_by: session.userId,
       updated_at: new Date().toISOString(),
-    }).eq("id", id).select().single();
+    }).eq("id", id).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to update page" }, { status: 500 });
     return NextResponse.json({ success: true, page: data });

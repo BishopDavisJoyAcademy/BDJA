@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const { data: { user }, error: authError } = await admin.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
 
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).single();
+    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).maybeSingle();
     if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "vora.manage")))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -42,13 +42,13 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authError } = await admin.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
 
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).single();
+    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).maybeSingle();
     if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "vora.manage")))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await req.json();
-    const { error } = await (admin.from("vora_content") as any).insert({
+    const { error } = await admin.from("vora_content").insert({
       title: body.title,
       description: body.description,
       youtube_url: body.youtube_url,
@@ -79,7 +79,7 @@ export async function PUT(req: NextRequest) {
     const { data: { user }, error: authError } = await admin.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
 
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).single();
+    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).maybeSingle();
     if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "vora.manage")))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -88,7 +88,7 @@ export async function PUT(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
     const body = await req.json();
-    const { error } = await (admin.from("vora_content") as any).update({
+    const { error } = await admin.from("vora_content").update({
       title: body.title,
       description: body.description,
       youtube_url: body.youtube_url,
@@ -119,7 +119,7 @@ export async function DELETE(req: NextRequest) {
     const { data: { user }, error: authError } = await admin.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
 
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).single();
+    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).maybeSingle();
     if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "vora.manage")))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

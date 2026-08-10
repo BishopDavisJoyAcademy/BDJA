@@ -51,13 +51,13 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = getSupabaseAdmin();
-    const { data, error } = await (admin.from("suggestions") as any).insert({
+    const { data, error } = await admin.from("suggestions").insert({
       user_id: session.userId,
       type,
       title,
       description,
       priority: priority || "medium",
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create suggestion" }, { status: 500 });
     return NextResponse.json({ success: true, suggestion: data });
@@ -90,7 +90,7 @@ export async function PATCH(req: NextRequest) {
     updates.responded_at = new Date().toISOString();
     updates.updated_at = new Date().toISOString();
 
-    const { data, error } = await (admin.from("suggestions") as any).update(updates).eq("id", id).select().single();
+    const { data, error } = await admin.from("suggestions").update(updates).eq("id", id).select().maybeSingle();
     if (error) return NextResponse.json({ error: "Failed to update suggestion" }, { status: 500 });
     return NextResponse.json({ success: true, suggestion: data });
   } catch (error: any) {

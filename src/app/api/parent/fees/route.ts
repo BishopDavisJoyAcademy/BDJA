@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
       .from("profiles")
       .select("user_category")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile || profile.user_category !== "parent") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

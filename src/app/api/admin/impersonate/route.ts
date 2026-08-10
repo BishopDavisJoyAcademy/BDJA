@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       .from("profiles")
       .select("*, staff(department, designation), students(admission_number, grade_level)")
       .eq("id", targetUserId)
-      .single();
+      .maybeSingle();
 
     if (targetError || !targetProfile) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const viewToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    await (admin.from("user_sessions") as any).insert({
+    await admin.from("user_sessions").insert({
       user_id: session.userId,
       session_token_hash: viewToken,
       ip_address: getClientIP(req),

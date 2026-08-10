@@ -18,16 +18,16 @@ export async function GET(req: NextRequest) {
       .from("joy_user_preferences")
       .select("*")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (dbError && dbError.code !== "PGRST116") throw dbError;
 
     if (!data) {
       const { data: created, error: createError } = await admin
         .from("joy_user_preferences")
-        .insert({ user_id: user.id } as any)
+        .insert({ user_id: user.id })
         .select()
-        .single();
+        .maybeSingle();
       if (createError) throw createError;
       return NextResponse.json({ preferences: created });
     }
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       .from("joy_user_preferences")
       .upsert({ user_id: user.id, ...update }, { onConflict: "user_id" })
       .select()
-      .single();
+      .maybeSingle();
 
     if (dbError) throw dbError;
     return NextResponse.json({ preferences: data });

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       .from("profiles")
       .select("user_category")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     const body = await req.json();
     const { action } = body;
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const result = await executeJoyAction(user.id, profile?.user_category || "student", action);
 
     // Log action
-    await (admin.from("joy_actions") as any).insert({
+    await admin.from("joy_actions").insert({
       user_id: user.id,
       action_type: action.type,
       action_data: action,

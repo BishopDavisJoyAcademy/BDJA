@@ -88,13 +88,17 @@ export default function VoraPublicPage() {
           .limit(1);
         if (profile && profile[0]) {
           // Try to get student grade
-          const { data: student } = await supabase
+          interface StudentGradeRow {
+            grade_level: string;
+          }
+          const { data: studentRows } = await supabase
             .from("students")
             .select("grade_level")
             .eq("id", user.id)
             .limit(1);
-          if (student && student[0]) {
-            setUserGrade(student[0].grade_level);
+          const student = (studentRows?.[0] ?? null) as StudentGradeRow | null;
+          if (student) {
+            setUserGrade(student.grade_level);
           }
         }
         // Fetch continue watching

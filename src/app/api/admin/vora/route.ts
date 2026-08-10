@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const { data: { user }, error: authError } = await admin.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
 
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).maybeSingle();
+    const { data: profile } = await admin.from("profiles").select("user_category, campus_id").eq("id", user.id).maybeSingle();
     if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "vora.manage")))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authError } = await admin.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
 
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).maybeSingle();
+    const { data: profile } = await admin.from("profiles").select("user_category, campus_id").eq("id", user.id).maybeSingle();
     if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "vora.manage")))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
       thumbnail_url: body.thumbnail_url,
       is_public: body.is_public ?? true,
       uploaded_by: user.id,
+      campus_id: profile?.campus_id || body.campus_id,
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -79,7 +80,7 @@ export async function PUT(req: NextRequest) {
     const { data: { user }, error: authError } = await admin.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
 
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).maybeSingle();
+    const { data: profile } = await admin.from("profiles").select("user_category, campus_id").eq("id", user.id).maybeSingle();
     if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "vora.manage")))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -119,7 +120,7 @@ export async function DELETE(req: NextRequest) {
     const { data: { user }, error: authError } = await admin.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
 
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).maybeSingle();
+    const { data: profile } = await admin.from("profiles").select("user_category, campus_id").eq("id", user.id).maybeSingle();
     if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "vora.manage")))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       title: string;
       description: string;
       priority: string | null;
-      status: string | null;
+      status: string | undefined;
     }
 
     const { data, error } = await admin.from("suggestions").insert({

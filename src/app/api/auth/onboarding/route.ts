@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
     const { error: updateError } = await admin
       .from("profiles")
-      .update({ onboarding_completed: true, updated_at: new Date().toISOString() } as any)
+      .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
       .eq("id", session.userId);
 
     if (updateError) {

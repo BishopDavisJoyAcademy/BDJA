@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
     }
 
     const newCredential = isStudent
-      ? (parseResult.data as any).new_pin
-      : (parseResult.data as any).new_password;
+      ? (parseResult.data).new_pin
+      : (parseResult.data).new_password;
 
     const passwordHash = await hashPassword(newCredential);
 
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     // Update Supabase Auth password
     const { error: authUpdateError } = await admin.auth.admin.updateUserById(session.userId, { password: newCredential });
     if (authUpdateError) {
-      await (admin.from("profiles") as any).update({ password_changed: false }).eq("id", session.userId);
+      await admin.from("profiles").update({ password_changed: false }).eq("id", session.userId);
       return NextResponse.json({ error: "Failed to update auth password" }, { status: 500 });
     }
 

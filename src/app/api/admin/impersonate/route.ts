@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { dbInsert } from "@/lib/db-helpers";
 import { logImpersonation } from "@/lib/audit";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/security";
@@ -67,7 +66,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
     }
 
-    const profile = profileRaw as ProfileRow;
+    const profile = profileRaw
 
     if (profile.user_category === "admin" && targetUserId !== session.userId) {
       return NextResponse.json({ error: "Cannot impersonate other admins" }, { status: 403 });
@@ -80,7 +79,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
     const staffRaw = (staffRows?.[0] ?? null) as StaffRow | null;
 
-    const staff = staffRaw as StaffRow | null;
+    const staff = staffRaw
 
     const { data: studentRows } = await admin
       .from("students")
@@ -89,7 +88,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
     const studentRaw = (studentRows?.[0] ?? null) as StudentRow | null;
 
-    const student = studentRaw as StudentRow | null;
+    const student = studentRaw
 
     const viewToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
@@ -103,7 +102,15 @@ export async function POST(req: NextRequest) {
       expires_at: expiresAt,
     };
 
-    await dbInsert("user_sessions", sessionPayload);
+    interface UserSessionInsert {
+      user_id: string;
+      session_token_hash: string;
+      expires_at: string;
+      ip_address: string | null;
+      user_agent: string | null;
+      created_at: string | null;
+    }
+    await getSupabaseAdmin().from("user_sessions").insert(sessionPayload as UserSessionInsert);
 
     await logImpersonation(session.userId, targetUserId, "start", getClientIP(req), req.headers.get("user-agent") || undefined);
 
@@ -157,7 +164,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
     }
 
-    return NextResponse.json({ users: (users as any[]) || [] });
+    return NextResponse.json({ users: (users) || [] });
   } catch (error: any) {
     if (error.name === "AuthRequiredError") {
       return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });

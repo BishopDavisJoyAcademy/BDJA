@@ -1,5 +1,3 @@
-"use server";
-
 import { getSupabaseAdmin } from "./supabase-server";
 import { randomBytes, createHash } from "crypto";
 

@@ -1,5 +1,3 @@
-"use server";
-
 import { getSupabaseAdmin } from "./supabase-server";
 import { hashPassword, generateTempPassword, generatePIN } from "./security";
 import { logAudit } from "./audit";

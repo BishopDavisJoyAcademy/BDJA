@@ -1,5 +1,3 @@
-"use server";
-
 import { getSupabaseAdmin } from "./supabase-server";
 
 export async function getUserPermissions(userId: string): Promise<string[]> {

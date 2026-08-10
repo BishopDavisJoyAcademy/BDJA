@@ -1,5 +1,3 @@
-"use server";
-
 import { getSupabaseAdmin } from "./supabase-server";
 import { checkAccountLockout } from "./security";
 import { ValidatedSession, AuthError, UserRole, UserCategory } from "@/types";

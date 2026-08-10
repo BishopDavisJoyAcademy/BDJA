@@ -6,11 +6,19 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
   const ctx: JoyContext = {};
 
   // Profile
-  const { data: profile } = await admin
+  interface JoyProfileRow {
+    full_name: string;
+    user_category: string;
+    role: string;
+    campus_id: string | null;
+  }
+
+  const { data: profileRaw } = await admin
     .from("profiles")
     .select("full_name, user_category, role, campus_id")
     .eq("id", userId)
     .single();
+  const profile = profileRaw as JoyProfileRow | null;
 
   if (profile) {
     ctx.userName = profile.full_name;
@@ -20,17 +28,25 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
 
   // Student data
   if (profile?.user_category === "student") {
-    const { data: student } = await admin
+    interface JoyStudentRow {
+      grade_level: string | null;
+      class_id: string | null;
+      admission_number: string | null;
+    }
+
+    const { data: studentRaw } = await admin
       .from("students")
       .select("grade_level, class_id, admission_number")
       .eq("profile_id", userId)
       .single();
+    const student = studentRaw as JoyStudentRow | null;
+
     if (student) {
       ctx.gradeLevel = student.grade_level || undefined;
     }
 
     // Timetable
-    if (student.class_id) {
+    if (student && student.class_id) {
       const { data: timetable } = await admin
         .from("timetable")
         .select("*, subjects(name), profiles(full_name)")
@@ -52,13 +68,17 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
     ctx.grades = grades || [];
 
     // Assignments
-    const { data: assignments } = await admin
-      .from("assignments")
-      .select("*, subjects(name)")
-      .eq("class_id", student?.class_id)
-      .order("due_date", { ascending: true })
-      .limit(10);
-    ctx.assignments = assignments || [];
+    if (student && student.class_id) {
+      const { data: assignments } = await admin
+        .from("assignments")
+        .select("*, subjects(name)")
+        .eq("class_id", student.class_id)
+        .order("due_date", { ascending: true })
+        .limit(10);
+      ctx.assignments = assignments || [];
+    } else {
+      ctx.assignments = [];
+    }
 
     // Attendance
     const { data: attendance } = await admin
@@ -118,11 +138,18 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
 
   // Staff data
   if (profile?.user_category === "staff") {
-    const { data: staff } = await admin
+    interface JoyStaffRow {
+      designation: string | null;
+      department: string | null;
+    }
+
+    const { data: staffRaw } = await admin
       .from("staff")
       .select("designation, department")
       .eq("id", userId)
       .single();
+    const staff = staffRaw as JoyStaffRow | null;
+
     if (staff) {
       ctx.designation = staff.designation || undefined;
     }

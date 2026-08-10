@@ -13,9 +13,9 @@ export async function GET(req: NextRequest) {
 
     let query;
     if (type === "sent") {
-      query = admin.from("messages").select("*, recipient:recipient_id(full_name, email)").eq("sender_id", session.userId);
+      query = admin.from("messages").select("*, recipient:receiver_id(full_name, email)").eq("sender_id", session.userId);
     } else {
-      query = admin.from("messages").select("*, sender:sender_id(full_name, email)").eq("recipient_id", session.userId);
+      query = admin.from("messages").select("*, sender:sender_id(full_name, email)").eq("receiver_id", session.userId);
     }
 
     const { data, error } = await query.order("created_at", { ascending: false });

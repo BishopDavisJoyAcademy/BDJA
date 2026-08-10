@@ -13,7 +13,7 @@ interface VoraVideo {
   id: string;
   title: string;
   description?: string;
-  youtube_url: string;
+  video_url: string;
   subject: string;
   grade_level: string;
   topic?: string;
@@ -36,7 +36,7 @@ export default function VoraAdminPage() {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    youtube_url: "",
+    video_url: "",
     subject: "Mathematics",
     grade_level: "Grade 1",
     topic: "",
@@ -66,7 +66,7 @@ export default function VoraAdminPage() {
   useEffect(() => { fetchVideos(); }, []);
 
   const resetForm = () => {
-    setForm({ title: "", description: "", youtube_url: "", subject: "Mathematics", grade_level: "Grade 1", topic: "", duration: "", thumbnail_url: "", is_public: true });
+    setForm({ title: "", description: "", video_url: "", subject: "Mathematics", grade_level: "Grade 1", topic: "", duration: "", thumbnail_url: "", is_public: true });
     setEditingId(null);
   };
 
@@ -123,7 +123,7 @@ export default function VoraAdminPage() {
     setForm({
       title: v.title,
       description: v.description || "",
-      youtube_url: v.youtube_url,
+      video_url: v.video_url,
       subject: v.subject,
       grade_level: v.grade_level,
       topic: v.topic || "",
@@ -164,7 +164,7 @@ export default function VoraAdminPage() {
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">YouTube URL *</label>
-              <Input value={form.youtube_url} onChange={(e) => setForm({ ...form, youtube_url: e.target.value })} placeholder="https://youtube.com/watch?v=..." required />
+              <Input value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="https://youtube.com/watch?v=..." required />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Subject *</label>
@@ -241,7 +241,7 @@ export default function VoraAdminPage() {
               </div>
               <h4 className="font-semibold text-sm mb-1 line-clamp-2">{v.title}</h4>
               <p className="text-xs text-gray-500 mb-2">{v.subject} · {v.grade_level}</p>
-              <a href={v.youtube_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-auto">
+              <a href={v.video_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-auto">
                 <ExternalLink className="w-3 h-3" /> Open on YouTube
               </a>
             </Card>

@@ -51,14 +51,14 @@ export async function POST(req: NextRequest) {
     const { error } = await admin.from("vora_content").insert({
       title: body.title,
       description: body.description,
-      youtube_url: body.youtube_url,
+      video_url: body.video_url,
       subject: body.subject,
       grade_level: body.grade_level,
       topic: body.topic,
       duration: body.duration,
       thumbnail_url: body.thumbnail_url,
       is_public: body.is_public ?? true,
-      created_by: user.id,
+      uploaded_by: user.id,
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -91,7 +91,7 @@ export async function PUT(req: NextRequest) {
     const { error } = await admin.from("vora_content").update({
       title: body.title,
       description: body.description,
-      youtube_url: body.youtube_url,
+      video_url: body.video_url,
       subject: body.subject,
       grade_level: body.grade_level,
       topic: body.topic,

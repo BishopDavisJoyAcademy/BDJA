@@ -19,7 +19,7 @@ interface VoraPreview {
   category: string;
   topic: string;
   thumbnail_url: string;
-  youtube_url: string;
+  video_url: string;
   duration_seconds?: number;
   channel?: string;
   grade_level: string;

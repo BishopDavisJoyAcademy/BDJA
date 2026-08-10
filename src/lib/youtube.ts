@@ -93,7 +93,7 @@ export async function searchYouTubeAsVora(query: string, grade_level?: string, l
       subject: "General",
       category: "YouTube",
       topic: query,
-      youtube_url: `https://youtube.com/watch?v=${r.id}`,
+      video_url: `https://youtube.com/watch?v=${r.id}`,
       summary: r.description?.substring(0, 200) || "No summary available.",
       tags: [query.toLowerCase(), "youtube", "recommended"],
       grade_level: grade_level || "all",

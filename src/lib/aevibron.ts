@@ -132,7 +132,7 @@ ${ctx.calendarEvents.slice(0, 3).map((e: any) => `- ${e.title}: ${e.date}`).join
     prompt += `
 
 RELEVANT LEARNING VIDEOS:
-${ctx.voraResults.slice(0, 3).map((v: any) => `- ${v.title} (${v.subject}, ${v.grade_level}): ${v.youtube_url}`).join("\n")}`;
+${ctx.voraResults.slice(0, 3).map((v: any) => `- ${v.title} (${v.subject}, ${v.grade_level}): ${v.video_url}`).join("\n")}`;
   }
 
   if (ctx?.children && ctx.children.length > 0) {

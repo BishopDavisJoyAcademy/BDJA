@@ -234,7 +234,7 @@ export interface VoraContent {
   channel?: string;
   duration_seconds?: number;
   thumbnail_url?: string;
-  youtube_url?: string;
+  video_url?: string;
 }
 
 export interface NotificationItem {

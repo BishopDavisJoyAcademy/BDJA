@@ -5,6 +5,43 @@ import { logImpersonation } from "@/lib/audit";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/security";
 
+interface ProfileRow {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  user_category: string;
+  campus_id: string | null;
+  is_active: boolean;
+}
+
+interface StaffRow {
+  department: string | null;
+  designation: string | null;
+}
+
+interface StudentRow {
+  admission_number: string | null;
+  grade_level: string | null;
+}
+
+interface ImpersonationResponse {
+  viewToken: string;
+  expiresAt: string;
+  targetUser: {
+    id: string;
+    email: string;
+    full_name: string;
+    role: string;
+    user_category: string;
+    campus_id: string | null;
+    department: string | null;
+    designation: string | null;
+    admission_number: string | null;
+    grade_level: string | null;
+  };
+}
+
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
@@ -26,34 +63,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "targetUserId required" }, { status: 400 });
     }
 
-    // Query 1: Profile (no joins — fully typed, no never type)
-    const { data: profile, error: profileError } = await admin
+    const { data: profileRaw, error: profileError } = await admin
       .from("profiles")
       .select("id, email, full_name, role, user_category, campus_id, is_active")
       .eq("id", targetUserId)
       .maybeSingle();
 
-    if (profileError || !profile) {
+    if (profileError || !profileRaw) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
     }
+
+    const profile = profileRaw as ProfileRow;
 
     if (profile.user_category === "admin" && targetUserId !== session.userId) {
       return NextResponse.json({ error: "Cannot impersonate other admins" }, { status: 403 });
     }
 
-    // Query 2: Staff details (if exists)
-    const { data: staff } = await admin
+    const { data: staffRaw } = await admin
       .from("staff")
       .select("department, designation")
       .eq("id", targetUserId)
       .maybeSingle();
 
-    // Query 3: Student details (if exists)
-    const { data: student } = await admin
+    const staff = staffRaw as StaffRow | null;
+
+    const { data: studentRaw } = await admin
       .from("students")
       .select("admission_number, grade_level")
       .eq("id", targetUserId)
       .maybeSingle();
+
+    const student = studentRaw as StudentRow | null;
 
     const viewToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
@@ -69,7 +109,7 @@ export async function POST(req: NextRequest) {
 
     await logImpersonation(session.userId, targetUserId, "start", getClientIP(req), req.headers.get("user-agent") || undefined);
 
-    return NextResponse.json({
+    const response: ImpersonationResponse = {
       viewToken,
       expiresAt,
       targetUser: {
@@ -84,7 +124,9 @@ export async function POST(req: NextRequest) {
         admission_number: student?.admission_number || null,
         grade_level: student?.grade_level || null,
       },
-    });
+    };
+
+    return NextResponse.json(response);
   } catch (error: any) {
     if (error.name === "AuthRequiredError") {
       return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
@@ -119,7 +161,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
     }
 
-    return NextResponse.json({ users: users || [] });
+    return NextResponse.json({ users: (users as any[]) || [] });
   } catch (error: any) {
     if (error.name === "AuthRequiredError") {
       return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });

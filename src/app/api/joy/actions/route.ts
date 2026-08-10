@@ -27,13 +27,13 @@ export async function POST(req: NextRequest) {
     const result = await executeJoyAction(user.id, profile?.user_category || "student", action);
 
     // Log action
-    await admin.from("joy_actions").insert({
+    await (admin.from("joy_actions") as any).insert({
       user_id: user.id,
       action_type: action.type,
       action_data: action,
       success: result.success,
       error_message: result.error || null,
-    } as any);
+    });
 
     return NextResponse.json(result);
   } catch (error: any) {

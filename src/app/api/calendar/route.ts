@@ -35,10 +35,10 @@ export async function POST(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { data, error } = await admin.from("calendar_events").insert({
+    const { data, error } = await (admin.from("calendar_events") as any).insert({
       ...body,
       created_by: session.userId,
-    } as any).select().single();
+    }).select().single();
 
     if (error) return NextResponse.json({ error: "Failed to create event" }, { status: 500 });
     return NextResponse.json({ success: true, event: data });

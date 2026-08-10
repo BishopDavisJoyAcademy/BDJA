@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { error } = await admin.from("vora_content").insert({
+    const { error } = await (admin.from("vora_content") as any).insert({
       title: body.title,
       description: body.description,
       youtube_url: body.youtube_url,
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       thumbnail_url: body.thumbnail_url,
       is_public: body.is_public ?? true,
       created_by: user.id,
-    } as any);
+    });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
@@ -88,7 +88,7 @@ export async function PUT(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
     const body = await req.json();
-    const { error } = await admin.from("vora_content").update({
+    const { error } = await (admin.from("vora_content") as any).update({
       title: body.title,
       description: body.description,
       youtube_url: body.youtube_url,
@@ -99,7 +99,7 @@ export async function PUT(req: NextRequest) {
       thumbnail_url: body.thumbnail_url,
       is_public: body.is_public,
       updated_at: new Date().toISOString(),
-    } as any).eq("id", id);
+    }).eq("id", id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });

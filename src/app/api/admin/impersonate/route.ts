@@ -36,23 +36,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
     }
 
-    const tp = targetProfile as any;
-
-    if (tp.user_category === "admin" && targetUserId !== session.userId) {
+    if (targetProfile.user_category === "admin" && targetUserId !== session.userId) {
       return NextResponse.json({ error: "Cannot impersonate other admins" }, { status: 403 });
     }
 
     const viewToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    await admin.from("user_sessions").insert({
+    await (admin.from("user_sessions") as any).insert({
       user_id: session.userId,
       session_token_hash: viewToken,
       ip_address: getClientIP(req),
       user_agent: req.headers.get("user-agent") || null,
       is_active: true,
       expires_at: expiresAt,
-    } as any);
+    });
 
     await logImpersonation(session.userId, targetUserId, "start", getClientIP(req), req.headers.get("user-agent") || undefined);
 
@@ -60,16 +58,16 @@ export async function POST(req: NextRequest) {
       viewToken,
       expiresAt,
       targetUser: {
-        id: tp.id,
-        email: tp.email,
-        full_name: tp.full_name,
-        role: tp.role,
-        user_category: tp.user_category,
-        campus_id: tp.campus_id,
-        department: tp.staff?.department || null,
-        designation: tp.staff?.designation || null,
-        admission_number: tp.students?.admission_number || null,
-        grade_level: tp.students?.grade_level || null,
+        id: targetProfile.id,
+        email: targetProfile.email,
+        full_name: targetProfile.full_name,
+        role: targetProfile.role,
+        user_category: targetProfile.user_category,
+        campus_id: targetProfile.campus_id,
+        department: targetProfile.staff?.department || null,
+        designation: targetProfile.staff?.designation || null,
+        admission_number: targetProfile.students?.admission_number || null,
+        grade_level: targetProfile.students?.grade_level || null,
       },
     });
   } catch (error: any) {

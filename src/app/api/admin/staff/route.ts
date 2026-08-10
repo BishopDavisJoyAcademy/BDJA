@@ -97,24 +97,24 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
 
-    const { error: profileError } = await admin.from("profiles").update({
+    const { error: profileError } = await (admin.from("profiles") as any).update({
       full_name: body.full_name,
       email: body.email,
       phone: body.phone,
       campus_id: body.campus_id || null,
       is_active: body.is_active,
       updated_at: new Date().toISOString(),
-    } as any).eq("id", id);
+    }).eq("id", id);
 
     if (profileError) {
       return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
     }
 
-    await admin.from("staff").update({
+    await (admin.from("staff") as any).update({
       department: body.department || "General",
       designation: body.designation || "Staff",
       updated_at: new Date().toISOString(),
-    } as any).eq("id", id);
+    }).eq("id", id);
 
     if (body.permissionIds) {
       await grantPermissions(id, body.permissionIds, session.userId);
@@ -149,10 +149,10 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "Staff ID required" }, { status: 400 });
 
     const body = await req.json();
-    const { error } = await admin.from("profiles").update({
+    const { error } = await (admin.from("profiles") as any).update({
       is_active: body.is_active,
       updated_at: new Date().toISOString(),
-    } as any).eq("id", id);
+    }).eq("id", id);
 
     if (error) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
 

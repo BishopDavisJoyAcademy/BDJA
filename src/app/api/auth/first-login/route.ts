@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const { error: updateError } = await admin
       .from("profiles")
-      .update({ temp_password_hash: passwordHash, password_changed: true, updated_at: new Date().toISOString() } as any)
+      .update({ temp_password_hash: passwordHash, password_changed: true, updated_at: new Date().toISOString() })
       .eq("id", session.userId);
 
     if (updateError) {
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     // Update Supabase Auth password
     const { error: authUpdateError } = await admin.auth.admin.updateUserById(session.userId, { password: newCredential });
     if (authUpdateError) {
-      await admin.from("profiles").update({ password_changed: false } as any).eq("id", session.userId);
+      await (admin.from("profiles") as any).update({ password_changed: false }).eq("id", session.userId);
       return NextResponse.json({ error: "Failed to update auth password" }, { status: 500 });
     }
 

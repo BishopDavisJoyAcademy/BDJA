@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       action: "STUDENT_CREATED",
       table_name: "student",
       record_id: result.userId,
-      metadata: { email: body.email, admission_number: body.admission_number },
+      new_data: { email: body.email, admission_number: body.admission_number },
       ip_address: getClientIP(req),
     });
 

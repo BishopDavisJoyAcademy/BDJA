@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       action: "STAFF_CREATED",
       table_name: "staff",
       record_id: result.userId,
-      metadata: { email: body.email, department: body.department },
+      new_data: { email: body.email, department: body.department },
       ip_address: getClientIP(req),
     });
 

@@ -100,7 +100,7 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
       action: "USER_CREATED",
       table_name: "user",
       record_id: authUserId,
-      metadata: { role: options.role, user_category: options.userCategory },
+      new_data: { role: options.role, user_category: options.userCategory },
     }).catch(() => {});
 
     return { userId: authUserId, email: options.email, tempPassword: password, success: true };
@@ -181,7 +181,7 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
     action: "STAFF_CREATED",
     table_name: "staff",
     record_id: userResult.userId,
-    metadata: { department: options.department, designation: options.designation, permissions: options.permissionIds },
+    new_data: { department: options.department, designation: options.designation, permissions: options.permissionIds },
   }).catch(() => {});
 
   return { userId: userResult.userId, staffId: userResult.userId, email: userResult.email, tempPassword: userResult.tempPassword, success: true };
@@ -245,7 +245,7 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
     action: "STUDENT_CREATED",
     table_name: "student",
     record_id: userResult.userId,
-    metadata: { admission_number: options.admissionNumber, grade_level: options.gradeLevel },
+    new_data: { admission_number: options.admissionNumber, grade_level: options.gradeLevel },
   }).catch(() => {});
 
   return { ...userResult, studentId: userResult.userId, tempPassword: pin };

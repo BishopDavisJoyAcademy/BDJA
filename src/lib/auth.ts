@@ -98,8 +98,8 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
     await logAudit({
       user_id: options.createdBy || authUserId,
       action: "USER_CREATED",
-      target_type: "user",
-      target_id: authUserId,
+      table_name: "user",
+      record_id: authUserId,
       metadata: { role: options.role, user_category: options.userCategory },
     }).catch(() => {});
 
@@ -179,8 +179,8 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
   await logAudit({
     user_id: options.createdBy,
     action: "STAFF_CREATED",
-    target_type: "staff",
-    target_id: userResult.userId,
+    table_name: "staff",
+    record_id: userResult.userId,
     metadata: { department: options.department, designation: options.designation, permissions: options.permissionIds },
   }).catch(() => {});
 
@@ -243,8 +243,8 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
   await logAudit({
     user_id: options.createdBy,
     action: "STUDENT_CREATED",
-    target_type: "student",
-    target_id: userResult.userId,
+    table_name: "student",
+    record_id: userResult.userId,
     metadata: { admission_number: options.admissionNumber, grade_level: options.gradeLevel },
   }).catch(() => {});
 

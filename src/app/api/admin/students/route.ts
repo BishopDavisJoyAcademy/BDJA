@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
     await logAudit({
       user_id: session.userId,
       action: "STUDENT_CREATED",
-      target_type: "student",
-      target_id: result.userId,
+      table_name: "student",
+      record_id: result.userId,
       metadata: { email: body.email, admission_number: body.admission_number },
       ip_address: getClientIP(req),
     });

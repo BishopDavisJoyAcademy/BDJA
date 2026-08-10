@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
     await logAudit({
       user_id: session.userId,
       action: "STAFF_CREATED",
-      target_type: "staff",
-      target_id: result.userId,
+      table_name: "staff",
+      record_id: result.userId,
       metadata: { email: body.email, department: body.department },
       ip_address: getClientIP(req),
     });
@@ -136,8 +136,8 @@ export async function PUT(req: NextRequest) {
     await logAudit({
       user_id: session.userId,
       action: "STAFF_UPDATED",
-      target_type: "staff",
-      target_id: id,
+      table_name: "staff",
+      record_id: id,
       ip_address: getClientIP(req),
     });
 
@@ -172,8 +172,8 @@ export async function PATCH(req: NextRequest) {
     await logAudit({
       user_id: session.userId,
       action: body.is_active ? "STAFF_ACTIVATED" : "STAFF_DEACTIVATED",
-      target_type: "staff",
-      target_id: id,
+      table_name: "staff",
+      record_id: id,
       ip_address: getClientIP(req),
     });
 

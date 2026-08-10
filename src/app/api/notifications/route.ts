@@ -35,11 +35,11 @@ export async function PATCH(req: NextRequest) {
     const { id } = body;
 
     if (!id) {
-      await (admin.from("notifications") as any).update({ read: true }).eq("user_id", session.userId).eq("read", false);
+      await admin.from("notifications").update({ read: true } as { read: boolean }).eq("user_id", session.userId).eq("read", false);
       return NextResponse.json({ success: true, message: "All notifications marked as read" });
     }
 
-    await (admin.from("notifications") as any).update({ read: true }).eq("id", id).eq("user_id", session.userId);
+    await admin.from("notifications").update({ read: true } as { read: boolean }).eq("id", id).eq("user_id", session.userId);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     if (error.name === "AuthRequiredError") {

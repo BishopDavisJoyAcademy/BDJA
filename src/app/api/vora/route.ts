@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       ...body,
     }).select().maybeSingle();
 
-    if (error) return NextResponse.json({ error: "Failed to create content" }, { status: 500 });
+    if (error) return NextResponse.json({ error: "Failed to create content" }, { status: 500 } as { title: string; description: string | null; video_url: string; subject: string; grade_level: string; topic: string; duration: number | null; thumbnail_url: string | null; is_public: boolean | null; uploaded_by: string; campus_id: string | null });
     return NextResponse.json({ success: true, content: data });
   } catch (error: any) {
     if (error.name === "AuthRequiredError") {

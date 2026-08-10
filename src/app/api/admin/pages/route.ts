@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       meta_description,
       is_published: is_published ?? false,
       last_edited_by: session.userId,
-    }).select().maybeSingle();
+    } as { slug: string; title: string; content: string; meta_description: string | null; is_published: boolean | null; last_edited_by: string }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create page" }, { status: 500 });
     return NextResponse.json({ success: true, page: data });

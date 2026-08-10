@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { data, error } = await admin.from("fee_payments").insert(body).select().maybeSingle();
+    const { data, error } = await admin.from("fee_payments").insert(body as { student_id: string; amount: number; balance?: number | null; term: string; academic_year: string; status?: string | null; paid_at?: string | null }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to record payment" }, { status: 500 });
     return NextResponse.json({ success: true, fee: data });

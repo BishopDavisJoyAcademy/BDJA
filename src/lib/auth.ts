@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "./supabase-server";
+import { Database } from "@/types/database";
 import { hashPassword, generateTempPassword, generatePIN } from "./security";
 import { logAudit } from "./audit";
 
@@ -90,7 +91,8 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
 
     // Password history
     try {
-      await admin.from("password_history").insert({ user_id: authUserId, password_hash: passwordHash } as { user_id: string; password_hash: string; changed_at: string | null });
+      type PasswordHistoryInsert = Database["public"]["Tables"]["password_history"]["Insert"];
+    await admin.from("password_history").insert({ user_id: authUserId, password_hash: passwordHash } as PasswordHistoryInsert);
     } catch (err: any) {
       console.error("[auth] Password history insert failed:", err);
     }
@@ -152,13 +154,15 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
     createdBy: options.createdBy,
   });
 
+  type StaffInsert = Database["public"]["Tables"]["staff"]["Insert"];
+
   const { error: staffError } = await admin.from("staff").insert({
     id: userResult.userId,
     employee_id: options.email.split("@")[0].toUpperCase() + "-" + Date.now().toString().slice(-4),
     department: options.department || "General",
     designation: options.designation || "Staff",
     status: "active",
-  });
+  } as StaffInsert);
 
   if (staffError) {
     console.error("[auth] Staff record creation failed:", staffError);

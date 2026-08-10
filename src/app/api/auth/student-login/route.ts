@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid admission number or PIN" }, { status: 401 });
     }
 
-    const profile = (student as any).profiles;
+    const profile = student?.profiles?.[0] ?? null;
     const email = profile?.email;
     const userId = profile?.id;
 

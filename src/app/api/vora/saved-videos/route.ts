@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     const { error } = await admin
       .from("saved_videos")
-      .insert({ user_id: user.id, video_id } as any);
+      .insert({ user_id: user.id, video_id } as { user_id: string; video_id: string });
 
     if (error) {
       return NextResponse.json({ error: "Failed to save video" }, { status: 500 });

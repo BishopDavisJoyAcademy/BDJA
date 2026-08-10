@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { data, error } = await admin.from("assessments").insert(body).select().maybeSingle();
+    const { data, error } = await admin.from("assessments").insert(body as { student_id: string; subject_id: string; class_id: string; score?: number | null; max_score?: number | null; performance_level?: string | null; term: string; academic_year: string }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create grade" }, { status: 500 });
     return NextResponse.json({ success: true, grade: data });

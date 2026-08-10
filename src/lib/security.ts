@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "./supabase-server";
+import { Database } from "@/types/database";
 import { randomBytes, createHash } from "crypto";
 
 export const SECURITY_CONFIG = {
@@ -54,10 +55,15 @@ export async function checkAccountLockout(userId: string): Promise<LockoutStatus
 }
 
 export async function recordFailedLogin(userId: string | null, email: string, ipAddress: string, userAgent: string): Promise<void> {
+  if (!userId) {
+    console.warn("[security] recordFailedLogin called without userId");
+    return;
+  }
+  const safeUserId: string = userId;
   const admin = getSupabaseAdmin();
   try {
     await admin.rpc("record_login_attempt", {
-      p_user_id: userId,
+      p_user_id: safeUserId,
       p_email: email,
       p_success: false,
       p_ip_address: ipAddress || null,

@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await admin
       .from("library_resources")
-      .insert({ ...body, created_by: session.userId })
+      .insert({ ...body, created_by: session.userId } as { title: string; author?: string | null; isbn?: string | null; resource_type: string; total_copies?: number | null; available_copies?: number | null; cover_url?: string | null; file_url?: string | null; grade_levels?: string[] | null; subject_id?: string | null; campus_id?: string | null; created_by: string })
       .select("id, title, author, isbn, resource_type, available_copies, total_copies, cover_url, file_url, grade_levels, subject_id, campus_id, created_at")
       .maybeSingle() as { data: LibraryResourceRow | null; error: any };
 

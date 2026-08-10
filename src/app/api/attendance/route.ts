@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { data, error } = await admin.from("attendance").insert(body).select().maybeSingle();
+    const { data, error } = await admin.from("attendance").insert(body as { student_id: string; class_id: string; date: string; status: string; notes?: string | null; marked_by: string }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to record attendance" }, { status: 500 });
     return NextResponse.json({ success: true, attendance: data });

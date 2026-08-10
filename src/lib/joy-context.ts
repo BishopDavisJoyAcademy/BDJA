@@ -15,7 +15,7 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
   if (profile) {
     ctx.userName = profile.full_name;
     ctx.userCategory = profile.user_category;
-    ctx.campusId = profile.campus_id;
+    ctx.campusId = profile.campus_id || undefined;
   }
 
   // Student data

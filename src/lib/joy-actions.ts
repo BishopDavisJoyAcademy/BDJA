@@ -69,19 +69,19 @@ export async function executeJoyAction(
         interface NotificationInsertRow {
           user_id: string;
           title: string;
-          message: string;
+          content: string | null;
           type: string;
           action_url: string | null;
-          is_read: boolean;
+          read: boolean | null;
         }
 
         const { error } = await admin.from("notifications").insert({
           user_id: action.payload.user_id,
           title: action.payload.title || "Joy AI",
-          message: action.payload.message,
+          content: action.payload.message || null,
           type: action.payload.type || "info",
           action_url: action.payload.action_url || null,
-          is_read: false,
+          read: false,
         } as NotificationInsertRow);
         if (error) throw error;
         return { success: true, message: "Notification sent" };

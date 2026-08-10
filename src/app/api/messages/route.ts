@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await admin.from("messages").insert({
       ...body,
       sender_id: session.userId,
-    }).select().single();
+    } as any).select().single();
 
     if (error) return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
     return NextResponse.json({ success: true, message: data });

@@ -104,7 +104,7 @@ export async function PUT(req: NextRequest) {
       campus_id: body.campus_id || null,
       is_active: body.is_active,
       updated_at: new Date().toISOString(),
-    }).eq("id", id);
+    } as any).eq("id", id);
 
     if (profileError) {
       return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
@@ -114,7 +114,7 @@ export async function PUT(req: NextRequest) {
       department: body.department || "General",
       designation: body.designation || "Staff",
       updated_at: new Date().toISOString(),
-    }).eq("id", id);
+    } as any).eq("id", id);
 
     if (body.permissionIds) {
       await grantPermissions(id, body.permissionIds, session.userId);
@@ -152,7 +152,7 @@ export async function PATCH(req: NextRequest) {
     const { error } = await admin.from("profiles").update({
       is_active: body.is_active,
       updated_at: new Date().toISOString(),
-    }).eq("id", id);
+    } as any).eq("id", id);
 
     if (error) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
 

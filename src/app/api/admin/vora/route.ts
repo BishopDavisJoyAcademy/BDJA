@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       thumbnail_url: body.thumbnail_url,
       is_public: body.is_public ?? true,
       created_by: user.id,
-    });
+    } as any);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
@@ -99,7 +99,7 @@ export async function PUT(req: NextRequest) {
       thumbnail_url: body.thumbnail_url,
       is_public: body.is_public,
       updated_at: new Date().toISOString(),
-    }).eq("id", id);
+    } as any).eq("id", id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });

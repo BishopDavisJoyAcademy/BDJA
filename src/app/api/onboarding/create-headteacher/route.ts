@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     // Upgrade to admin
     await admin
       .from("profiles")
-      .update({ role: "admin", user_category: "admin" })
+      .update({ role: "admin", user_category: "admin" } as any)
       .eq("id", result.staffId);
 
     return NextResponse.json(result);

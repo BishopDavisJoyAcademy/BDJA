@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       meta_description,
       published: published ?? false,
       updated_by: session.userId,
-    }).select().single();
+    } as any).select().single();
 
     if (error) return NextResponse.json({ error: "Failed to create page" }, { status: 500 });
     return NextResponse.json({ success: true, page: data });
@@ -81,7 +81,7 @@ export async function PUT(req: NextRequest) {
       published,
       updated_by: session.userId,
       updated_at: new Date().toISOString(),
-    }).eq("id", id).select().single();
+    } as any).eq("id", id).select().single();
 
     if (error) return NextResponse.json({ error: "Failed to update page" }, { status: 500 });
     return NextResponse.json({ success: true, page: data });

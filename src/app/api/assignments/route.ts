@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await admin.from("assignments").insert({
       ...body,
       teacher_id: session.userId,
-    }).select().single();
+    } as any).select().single();
 
     if (error) return NextResponse.json({ error: "Failed to create assignment" }, { status: 500 });
     return NextResponse.json({ success: true, assignment: data });

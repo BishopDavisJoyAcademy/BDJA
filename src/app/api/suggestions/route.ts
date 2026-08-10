@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       title,
       description,
       priority: priority || "medium",
-    }).select().single();
+    } as any).select().single();
 
     if (error) return NextResponse.json({ error: "Failed to create suggestion" }, { status: 500 });
     return NextResponse.json({ success: true, suggestion: data });
@@ -90,7 +90,7 @@ export async function PATCH(req: NextRequest) {
     updates.responded_at = new Date().toISOString();
     updates.updated_at = new Date().toISOString();
 
-    const { data, error } = await admin.from("suggestions").update(updates).eq("id", id).select().single();
+    const { data, error } = await admin.from("suggestions").update(updates as any).eq("id", id).select().single();
     if (error) return NextResponse.json({ error: "Failed to update suggestion" }, { status: 500 });
     return NextResponse.json({ success: true, suggestion: data });
   } catch (error: any) {

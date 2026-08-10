@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       : firstLoginPasswordSchema.safeParse(body);
 
     if (!parseResult.success) {
-      const issues = parseResult.error.issues.map((i: any) => i.message).join("; ");
+      const issues = parseResult.error.issues.map((i) => i.message).join("; ");
       return NextResponse.json({ error: issues }, { status: 400 });
     }
 
@@ -45,16 +45,17 @@ export async function POST(req: NextRequest) {
 
     const { error: updateError } = await admin
       .from("profiles")
-      .update({ temp_password_hash: passwordHash, password_changed: true, updated_at: new Date().toISOString() })
+      .update({ temp_password_hash: passwordHash, password_changed: true, updated_at: new Date().toISOString() } as any)
       .eq("id", session.userId);
 
     if (updateError) {
       return NextResponse.json({ error: "Failed to update password record" }, { status: 500 });
     }
 
+    // Update Supabase Auth password
     const { error: authUpdateError } = await admin.auth.admin.updateUserById(session.userId, { password: newCredential });
     if (authUpdateError) {
-      await admin.from("profiles").update({ password_changed: false }).eq("id", session.userId);
+      await admin.from("profiles").update({ password_changed: false } as any).eq("id", session.userId);
       return NextResponse.json({ error: "Failed to update auth password" }, { status: 500 });
     }
 
@@ -65,12 +66,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: isStudent ? "PIN set successfully" : "Password set successfully",
+      user_category: profile.user_category,
     });
   } catch (error: any) {
     if (error.name === "AuthRequiredError") {
       return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
     }
     console.error("[first-login] Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to set password" }, { status: 500 });
   }
 }

@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       action_data: action,
       success: result.success,
       error_message: result.error || null,
-    });
+    } as any);
 
     return NextResponse.json(result);
   } catch (error: any) {

@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await admin.from("vora_content").insert({
       ...body,
-    }).select().single();
+    } as any).select().single();
 
     if (error) return NextResponse.json({ error: "Failed to create content" }, { status: 500 });
     return NextResponse.json({ success: true, content: data });

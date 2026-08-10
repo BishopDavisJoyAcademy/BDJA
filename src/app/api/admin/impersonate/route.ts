@@ -26,17 +26,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "targetUserId required" }, { status: 400 });
     }
 
-    const { data: targetProfileRaw, error: targetError } = await admin
+    const { data: targetProfile, error: targetError } = await admin
       .from("profiles")
       .select("*, staff(department, designation), students(admission_number, grade_level)")
       .eq("id", targetUserId)
       .single();
 
-    if (targetError || !targetProfileRaw) {
+    if (targetError || !targetProfile) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
     }
-
-    const targetProfile = targetProfileRaw as any;
 
     if (targetProfile.user_category === "admin" && targetUserId !== session.userId) {
       return NextResponse.json({ error: "Cannot impersonate other admins" }, { status: 403 });
@@ -52,7 +50,7 @@ export async function POST(req: NextRequest) {
       user_agent: req.headers.get("user-agent") || null,
       is_active: true,
       expires_at: expiresAt,
-    });
+    } as any);
 
     await logImpersonation(session.userId, targetUserId, "start", getClientIP(req), req.headers.get("user-agent") || undefined);
 

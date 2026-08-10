@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error: dbError } = await admin
       .from("conversations")
-      .insert({ user_id: user.id, title })
+      .insert({ user_id: user.id, title } as any)
       .select()
       .single();
 
@@ -74,7 +74,7 @@ export async function PATCH(req: NextRequest) {
 
     const { data, error: dbError } = await admin
       .from("conversations")
-      .update(update)
+      .update(update as any)
       .eq("id", id)
       .eq("user_id", user.id)
       .select()

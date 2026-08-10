@@ -26,19 +26,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "targetUserId required" }, { status: 400 });
     }
 
-    const { data: targetProfile, error: targetError } = await admin
+    // Query 1: Profile (no joins — fully typed, no never type)
+    const { data: profile, error: profileError } = await admin
       .from("profiles")
-      .select("*, staff(department, designation), students(admission_number, grade_level)")
+      .select("id, email, full_name, role, user_category, campus_id, is_active")
       .eq("id", targetUserId)
       .maybeSingle();
 
-    if (targetError || !targetProfile) {
+    if (profileError || !profile) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
     }
 
-    if (targetProfile.user_category === "admin" && targetUserId !== session.userId) {
+    if (profile.user_category === "admin" && targetUserId !== session.userId) {
       return NextResponse.json({ error: "Cannot impersonate other admins" }, { status: 403 });
     }
+
+    // Query 2: Staff details (if exists)
+    const { data: staff } = await admin
+      .from("staff")
+      .select("department, designation")
+      .eq("id", targetUserId)
+      .maybeSingle();
+
+    // Query 3: Student details (if exists)
+    const { data: student } = await admin
+      .from("students")
+      .select("admission_number, grade_level")
+      .eq("id", targetUserId)
+      .maybeSingle();
 
     const viewToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
@@ -58,16 +73,16 @@ export async function POST(req: NextRequest) {
       viewToken,
       expiresAt,
       targetUser: {
-        id: targetProfile.id,
-        email: targetProfile.email,
-        full_name: targetProfile.full_name,
-        role: targetProfile.role,
-        user_category: targetProfile.user_category,
-        campus_id: targetProfile.campus_id,
-        department: targetProfile.staff?.department || null,
-        designation: targetProfile.staff?.designation || null,
-        admission_number: targetProfile.students?.admission_number || null,
-        grade_level: targetProfile.students?.grade_level || null,
+        id: profile.id,
+        email: profile.email,
+        full_name: profile.full_name,
+        role: profile.role,
+        user_category: profile.user_category,
+        campus_id: profile.campus_id,
+        department: staff?.department || null,
+        designation: staff?.designation || null,
+        admission_number: student?.admission_number || null,
+        grade_level: student?.grade_level || null,
       },
     });
   } catch (error: any) {

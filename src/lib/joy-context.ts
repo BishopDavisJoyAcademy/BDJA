@@ -26,7 +26,7 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
       .eq("profile_id", userId)
       .single();
     if (student) {
-      ctx.gradeLevel = student.grade_level;
+      ctx.gradeLevel = student.grade_level || undefined;
     }
 
     // Timetable
@@ -120,7 +120,7 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
       .eq("id", userId)
       .single();
     if (staff) {
-      ctx.designation = staff.designation;
+      ctx.designation = staff.designation || undefined;
     }
 
     // Classes they teach

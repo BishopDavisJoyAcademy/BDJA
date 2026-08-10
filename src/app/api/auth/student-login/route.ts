@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     await recordSuccessfulLogin(userId, email, ip, ua);
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 60 * 1000);
-    await recordSession(userId, authData.session.access_token, extractDeviceInfo(req), ip, expiresAt);
+    await recordSession(userId, authData.session.access_token, ip, extractDeviceInfo(req).user_agent, expiresAt);
 
     return NextResponse.json({
       success: true,

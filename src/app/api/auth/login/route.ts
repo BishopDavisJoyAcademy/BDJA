@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     // Record session server-side
     const expiresAt = new Date(Date.now() + 10 * 60 * 60 * 1000); // 10 hours
-    await recordSession(userId, authData.session.access_token, deviceInfo, ip, expiresAt);
+    await recordSession(userId, authData.session.access_token, ip, deviceInfo.user_agent, expiresAt);
 
     return NextResponse.json({
       success: true,

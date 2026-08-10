@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       .select("id, temp_password_hash, user_category")
       .eq("id", session.userId)
       .limit(1);
-    const profile = profileRows?.[0] ?? null;
+    const profile = (profileRows?.[0] ?? null) as { id: string; temp_password_hash: string | null; user_category: string } | null;
 
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });

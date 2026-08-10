@@ -117,12 +117,20 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  interface MiddlewareProfile {
+    user_category: string;
+    password_changed: boolean;
+    onboarding_completed: boolean;
+    is_active: boolean;
+  }
+
   // Fetch profile
-  const { data: profile, error: profileError } = await supabase
+  const { data: profileRaw, error: profileError } = await supabase
     .from("profiles")
     .select("user_category, password_changed, onboarding_completed, is_active")
     .eq("id", user.id)
     .single();
+  const profile = profileRaw as MiddlewareProfile | null;
 
   if (profileError || !profile) {
     await supabase.auth.signOut();

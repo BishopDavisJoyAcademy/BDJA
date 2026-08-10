@@ -18,12 +18,17 @@ export function CmsPageContent({ slug, fallbackTitle, fallbackContent, metaDescr
 
   useEffect(() => {
     const load = async () => {
+      interface CmsPageRow {
+        title: string;
+        content: string;
+      }
+
       const { data } = await supabase
         .from("cms_pages")
         .select("title, content")
         .eq("slug", slug)
         .eq("is_published", true)
-        .maybeSingle();
+        .maybeSingle() as { data: CmsPageRow | null; error: any };
       if (data) setPage(data);
       setLoading(false);
     };

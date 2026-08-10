@@ -25,11 +25,18 @@ export async function validateSession(token: string): Promise<{ session: Validat
     }
 
     const tokenHash = require("crypto").createHash("sha256").update(token).digest("hex");
-    const { data: sessionRow, error: sessionError } = await admin
+    interface SessionRow {
+      id: string;
+      revoked_at: string | null;
+      expires_at: string;
+    }
+
+    const { data: sessionRowRaw, error: sessionError } = await admin
       .from("user_sessions")
       .select("id, revoked_at, expires_at")
       .eq("session_token_hash", tokenHash)
       .single();
+    const sessionRow = sessionRowRaw as SessionRow | null;
 
     if (sessionRow?.revoked_at) {
       return { session: null, error: { code: "INVALID_TOKEN", message: "Session has been revoked. Please log in again." } };
@@ -38,11 +45,24 @@ export async function validateSession(token: string): Promise<{ session: Validat
       return { session: null, error: { code: "INVALID_TOKEN", message: "Session has expired. Please log in again." } };
     }
 
-    const { data: profile, error: profileError } = await admin
+    interface ProfileSessionRow {
+      id: string;
+      email: string;
+      full_name: string;
+      role: string;
+      user_category: string;
+      campus_id: string | null;
+      is_active: boolean;
+      password_changed: boolean;
+      onboarding_completed: boolean;
+    }
+
+    const { data: profileRaw, error: profileError } = await admin
       .from("profiles")
       .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
       .eq("id", user.id)
       .single();
+    const profile = profileRaw as ProfileSessionRow | null;
 
     if (profileError || !profile) {
       return { session: null, error: { code: "PROFILE_MISSING", message: "Your account profile is missing. Please contact the administrator.", details: profileError?.message } };

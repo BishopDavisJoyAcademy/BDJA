@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       .select("is_active, password_changed, onboarding_completed, user_category")
       .eq("id", userId)
       .limit(1);
-    const profile = profileRows?.[0] ?? null;
+    const profile = (profileRows?.[0] ?? null) as { is_active: boolean; password_changed: boolean; onboarding_completed: boolean; user_category: string } | null;
 
     if (!profile) {
       await recordFailedLogin(userId, email, ip, req.headers.get("user-agent") || "");

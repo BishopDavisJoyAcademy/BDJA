@@ -15,11 +15,16 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error } = await admin.auth.getUser(token);
     if (error || !user) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
-    const { data: profile } = await admin
+    interface JoyActionProfile {
+      user_category: string;
+    }
+
+    const { data: profileRaw } = await admin
       .from("profiles")
       .select("user_category")
       .eq("id", user.id)
       .maybeSingle();
+    const profile = profileRaw as JoyActionProfile | null;
 
     const body = await req.json();
     const { action } = body;

@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       .select("user_category")
       .eq("id", user.id)
       .limit(1);
-    const profile = profileRows?.[0] ?? null;
+    const profile = (profileRows?.[0] ?? null) as { user_category: string } | null;
 
     if (!profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });

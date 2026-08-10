@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       .select("id, email, full_name, role, user_category, campus_id, is_active")
       .eq("id", targetUserId)
       .limit(1);
-    const profileRaw = profileRows?.[0] ?? null;
+    const profileRaw = (profileRows?.[0] ?? null) as ProfileRow | null;
 
     if (profileError || !profileRaw) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       .select("department, designation")
       .eq("id", targetUserId)
       .limit(1);
-    const staffRaw = staffRows?.[0] ?? null;
+    const staffRaw = (staffRows?.[0] ?? null) as StaffRow | null;
 
     const staff = staffRaw as StaffRow | null;
 
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
       .select("admission_number, grade_level")
       .eq("id", targetUserId)
       .limit(1);
-    const studentRaw = studentRows?.[0] ?? null;
+    const studentRaw = (studentRows?.[0] ?? null) as StudentRow | null;
 
     const student = studentRaw as StudentRow | null;
 

@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       .select("id, user_category, password_changed")
       .eq("id", session.userId)
       .limit(1);
-    const profile = profileRows?.[0] ?? null;
+    const profile = (profileRows?.[0] ?? null) as { id: string; user_category: string; password_changed: boolean } | null;
 
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });

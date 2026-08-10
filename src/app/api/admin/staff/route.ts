@@ -18,12 +18,25 @@ export async function GET(req: NextRequest) {
     const id = searchParams.get("id");
 
     if (id) {
-      const { data: staff, error } = await admin
+      interface StaffDetailRow {
+        id: string;
+        email: string;
+        full_name: string;
+        role: string;
+        user_category: string;
+        campus_id: string | null;
+        is_active: boolean;
+        staff: { department: string | null; designation: string | null; [key: string]: any }[] | null;
+        [key: string]: any;
+      }
+
+      const { data: staffRaw, error } = await admin
         .from("profiles")
         .select("*, staff(*)")
         .eq("id", id)
         .eq("user_category", "staff")
         .maybeSingle();
+      const staff = staffRaw as StaffDetailRow | null;
       if (error) return NextResponse.json({ error: "Staff not found" }, { status: 404 });
       return NextResponse.json({ staff });
     }

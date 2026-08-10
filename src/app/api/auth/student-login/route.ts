@@ -25,11 +25,19 @@ export async function POST(req: NextRequest) {
     const ua = req.headers.get("user-agent") || "";
 
     // Look up student by admission number
-    const { data: student, error: studentError } = await admin
+    interface StudentLoginRow {
+      id: string;
+      admission_number: string;
+      profile_id: string;
+      profiles: { id: string; email: string }[] | null;
+    }
+
+    const { data: studentRaw, error: studentError } = await admin
       .from("students")
       .select("id, admission_number, profile_id, profiles!inner(id, email)")
       .eq("admission_number", admission_number)
       .maybeSingle();
+    const student = studentRaw as StudentLoginRow | null;
 
     if (studentError || !student) {
       await recordFailedLogin(null, admission_number, ip, ua);

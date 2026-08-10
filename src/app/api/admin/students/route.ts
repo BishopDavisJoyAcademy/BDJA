@@ -17,12 +17,25 @@ export async function GET(req: NextRequest) {
     const id = searchParams.get("id");
 
     if (id) {
-      const { data: student, error } = await admin
+      interface StudentDetailRow {
+        id: string;
+        email: string;
+        full_name: string;
+        role: string;
+        user_category: string;
+        campus_id: string | null;
+        is_active: boolean;
+        students: { admission_number: string | null; grade_level: string | null; [key: string]: any }[] | null;
+        [key: string]: any;
+      }
+
+      const { data: studentRaw, error } = await admin
         .from("profiles")
         .select("*, students(*)")
         .eq("id", id)
         .eq("user_category", "student")
         .maybeSingle();
+      const student = studentRaw as StudentDetailRow | null;
       if (error) return NextResponse.json({ error: "Student not found" }, { status: 404 });
       return NextResponse.json({ student });
     }

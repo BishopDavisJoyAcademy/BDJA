@@ -10,11 +10,26 @@ export async function GET(req: NextRequest) {
     const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
 
-    const { data: profile, error: profileError } = await admin
+    interface MeProfileRow {
+      id: string;
+      email: string;
+      full_name: string;
+      role: string;
+      user_category: string;
+      campus_id: string | null;
+      is_active: boolean;
+      password_changed: boolean;
+      onboarding_completed: boolean;
+      staff: { department: string | null; designation: string | null }[] | null;
+      students: { admission_number: string | null; grade_level: string | null }[] | null;
+    }
+
+    const { data: profileRaw, error: profileError } = await admin
       .from("profiles")
       .select("*, staff(department, designation), students(admission_number, grade_level)")
       .eq("id", session.userId)
       .maybeSingle();
+    const profile = profileRaw as MeProfileRow | null;
 
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });

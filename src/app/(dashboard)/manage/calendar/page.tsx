@@ -12,9 +12,10 @@ interface CalendarEvent {
   description: string | null;
   start_date: string;
   end_date: string | null;
-  location: string | null;
   event_type: string;
-  is_public: boolean;
+  target_audience: string;
+  target_grade: string | null;
+  campus_id: string | null;
   created_by: string;
 }
 
@@ -30,9 +31,10 @@ export default function CalendarManagement() {
     description: "",
     start_date: "",
     end_date: "",
-    location: "",
     event_type: "general",
-    is_public: true,
+    target_audience: "all",
+    target_grade: "",
+    campus_id: "",
   });
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function CalendarManagement() {
       });
       if (!res.ok) throw new Error("Failed to create");
       setShowForm(false);
-      setForm({ title: "", description: "", start_date: "", end_date: "", location: "", event_type: "general", is_public: true });
+      setForm({ title: "", description: "", start_date: "", end_date: "", event_type: "general", target_audience: "all", target_grade: "", campus_id: "" });
       fetchEvents();
     } catch (err) {
       alert("Failed to create event");
@@ -135,11 +137,14 @@ export default function CalendarManagement() {
             </select>
             <input type="datetime-local" required value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
             <input type="datetime-local" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-            <input type="text" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Location" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="is_public" checked={form.is_public} onChange={(e) => setForm({ ...form, is_public: e.target.checked })} className="w-4 h-4" />
-              <label htmlFor="is_public" className="text-sm">Public Event</label>
-            </div>
+            <select value={form.target_audience} onChange={(e) => setForm({ ...form, target_audience: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+              <option value="all">All</option>
+              <option value="students">Students</option>
+              <option value="staff">Staff</option>
+              <option value="parents">Parents</option>
+            </select>
+            <input type="text" value={form.target_grade} onChange={(e) => setForm({ ...form, target_grade: e.target.value })} placeholder="Target Grade" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+            <input type="text" value={form.campus_id} onChange={(e) => setForm({ ...form, campus_id: e.target.value })} placeholder="Campus ID" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" rows={3} className="md:col-span-2 w-full px-3 py-2 border border-gray-300 rounded-lg resize-none" />
             <div className="md:col-span-2 flex gap-2">
               <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">{saving ? "Saving..." : "Save Event"}</button>
@@ -165,7 +170,7 @@ export default function CalendarManagement() {
                   <div>
                     <h4 className="font-medium text-gray-900">{ev.title}</h4>
                     <p className="text-xs text-gray-500">{ev.event_type} · {formatDate(ev.start_date)}</p>
-                    {ev.location && <p className="text-xs text-gray-400 flex items-center gap-1 mt-1"><MapPin className="w-3 h-3" /> {ev.location}</p>}
+                    {ev.target_grade && <p className="text-xs text-gray-400 mt-1">Grade: {ev.target_grade}</p>}
                     {ev.description && <p className="text-xs text-gray-400 mt-1">{ev.description}</p>}
                   </div>
                 </div>

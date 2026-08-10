@@ -10,8 +10,9 @@ interface TimetableEvent {
   title: string;
   start_date: string;
   end_date: string | null;
-  location: string | null;
   event_type: string;
+  target_audience: string;
+  target_grade: string | null;
 }
 
 export default function TimetablePage() {
@@ -77,7 +78,7 @@ export default function TimetablePage() {
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">{ev.title}</h4>
                         <div className="flex items-center gap-3 mt-1">
-                          {ev.location && <span className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" /> {ev.location}</span>}
+                          {ev.target_grade && <span className="text-xs text-gray-500">Grade {ev.target_grade}</span>}
                           <span className="text-xs text-gray-400 capitalize">{ev.event_type}</span>
                         </div>
                       </div>

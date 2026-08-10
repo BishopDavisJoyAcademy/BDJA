@@ -1,552 +1,611 @@
--- Enable RLS
+-- Initial clean schema for BDJA Platform
+-- No conflicting triggers, proper defaults, clean RLS
+
+-- Enable extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Campuses
-CREATE TABLE campuses (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  location TEXT NOT NULL,
-  phone TEXT,
-  email TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+CREATE TABLE IF NOT EXISTS campuses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(100) NOT NULL,
+  location VARCHAR(200),
+  phone VARCHAR(20),
+  email VARCHAR(100),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Users (profiles linked to auth.users)
-CREATE TABLE profiles (
+-- Profiles (linked to auth.users)
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL UNIQUE,
-  full_name TEXT NOT NULL,
-  phone TEXT,
+  email VARCHAR(255) NOT NULL,
+  full_name VARCHAR(100) NOT NULL,
+  phone VARCHAR(20),
   avatar_url TEXT,
-  role TEXT NOT NULL CHECK (role IN ('student','parent','teacher','class_prefect','bursar','librarian','principal','super_admin')),
-  campus_id UUID REFERENCES campuses(id),
+  role VARCHAR(20) DEFAULT 'student' CHECK (role IN ('student', 'parent', 'staff', 'admin')),
+  user_category VARCHAR(20) DEFAULT 'student' CHECK (user_category IN ('student', 'parent', 'staff', 'admin')),
+  campus_id UUID REFERENCES campuses(id) ON DELETE SET NULL,
   is_active BOOLEAN DEFAULT true,
   password_changed BOOLEAN DEFAULT false,
   onboarding_completed BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+  temp_password_hash TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES profiles(id) ON DELETE SET NULL
 );
 
--- Staff Roles & Permissions
-CREATE TABLE staff_roles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  role TEXT NOT NULL CHECK (role IN ('teacher','class_prefect','bursar','librarian','principal','super_admin')),
-  campus_id UUID REFERENCES campuses(id),
-  permissions JSONB NOT NULL DEFAULT '{}',
-  assigned_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Classes / Streams
-CREATE TABLE classes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  campus_id UUID NOT NULL REFERENCES campuses(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  grade_level TEXT NOT NULL CHECK (grade_level IN ('playgroup','pp1','pp2','grade1','grade2','grade3','grade4','grade5','grade6')),
-  stream TEXT,
-  class_teacher_id UUID REFERENCES profiles(id),
-  academic_year TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
+-- Staff
+CREATE TABLE IF NOT EXISTS staff (
+  id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  employee_id VARCHAR(50) NOT NULL UNIQUE,
+  department VARCHAR(50) DEFAULT 'General',
+  designation VARCHAR(50) DEFAULT 'Staff',
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'on_leave', 'terminated')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Students
-CREATE TABLE students (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
-  admission_number TEXT NOT NULL UNIQUE,
-  class_id UUID NOT NULL REFERENCES classes(id),
-  campus_id UUID NOT NULL REFERENCES campuses(id),
-  house_team TEXT,
-  barcode TEXT,
-  date_of_birth DATE,
-  enrollment_date DATE DEFAULT CURRENT_DATE,
-  status TEXT DEFAULT 'active' CHECK (status IN ('active','suspended','transferred','graduated')),
-  created_at TIMESTAMPTZ DEFAULT now()
+CREATE TABLE IF NOT EXISTS students (
+  id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  admission_number VARCHAR(50) NOT NULL UNIQUE,
+  grade_level VARCHAR(20) NOT NULL,
+  class_id UUID,
+  enrollment_date DATE,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'graduated', 'transferred')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Parent-Child Links
-CREATE TABLE parent_children (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+-- Parent-Student links
+CREATE TABLE IF NOT EXISTS parent_students (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   parent_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  relationship TEXT DEFAULT 'guardian',
-  created_at TIMESTAMPTZ DEFAULT now(),
+  student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  relationship VARCHAR(50) DEFAULT 'parent',
+  is_primary BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(parent_id, student_id)
 );
 
--- Subjects
-CREATE TABLE subjects (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  code TEXT,
-  grade_levels TEXT[] NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
+-- Permission categories
+CREATE TABLE IF NOT EXISTS permission_categories (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  key VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL,
+  icon VARCHAR(50),
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Class-Subject assignments
-CREATE TABLE class_subjects (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-  subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
-  teacher_id UUID REFERENCES profiles(id),
-  UNIQUE(class_id, subject_id)
+-- Permissions
+CREATE TABLE IF NOT EXISTS permissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  key VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL,
+  category VARCHAR(50) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Timetable (staff-editable, no hardcoded data)
-CREATE TABLE timetable (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-  subject_id UUID NOT NULL REFERENCES subjects(id),
-  teacher_id UUID REFERENCES profiles(id),
-  day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  room TEXT,
-  topic TEXT,
-  campus_id UUID NOT NULL REFERENCES campuses(id),
-  created_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+-- Staff permissions
+CREATE TABLE IF NOT EXISTS staff_permissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+  granted_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(profile_id, permission_id)
 );
 
--- Calendar Events (staff-editable)
-CREATE TABLE calendar_events (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
+-- User sessions (server-side tracking)
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  session_token_hash VARCHAR(64) NOT NULL,
+  device_info JSONB,
+  ip_address INET,
+  user_agent TEXT,
+  is_active BOOLEAN DEFAULT true,
+  revoked_at TIMESTAMPTZ,
+  last_active_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Password history
+CREATE TABLE IF NOT EXISTS password_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  password_hash TEXT NOT NULL,
+  changed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Audit logs
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  action VARCHAR(50) NOT NULL,
+  target_type VARCHAR(50) NOT NULL,
+  target_id VARCHAR(100),
+  metadata JSONB DEFAULT '{}',
+  impersonated_user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  ip_address INET,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Login attempts (for rate limiting and security)
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  email VARCHAR(255),
+  ip_address INET,
+  user_agent TEXT,
+  success BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Account lockouts
+CREATE TABLE IF NOT EXISTS account_lockouts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  failed_attempts INTEGER DEFAULT 0,
+  locked_at TIMESTAMPTZ,
+  locked_until TIMESTAMPTZ,
+  unlocked_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  unlock_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+-- Suggestions
+CREATE TABLE IF NOT EXISTS suggestions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('idea', 'feedback', 'bug', 'improvement', 'complaint')),
+  title VARCHAR(200) NOT NULL,
+  description TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open', 'under_review', 'planned', 'implemented', 'declined', 'closed')),
+  priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'critical')),
+  admin_response TEXT,
+  responded_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  responded_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- CMS Pages
+CREATE TABLE IF NOT EXISTS cms_pages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  slug VARCHAR(100) NOT NULL UNIQUE,
+  title VARCHAR(200) NOT NULL,
+  content TEXT NOT NULL,
+  meta_description TEXT,
+  published BOOLEAN DEFAULT false,
+  updated_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Calendar events
+CREATE TABLE IF NOT EXISTS calendar_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title VARCHAR(200) NOT NULL,
   description TEXT,
   start_date TIMESTAMPTZ NOT NULL,
   end_date TIMESTAMPTZ,
-  event_type TEXT NOT NULL CHECK (event_type IN ('academic','sports','religious','meeting','holiday','examination','announcement')),
-  target_audience TEXT NOT NULL DEFAULT 'all' CHECK (target_audience IN ('all','students','parents','staff','specific_grade')),
-  target_grade TEXT,
-  campus_id UUID REFERENCES campuses(id),
-  created_by UUID NOT NULL REFERENCES profiles(id),
-  attachments JSONB DEFAULT '[]',
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+  event_type VARCHAR(50) NOT NULL,
+  target_audience VARCHAR(50) DEFAULT 'all',
+  target_grade VARCHAR(20),
+  campus_id UUID REFERENCES campuses(id) ON DELETE SET NULL,
+  created_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Attendance
-CREATE TABLE attendance (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  class_id UUID NOT NULL REFERENCES classes(id),
-  subject_id UUID REFERENCES subjects(id),
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  status TEXT NOT NULL CHECK (status IN ('present','absent','late','excused')),
-  marked_by UUID NOT NULL REFERENCES profiles(id),
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(student_id, class_id, subject_id, date)
+-- Timetable
+CREATE TABLE IF NOT EXISTS timetable_entries (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  class_id UUID NOT NULL,
+  subject_id UUID NOT NULL,
+  teacher_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  room VARCHAR(50),
+  topic VARCHAR(200),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- CBC Assessments / Grades
-CREATE TABLE assessments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  class_id UUID NOT NULL REFERENCES classes(id),
-  subject_id UUID NOT NULL REFERENCES subjects(id),
-  strand TEXT NOT NULL,
-  sub_strand TEXT NOT NULL,
+-- Assessments
+CREATE TABLE IF NOT EXISTS assessments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  class_id UUID NOT NULL,
+  subject_id UUID NOT NULL,
+  strand VARCHAR(100) NOT NULL,
+  sub_strand VARCHAR(100) NOT NULL,
   specific_learning_outcome TEXT,
-  performance_level TEXT NOT NULL CHECK (performance_level IN ('beginning','developing','competent','exceeds')),
-  score NUMERIC,
-  max_score NUMERIC DEFAULT 100,
-  term TEXT NOT NULL,
-  academic_year TEXT NOT NULL,
-  assessed_by UUID NOT NULL REFERENCES profiles(id),
-  change_reason TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+  performance_level VARCHAR(20) NOT NULL CHECK (performance_level IN ('beginning', 'developing', 'competent', 'exceeds')),
+  score NUMERIC(5,2),
+  max_score NUMERIC(5,2),
+  term VARCHAR(20) NOT NULL,
+  academic_year VARCHAR(10) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Assignments
-CREATE TABLE assignments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  class_id UUID NOT NULL REFERENCES classes(id),
-  subject_id UUID NOT NULL REFERENCES subjects(id),
-  teacher_id UUID NOT NULL REFERENCES profiles(id),
-  title TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS assignments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  class_id UUID NOT NULL,
+  subject_id UUID NOT NULL,
+  teacher_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  title VARCHAR(200) NOT NULL,
   description TEXT,
-  attachments JSONB DEFAULT '[]',
   due_date TIMESTAMPTZ,
-  rubric JSONB,
-  status TEXT DEFAULT 'draft' CHECK (status IN ('draft','published','closed')),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+  max_score NUMERIC(5,2),
+  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'closed')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Assignment Submissions
-CREATE TABLE assignment_submissions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  assignment_id UUID NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  content TEXT,
-  attachments JSONB DEFAULT '[]',
-  submitted_at TIMESTAMPTZ DEFAULT now(),
-  status TEXT DEFAULT 'submitted' CHECK (status IN ('pending','submitted','graded','late')),
-  grade JSONB,
-  graded_by UUID REFERENCES profiles(id),
-  graded_at TIMESTAMPTZ,
-  UNIQUE(assignment_id, student_id)
+-- Fee payments
+CREATE TABLE IF NOT EXISTS fee_payments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  amount NUMERIC(10,2) NOT NULL,
+  balance NUMERIC(10,2) DEFAULT 0,
+  term VARCHAR(20) NOT NULL,
+  academic_year VARCHAR(10) NOT NULL,
+  payment_date DATE,
+  payment_method VARCHAR(50),
+  receipt_number VARCHAR(50),
+  status VARCHAR(20) DEFAULT 'unpaid' CHECK (status IN ('paid', 'partial', 'unpaid', 'overdue')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- VORA Content
-CREATE TABLE vora_content (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  description TEXT,
-  video_url TEXT NOT NULL,
-  transcript TEXT,
-  summary TEXT,
-  captions JSONB DEFAULT '[]',
-  grade_level TEXT NOT NULL,
-  subject_id UUID REFERENCES subjects(id),
-  strand TEXT,
-  sub_strand TEXT,
-  specific_learning_outcome TEXT,
-  visibility TEXT DEFAULT 'class' CHECK (visibility IN ('class','campus','cross_campus')),
-  class_id UUID REFERENCES classes(id),
-  campus_id UUID NOT NULL REFERENCES campuses(id),
-  approved BOOLEAN DEFAULT false,
-  approved_by UUID REFERENCES profiles(id),
-  uploaded_by UUID NOT NULL REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- VORA Checkpoint Quizzes
-CREATE TABLE vora_quizzes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  vora_id UUID NOT NULL REFERENCES vora_content(id) ON DELETE CASCADE,
-  question TEXT NOT NULL,
-  options JSONB,
-  correct_answer TEXT,
-  explanation TEXT,
-  order_index INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- VORA Quiz Attempts
-CREATE TABLE vora_attempts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  vora_id UUID NOT NULL REFERENCES vora_content(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  score INTEGER,
-  answers JSONB DEFAULT '[]',
-  completed BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Library Resources
-CREATE TABLE library_resources (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  author TEXT,
-  isbn TEXT,
-  resource_type TEXT NOT NULL CHECK (resource_type IN ('pdf','epub','audio','video','image','physical')),
-  file_url TEXT,
-  cover_url TEXT,
-  subject_id UUID REFERENCES subjects(id),
-  grade_levels TEXT[],
-  campus_id UUID REFERENCES campuses(id),
-  available_copies INTEGER DEFAULT 1,
-  total_copies INTEGER DEFAULT 1,
-  borrowed_by JSONB DEFAULT '[]',
-  created_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Library Borrowings
-CREATE TABLE library_borrowings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  resource_id UUID NOT NULL REFERENCES library_resources(id),
-  student_id UUID REFERENCES students(id),
-  staff_id UUID REFERENCES profiles(id),
-  borrowed_at TIMESTAMPTZ DEFAULT now(),
-  due_date DATE NOT NULL,
-  returned_at TIMESTAMPTZ,
-  status TEXT DEFAULT 'borrowed' CHECK (status IN ('borrowed','returned','overdue'))
-);
-
--- Fee Structures (total is regular column, not generated)
-CREATE TABLE fee_structures (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  campus_id UUID NOT NULL REFERENCES campuses(id),
-  grade_level TEXT NOT NULL,
-  term TEXT NOT NULL,
-  academic_year TEXT NOT NULL,
-  tuition NUMERIC NOT NULL DEFAULT 0,
-  activity_fees NUMERIC DEFAULT 0,
-  uniform NUMERIC DEFAULT 0,
-  transport NUMERIC DEFAULT 0,
-  other_fees JSONB DEFAULT '[]',
-  total NUMERIC DEFAULT 0,
-  created_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Fee Payments
-CREATE TABLE fee_payments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID NOT NULL REFERENCES students(id),
-  fee_structure_id UUID NOT NULL REFERENCES fee_structures(id),
-  amount NUMERIC NOT NULL,
-  payment_method TEXT NOT NULL CHECK (payment_method IN ('bank','mpesa','cash','other')),
-  transaction_ref TEXT,
-  receipt_number TEXT UNIQUE,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending','verified','rejected')),
-  verified_by UUID REFERENCES profiles(id),
-  verified_at TIMESTAMPTZ,
-  notes TEXT,
-  receipt_url TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+-- Library books
+CREATE TABLE IF NOT EXISTS library_books (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title VARCHAR(200) NOT NULL,
+  author VARCHAR(100),
+  isbn VARCHAR(20),
+  category VARCHAR(50),
+  status VARCHAR(20) DEFAULT 'available' CHECK (status IN ('available', 'borrowed', 'lost', 'damaged')),
+  campus_id UUID REFERENCES campuses(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Admissions
-CREATE TABLE admissions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  first_name TEXT NOT NULL,
-  last_name TEXT NOT NULL,
-  date_of_birth DATE,
-  gender TEXT,
-  grade_applied TEXT NOT NULL,
-  campus_id UUID NOT NULL REFERENCES campuses(id),
-  parent_name TEXT,
-  parent_phone TEXT,
-  parent_email TEXT,
-  documents JSONB DEFAULT '[]',
-  status TEXT DEFAULT 'received' CHECK (status IN ('received','review','interview','accepted','enrolled','rejected')),
-  admission_number TEXT,
-  reviewed_by UUID REFERENCES profiles(id),
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+CREATE TABLE IF NOT EXISTS admissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  student_name VARCHAR(100) NOT NULL,
+  parent_name VARCHAR(100),
+  parent_email VARCHAR(255),
+  parent_phone VARCHAR(20),
+  grade_level VARCHAR(20) NOT NULL,
+  campus_id UUID REFERENCES campuses(id) ON DELETE SET NULL,
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'reviewing', 'approved', 'rejected', 'waitlisted')),
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Messages
-CREATE TABLE messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  sender_id UUID NOT NULL REFERENCES profiles(id),
-  receiver_id UUID REFERENCES profiles(id),
-  class_id UUID REFERENCES classes(id),
-  subject TEXT,
+CREATE TABLE IF NOT EXISTS messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  recipient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  subject VARCHAR(200),
   content TEXT NOT NULL,
-  attachments JSONB DEFAULT '[]',
   read BOOLEAN DEFAULT false,
-  read_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Notifications
-CREATE TABLE notifications (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  content TEXT,
-  type TEXT NOT NULL CHECK (type IN ('general','academic','fee','attendance','assignment','calendar','emergency')),
+  title VARCHAR(200) NOT NULL,
+  message TEXT NOT NULL,
+  type VARCHAR(50) NOT NULL,
   read BOOLEAN DEFAULT false,
-  action_url TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Character Reports / Values
-CREATE TABLE character_reports (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  term TEXT NOT NULL,
-  academic_year TEXT NOT NULL,
-  integrity TEXT CHECK (integrity IN ('beginning','developing','competent','exceeds')),
-  discipline TEXT CHECK (discipline IN ('beginning','developing','competent','exceeds')),
-  respect TEXT CHECK (respect IN ('beginning','developing','competent','exceeds')),
-  responsibility TEXT CHECK (responsibility IN ('beginning','developing','competent','exceeds')),
-  teamwork TEXT CHECK (teamwork IN ('beginning','developing','competent','exceeds')),
-  compassion TEXT CHECK (compassion IN ('beginning','developing','competent','exceeds')),
-  commitment TEXT CHECK (commitment IN ('beginning','developing','competent','exceeds')),
-  excellence TEXT CHECK (excellence IN ('beginning','developing','competent','exceeds')),
-  teacher_notes TEXT,
-  assessed_by UUID NOT NULL REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now()
+-- Vora content
+CREATE TABLE IF NOT EXISTS vora_content (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title VARCHAR(200) NOT NULL,
+  summary TEXT,
+  subject VARCHAR(50),
+  grade_level VARCHAR(20),
+  category VARCHAR(50),
+  topic VARCHAR(100),
+  tags TEXT[],
+  channel VARCHAR(100),
+  duration_seconds INTEGER,
+  thumbnail_url TEXT,
+  youtube_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Values Badges
-CREATE TABLE values_badges (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  badge_type TEXT NOT NULL CHECK (badge_type IN ('integrity','discipline','respect','responsibility','teamwork','compassion','commitment','excellence')),
-  awarded_by UUID NOT NULL REFERENCES profiles(id),
-  reason TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+-- ============================================
+-- FUNCTIONS
+-- ============================================
 
--- Audit Logs
-CREATE TABLE audit_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id),
-  action TEXT NOT NULL,
-  table_name TEXT,
-  record_id UUID,
-  old_data JSONB,
-  new_data JSONB,
-  ip_address TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+CREATE OR REPLACE FUNCTION get_user_permissions(p_user_id UUID)
+RETURNS TABLE(permission_key VARCHAR) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT p.key::VARCHAR
+  FROM staff_permissions sp
+  JOIN permissions p ON sp.permission_id = p.id
+  WHERE sp.profile_id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Study Streaks
-CREATE TABLE study_streaks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  current_streak INTEGER DEFAULT 0,
-  longest_streak INTEGER DEFAULT 0,
-  last_activity_date DATE,
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+CREATE OR REPLACE FUNCTION has_permission(p_user_id UUID, p_permission_key VARCHAR)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM staff_permissions sp
+    JOIN permissions p ON sp.permission_id = p.id
+    WHERE sp.profile_id = p_user_id AND p.key = p_permission_key
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Indexes
-CREATE INDEX idx_profiles_role ON profiles(role);
-CREATE INDEX idx_profiles_campus ON profiles(campus_id);
-CREATE INDEX idx_students_class ON students(class_id);
-CREATE INDEX idx_students_admission ON students(admission_number);
-CREATE INDEX idx_timetable_class ON timetable(class_id);
-CREATE INDEX idx_timetable_day ON timetable(day_of_week);
-CREATE INDEX idx_calendar_dates ON calendar_events(start_date, end_date);
-CREATE INDEX idx_attendance_student ON attendance(student_id, date);
-CREATE INDEX idx_assessments_student ON assessments(student_id, term, academic_year);
-CREATE INDEX idx_assignments_class ON assignments(class_id);
-CREATE INDEX idx_fee_payments_student ON fee_payments(student_id);
-CREATE INDEX idx_messages_receiver ON messages(receiver_id, read);
-CREATE INDEX idx_notifications_user ON notifications(user_id, read);
+CREATE OR REPLACE FUNCTION record_login_attempt(
+  p_user_id UUID,
+  p_email VARCHAR,
+  p_success BOOLEAN,
+  p_ip_address INET,
+  p_user_agent TEXT
+)
+RETURNS VOID AS $$
+DECLARE
+  v_lockout RECORD;
+BEGIN
+  INSERT INTO login_attempts (user_id, email, ip_address, user_agent, success)
+  VALUES (p_user_id, p_email, p_ip_address, p_user_agent, p_success);
 
--- RLS Policies
+  IF NOT p_success AND p_user_id IS NOT NULL THEN
+    INSERT INTO account_lockouts (user_id, failed_attempts)
+    VALUES (p_user_id, 1)
+    ON CONFLICT (user_id) DO UPDATE SET
+      failed_attempts = account_lockouts.failed_attempts + 1,
+      updated_at = NOW();
+
+    SELECT * INTO v_lockout FROM account_lockouts WHERE user_id = p_user_id;
+    IF v_lockout.failed_attempts >= 5 THEN
+      UPDATE account_lockouts SET
+        locked_at = NOW(),
+        locked_until = NOW() + INTERVAL '30 minutes',
+        updated_at = NOW()
+      WHERE user_id = p_user_id;
+    END IF;
+  END IF;
+
+  IF p_success AND p_user_id IS NOT NULL THEN
+    UPDATE account_lockouts SET
+      failed_attempts = 0,
+      locked_at = NULL,
+      locked_until = NULL,
+      updated_at = NOW()
+    WHERE user_id = p_user_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION get_lockout_details(p_user_id UUID)
+RETURNS TABLE(is_locked BOOLEAN, locked_until TIMESTAMPTZ, failed_attempts INTEGER, remaining_attempts INTEGER) AS $$
+DECLARE
+  v_record RECORD;
+BEGIN
+  SELECT * INTO v_record FROM account_lockouts WHERE user_id = p_user_id;
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT false::BOOLEAN, NULL::TIMESTAMPTZ, 0::INTEGER, 5::INTEGER;
+    RETURN;
+  END IF;
+
+  IF v_record.locked_until IS NOT NULL AND v_record.locked_until > NOW() THEN
+    RETURN QUERY SELECT true::BOOLEAN, v_record.locked_until, v_record.failed_attempts, 0::INTEGER;
+  ELSE
+    RETURN QUERY SELECT false::BOOLEAN, NULL::TIMESTAMPTZ, v_record.failed_attempts, GREATEST(0, 5 - v_record.failed_attempts)::INTEGER;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION unlock_account(p_user_id UUID, p_admin_id UUID, p_reason TEXT)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE account_lockouts SET
+    failed_attempts = 0,
+    locked_at = NULL,
+    locked_until = NULL,
+    unlocked_by = p_admin_id,
+    updated_at = NOW()
+  WHERE user_id = p_user_id;
+
+  INSERT INTO audit_logs (user_id, action, target_type, target_id, metadata)
+  VALUES (p_admin_id, 'ACCOUNT_UNLOCKED', 'user', p_user_id::TEXT, jsonb_build_object('reason', p_reason));
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION record_session(
+  p_user_id UUID,
+  p_token_hash VARCHAR,
+  p_device_info JSONB,
+  p_ip_address INET,
+  p_expires_at TIMESTAMPTZ
+)
+RETURNS VOID AS $$
+BEGIN
+  INSERT INTO user_sessions (user_id, session_token_hash, device_info, ip_address, expires_at)
+  VALUES (p_user_id, p_token_hash, p_device_info, p_ip_address, p_expires_at);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION force_logout_all_sessions(p_user_id UUID, p_admin_id UUID, p_reason TEXT)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE user_sessions SET revoked_at = NOW(), is_active = false WHERE user_id = p_user_id AND revoked_at IS NULL;
+  INSERT INTO audit_logs (user_id, action, target_type, target_id, metadata)
+  VALUES (p_admin_id, 'FORCE_LOGOUT_ALL', 'user', p_user_id::TEXT, jsonb_build_object('reason', p_reason));
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- RLS POLICIES
+-- ============================================
+
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
-ALTER TABLE parent_children ENABLE ROW LEVEL SECURITY;
-ALTER TABLE timetable ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parent_students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE password_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE login_attempts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE account_lockouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE suggestions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cms_pages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE timetable_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assessments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assignments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE assignment_submissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vora_content ENABLE ROW LEVEL SECURITY;
-ALTER TABLE library_resources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fee_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE library_books ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE character_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vora_content ENABLE ROW LEVEL SECURITY;
 
--- Basic RLS: users see own campus data (simplified; app-level filtering for complex cases)
-CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
-CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (auth.uid() = id);
+-- Profiles: users can read their own, staff can read all
+CREATE POLICY "profiles_select_own" ON profiles FOR SELECT USING (id = auth.uid());
+CREATE POLICY "profiles_select_staff" ON profiles FOR SELECT USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'staff.manage'));
+CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (id = auth.uid());
+CREATE POLICY "profiles_update_staff" ON profiles FOR UPDATE USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'staff.manage'));
 
-CREATE POLICY "students_select" ON students FOR SELECT USING (true);
-CREATE POLICY "students_insert" ON students FOR INSERT WITH CHECK (true);
-CREATE POLICY "students_update" ON students FOR UPDATE USING (true);
+-- Staff: staff can read all
+CREATE POLICY "staff_select_all" ON staff FOR SELECT USING (true);
+CREATE POLICY "staff_manage" ON staff FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'staff.manage'));
 
-CREATE POLICY "timetable_select" ON timetable FOR SELECT USING (true);
-CREATE POLICY "timetable_insert" ON timetable FOR INSERT WITH CHECK (true);
-CREATE POLICY "timetable_update" ON timetable FOR UPDATE USING (true);
+-- Students: staff can read all, parents can read their children
+CREATE POLICY "students_select_all" ON students FOR SELECT USING (true);
+CREATE POLICY "students_manage" ON students FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'students.manage'));
 
-CREATE POLICY "calendar_select" ON calendar_events FOR SELECT USING (true);
-CREATE POLICY "calendar_insert" ON calendar_events FOR INSERT WITH CHECK (true);
-CREATE POLICY "calendar_update" ON calendar_events FOR UPDATE USING (true);
+-- Permission categories: authenticated read
+CREATE POLICY "perm_cat_select" ON permission_categories FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "assessments_select" ON assessments FOR SELECT USING (true);
-CREATE POLICY "assessments_insert" ON assessments FOR INSERT WITH CHECK (true);
-CREATE POLICY "assessments_update" ON assessments FOR UPDATE USING (true);
+-- Permissions: authenticated read
+CREATE POLICY "perms_select" ON permissions FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "assignments_select" ON assignments FOR SELECT USING (true);
-CREATE POLICY "assignments_insert" ON assignments FOR INSERT WITH CHECK (true);
+-- Staff permissions: staff can read own, manage with permission
+CREATE POLICY "staff_perms_select_own" ON staff_permissions FOR SELECT USING (profile_id = auth.uid());
+CREATE POLICY "staff_perms_manage" ON staff_permissions FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'staff.manage'));
 
-CREATE POLICY "assignment_submissions_select" ON assignment_submissions FOR SELECT USING (true);
-CREATE POLICY "assignment_submissions_insert" ON assignment_submissions FOR INSERT WITH CHECK (true);
+-- User sessions: own only
+CREATE POLICY "sessions_own" ON user_sessions FOR ALL USING (user_id = auth.uid());
 
-CREATE POLICY "vora_select" ON vora_content FOR SELECT USING (true);
-CREATE POLICY "vora_insert" ON vora_content FOR INSERT WITH CHECK (true);
+-- Password history: own only
+CREATE POLICY "pw_history_own" ON password_history FOR ALL USING (user_id = auth.uid());
 
-CREATE POLICY "library_select" ON library_resources FOR SELECT USING (true);
-CREATE POLICY "library_insert" ON library_resources FOR INSERT WITH CHECK (true);
+-- Audit logs: admin only
+CREATE POLICY "audit_admin" ON audit_logs FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
-CREATE POLICY "fee_payments_select" ON fee_payments FOR SELECT USING (true);
-CREATE POLICY "fee_payments_insert" ON fee_payments FOR INSERT WITH CHECK (true);
+-- Login attempts: admin only
+CREATE POLICY "login_attempts_admin" ON login_attempts FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
-CREATE POLICY "messages_select" ON messages FOR SELECT USING (true);
-CREATE POLICY "messages_insert" ON messages FOR INSERT WITH CHECK (true);
+-- Account lockouts: admin only
+CREATE POLICY "lockouts_admin" ON account_lockouts FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
-CREATE POLICY "notifications_select" ON notifications FOR SELECT USING (user_id = auth.uid());
-CREATE POLICY "notifications_update" ON notifications FOR UPDATE USING (user_id = auth.uid());
+-- Suggestions: own + admin
+CREATE POLICY "suggestions_own" ON suggestions FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "suggestions_admin" ON suggestions FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
-CREATE POLICY "character_select" ON character_reports FOR SELECT USING (true);
-CREATE POLICY "character_insert" ON character_reports FOR INSERT WITH CHECK (true);
+-- CMS pages: public read, admin write
+CREATE POLICY "cms_public" ON cms_pages FOR SELECT USING (published = true);
+CREATE POLICY "cms_admin" ON cms_pages FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
--- Function: auto-generate admission number (FIXED)
-CREATE OR REPLACE FUNCTION generate_admission_number()
-RETURNS TRIGGER AS $$
-DECLARE
-  next_num INTEGER;
-  year_str TEXT;
-BEGIN
-  year_str := TO_CHAR(CURRENT_DATE, 'YYYY');
-  SELECT COALESCE(MAX((SPLIT_PART(admission_number, '/', 3))::INTEGER), 0) + 1
-  INTO next_num
-  FROM admissions
-  WHERE admission_number LIKE 'BDJA/' || year_str || '/%';
+-- Calendar: authenticated read, admin write
+CREATE POLICY "calendar_read" ON calendar_events FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "calendar_admin" ON calendar_events FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
-  NEW.admission_number := 'BDJA/' || year_str || '/' || LPAD(next_num::TEXT, 3, '0');
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Assessments: own + staff
+CREATE POLICY "assessments_own" ON assessments FOR SELECT USING (student_id = auth.uid());
+CREATE POLICY "assessments_staff" ON assessments FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'grades.manage'));
 
-CREATE TRIGGER trigger_admission_number
-BEFORE INSERT ON admissions
-FOR EACH ROW
-WHEN (NEW.admission_number IS NULL)
-EXECUTE FUNCTION generate_admission_number();
+-- Fee payments: own + staff
+CREATE POLICY "fees_own" ON fee_payments FOR SELECT USING (student_id = auth.uid());
+CREATE POLICY "fees_staff" ON fee_payments FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'fees.manage'));
 
--- Function: update timestamps
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Messages: own
+CREATE POLICY "messages_own" ON messages FOR ALL USING (sender_id = auth.uid() OR recipient_id = auth.uid());
 
-CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_timetable_updated_at BEFORE UPDATE ON timetable FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_calendar_updated_at BEFORE UPDATE ON calendar_events FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_assessments_updated_at BEFORE UPDATE ON assessments FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_assignments_updated_at BEFORE UPDATE ON assignments FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_vora_updated_at BEFORE UPDATE ON vora_content FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_fee_structures_updated_at BEFORE UPDATE ON fee_structures FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_admissions_updated_at BEFORE UPDATE ON admissions FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+-- Notifications: own
+CREATE POLICY "notifications_own" ON notifications FOR ALL USING (user_id = auth.uid());
 
--- Insert default campuses
-INSERT INTO campuses (name, location) VALUES
-('BDJA Nanyuki', 'Nanyuki, Laikipia County'),
-('BDJA Ngaridari', 'Ngaridari, Meru County');
+-- Vora: public read, admin write
+CREATE POLICY "vora_public" ON vora_content FOR SELECT USING (true);
+CREATE POLICY "vora_admin" ON vora_content FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
+-- ============================================
+-- TRIGGERS
+-- ============================================
 
--- Audit trigger function
-CREATE OR REPLACE FUNCTION audit_trigger()
+CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF (TG_OP = 'UPDATE') THEN
-    INSERT INTO audit_logs (user_id, action, table_name, record_id, old_data, new_data)
-    VALUES (auth.uid(), 'UPDATE', TG_TABLE_NAME, NEW.id, row_to_json(OLD), row_to_json(NEW));
-  ELSIF (TG_OP = 'INSERT') THEN
-    INSERT INTO audit_logs (user_id, action, table_name, record_id, new_data)
-    VALUES (auth.uid(), 'INSERT', TG_TABLE_NAME, NEW.id, row_to_json(NEW));
-  ELSIF (TG_OP = 'DELETE') THEN
-    INSERT INTO audit_logs (user_id, action, table_name, record_id, old_data)
-    VALUES (auth.uid(), 'DELETE', TG_TABLE_NAME, OLD.id, row_to_json(OLD));
-  END IF;
+  INSERT INTO profiles (id, email, full_name, role, user_category, is_active, password_changed, onboarding_completed)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', 'User'),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'student'),
+    COALESCE(NEW.raw_user_meta_data->>'user_category', COALESCE(NEW.raw_user_meta_data->>'role', 'student')),
+    true,
+    false,
+    false
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    full_name = EXCLUDED.full_name,
+    role = EXCLUDED.role,
+    user_category = EXCLUDED.user_category,
+    updated_at = NOW();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Attach audit triggers to key tables
-CREATE TRIGGER audit_assessments AFTER INSERT OR UPDATE OR DELETE ON assessments FOR EACH ROW EXECUTE FUNCTION audit_trigger();
-CREATE TRIGGER audit_fee_payments AFTER INSERT OR UPDATE OR DELETE ON fee_payments FOR EACH ROW EXECUTE FUNCTION audit_trigger();
-CREATE TRIGGER audit_profiles AFTER UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION audit_trigger();
-CREATE TRIGGER audit_students AFTER UPDATE ON students FOR EACH ROW EXECUTE FUNCTION audit_trigger();
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply updated_at to all tables
+DO $$
+DECLARE
+  t TEXT;
+BEGIN
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'schema_migrations' LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I_updated_at ON %I', t, t);
+    EXECUTE format('CREATE TRIGGER %I_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION update_updated_at()', t, t);
+  END LOOP;
+END $$;

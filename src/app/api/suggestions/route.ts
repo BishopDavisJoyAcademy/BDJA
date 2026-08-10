@@ -1,95 +1,103 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { rateLimit, RATE_LIMITS, getClientIdentifier } from "@/lib/rate-limiter";
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
+import { getClientIP } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.replace("Bearer ", "");
+    const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
+    const { searchParams } = new URL(req.url);
 
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    let query = admin.from("suggestions").select("*, profiles(full_name)");
+
+    if (session.userCategory !== "admin") {
+      query = query.eq("user_id", session.userId);
     }
 
-    const { data: suggestions, error } = await admin
-      .from("suggestions")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+    const status = searchParams.get("status");
+    if (status) query = query.eq("status", status);
 
-    if (error) {
-      return NextResponse.json({ error: "Failed to fetch suggestions" }, { status: 500 });
-    }
-
-    return NextResponse.json({ suggestions: suggestions || [] });
+    const { data, error } = await query.order("created_at", { ascending: false });
+    if (error) return NextResponse.json({ error: "Failed to fetch suggestions" }, { status: 500 });
+    return NextResponse.json({ suggestions: data || [] });
   } catch (error: any) {
-    console.error("[api/suggestions] Error:", error);
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
+    console.error("[suggestions GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const identifier = getClientIdentifier(req) + ":suggestions";
+    const session = await requireAuth(req);
+
+    const identifier = getClientIP(req) + ":suggestions";
     const { success: rateOk } = await rateLimit(identifier, RATE_LIMITS.suggestions);
     if (!rateOk) {
-      return NextResponse.json({ error: "Too many suggestions. Please try again later." }, { status: 429 });
-    }
-
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.replace("Bearer ", "");
-    const admin = getSupabaseAdmin();
-
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+      return NextResponse.json({ error: "Too many suggestions. Try again later." }, { status: 429 });
     }
 
     const body = await req.json();
-    const { type, title, description } = body;
+    const { type, title, description, priority } = body;
 
     if (!type || !title || !description) {
       return NextResponse.json({ error: "Type, title, and description are required" }, { status: 400 });
     }
 
-    if (!["idea", "feedback", "bug", "improvement", "complaint"].includes(type)) {
-      return NextResponse.json({ error: "Invalid suggestion type" }, { status: 400 });
-    }
+    const admin = getSupabaseAdmin();
+    const { data, error } = await admin.from("suggestions").insert({
+      user_id: session.userId,
+      type,
+      title,
+      description,
+      priority: priority || "medium",
+    }).select().single();
 
-    if (title.length > 200 || description.length > 5000) {
-      return NextResponse.json({ error: "Title or description too long" }, { status: 400 });
-    }
-
-    const { data, error } = await admin
-      .from("suggestions")
-      .insert({
-        user_id: user.id,
-        type,
-        title: title.trim(),
-        description: description.trim(),
-        status: "open",
-        priority: "medium",
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: "Failed to submit suggestion" }, { status: 500 });
-    }
-
+    if (error) return NextResponse.json({ error: "Failed to create suggestion" }, { status: 500 });
     return NextResponse.json({ success: true, suggestion: data });
   } catch (error: any) {
-    console.error("[api/suggestions] POST Error:", error);
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
+    console.error("[suggestions POST] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await requireAuth(req);
+    requirePermission(session, "suggestions.manage");
+
+    const admin = getSupabaseAdmin();
+    const body = await req.json();
+    const { id, admin_response, status: newStatus } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Suggestion ID required" }, { status: 400 });
+    }
+
+    const updates: any = {};
+    if (admin_response !== undefined) updates.admin_response = admin_response;
+    if (newStatus !== undefined) updates.status = newStatus;
+    updates.responded_by = session.userId;
+    updates.responded_at = new Date().toISOString();
+    updates.updated_at = new Date().toISOString();
+
+    const { data, error } = await admin.from("suggestions").update(updates).eq("id", id).select().single();
+    if (error) return NextResponse.json({ error: "Failed to update suggestion" }, { status: 500 });
+    return NextResponse.json({ success: true, suggestion: data });
+  } catch (error: any) {
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
+    console.error("[suggestions PATCH] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

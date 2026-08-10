@@ -1,48 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { hasPermission } from "@/lib/permissions";
 import { logImpersonation } from "@/lib/audit";
-import { rateLimit, RATE_LIMITS, getClientIdentifier } from "@/lib/rate-limiter";
-import { getClientIp } from "@/lib/security";
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
+import { getClientIP } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const identifier = getClientIdentifier(req) + ":impersonate";
+    const session = await requireAuth(req);
+    requirePermission(session, "impersonate.users");
+
+    const identifier = getClientIP(req) + ":impersonate";
     const { success: rateOk } = await rateLimit(identifier, RATE_LIMITS.impersonate);
     if (!rateOk) {
       return NextResponse.json({ error: "Too many impersonation attempts" }, { status: 429 });
     }
 
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.replace("Bearer ", "");
     const admin = getSupabaseAdmin();
-
-    const { data: { user: adminUser }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !adminUser) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-    }
-
-    const { data: adminProfile } = await admin
-      .from("profiles")
-      .select("user_category")
-      .eq("id", adminUser.id)
-      .single();
-
-    if (!adminProfile || adminProfile.user_category !== "admin") {
-      return NextResponse.json({ error: "Forbidden - Admin only" }, { status: 403 });
-    }
-
-    if (!(await hasPermission(adminUser.id, "impersonate.users"))) {
-      return NextResponse.json({ error: "Forbidden - Missing impersonate permission" }, { status: 403 });
-    }
-
     const body = await req.json();
     const { targetUserId } = body;
+
     if (!targetUserId) {
       return NextResponse.json({ error: "targetUserId required" }, { status: 400 });
     }
@@ -57,7 +36,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
     }
 
-    if (targetProfile.user_category === "admin" && targetUserId !== adminUser.id) {
+    if (targetProfile.user_category === "admin" && targetUserId !== session.userId) {
       return NextResponse.json({ error: "Cannot impersonate other admins" }, { status: 403 });
     }
 
@@ -65,21 +44,19 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
     await admin.from("user_sessions").insert({
-      user_id: adminUser.id,
+      user_id: session.userId,
       session_token_hash: viewToken,
-      ip_address: getClientIp(req),
+      ip_address: getClientIP(req),
       user_agent: req.headers.get("user-agent") || null,
       is_active: true,
       expires_at: expiresAt,
     });
 
-    await logImpersonation(
-      adminUser.id, targetUserId, "start",
-      getClientIp(req), req.headers.get("user-agent") || undefined
-    );
+    await logImpersonation(session.userId, targetUserId, "start", getClientIP(req), req.headers.get("user-agent") || undefined);
 
     return NextResponse.json({
-      viewToken, expiresAt,
+      viewToken,
+      expiresAt,
       targetUser: {
         id: targetProfile.id,
         email: targetProfile.email,
@@ -94,35 +71,20 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("[api/admin/impersonate] Error:", error);
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
+    console.error("[impersonate POST] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.replace("Bearer ", "");
+    const session = await requireAuth(req);
+    requirePermission(session, "impersonate.users");
+
     const admin = getSupabaseAdmin();
-
-    const { data: { user: adminUser }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !adminUser) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-    }
-
-    const { data: adminProfile } = await admin
-      .from("profiles")
-      .select("user_category")
-      .eq("id", adminUser.id)
-      .single();
-
-    if (!adminProfile || adminProfile.user_category !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("q") || "";
 
@@ -133,7 +95,8 @@ export async function GET(req: NextRequest) {
       .limit(20);
 
     if (query) {
-      dbQuery = dbQuery.or(`full_name.ilike.%${query}%,email.ilike.%${query}%`);
+      const safeQuery = query.replace(/[%_]/g, "\$&");
+      dbQuery = dbQuery.or(`full_name.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%`);
     }
 
     const { data: users, error } = await dbQuery;
@@ -143,7 +106,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ users: users || [] });
   } catch (error: any) {
-    console.error("[api/admin/impersonate] GET Error:", error);
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
+    console.error("[impersonate GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

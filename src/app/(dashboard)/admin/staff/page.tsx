@@ -1,213 +1,89 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Table } from "@/components/ui/Table";
-import { Badge } from "@/components/ui/Badge";
-import { Plus, Search, Pencil } from "lucide-react";
 import Link from "next/link";
-import toast from "react-hot-toast";
-import CredentialModal from "@/components/staff/CredentialModal";
-import { supabase } from "@/lib/supabase";
+import { Plus, Edit, Eye, AlertCircle } from "lucide-react";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 interface StaffMember {
   id: string;
   full_name: string;
   email: string;
-  phone?: string;
-  role: string;
-  user_category: string;
   is_active: boolean;
-  staff?: {
-    employee_id?: string;
-    department?: string;
-    designation?: string;
-  };
+  staff?: { department: string; designation: string };
 }
 
-export default function StaffManagement() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+export default function StaffListPage() {
+  const { user } = useAuth();
   const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [search, setSearch] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [credModal, setCredModal] = useState<{
-    open: boolean;
-    email: string;
-    tempPassword: string;
-    fullName: string;
-    phone?: string;
-  }>({ open: false, email: "", tempPassword: "", fullName: "" });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!loading && user?.user_category !== "admin") {
-      router.push("/unauthorized");
-      return;
-    }
-    if (user?.user_category === "admin") {
-      fetchStaff();
-    }
-  }, [user, loading, router]);
-
-  const getToken = async () => {
-    const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-    if (userError || !currentUser) return "";
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || "";
-  };
-
-  const fetchStaff = async () => {
-    try {
-      const token = await getToken();
-      if (!token) {
-        toast.error("Session expired. Please log in again.");
-        router.push("/login");
-        return;
+    async function fetchStaff() {
+      try {
+        const res = await fetch("/api/admin/staff");
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+        setStaff(data.staff || []);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-      const res = await fetch("/api/admin/staff", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401) {
-        toast.error("Session expired. Please log in again.");
-        router.push("/login");
-        return;
-      }
-      if (!res.ok) throw new Error("Failed to fetch staff");
-      const data = await res.json();
-      setStaff(data.staff || []);
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setIsLoading(false);
     }
-  };
+    fetchStaff();
+  }, []);
 
-  const handleToggleActive = async (id: string, current: boolean) => {
-    try {
-      const token = await getToken();
-      if (!token) { toast.error("Session expired"); return; }
-      const res = await fetch(`/api/admin/staff?id=${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ is_active: !current }),
-      });
-      if (!res.ok) throw new Error("Failed to update");
-      toast.success(`Staff ${!current ? "activated" : "deactivated"}`);
-      fetchStaff();
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const filtered = staff.filter((s) =>
-    s.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    s.email.toLowerCase().includes(search.toLowerCase()) ||
-    s.staff?.department?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  if (loading || isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (user?.user_category !== "admin") return null;
+  if (loading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
+  if (error) return <div className="p-4 bg-red-50 text-red-700 rounded-lg flex items-center gap-2"><AlertCircle className="w-5 h-5" />{error}</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Staff Management</h1>
-          <p className="text-gray-500">Manage all school staff members</p>
-        </div>
-        <Link href="/admin/staff/create">
-          <Button className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Add Staff
-          </Button>
+        <h1 className="text-2xl font-bold text-gray-900">Staff Management</h1>
+        <Link href={`/${ADMIN_SEGMENT}/staff/create`} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <Plus className="w-4 h-4" /> Add Staff
         </Link>
       </div>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <Input
-          placeholder="Search staff by name, email, or department..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <Table>
-          <thead className="bg-gray-50">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Designation</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-700">Name</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-700">Email</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-700">Department</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-700">Status</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-700">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                  No staff members found
+          <tbody>
+            {staff.map((member) => (
+              <tr key={member.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="px-4 py-3 font-medium text-gray-900">{member.full_name}</td>
+                <td className="px-4 py-3 text-gray-600">{member.email}</td>
+                <td className="px-4 py-3 text-gray-600">{member.staff?.department || "—"}</td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${member.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                    {member.is_active ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Link href={`/${ADMIN_SEGMENT}/staff/edit/${member.id}`} className="text-blue-600 hover:text-blue-700">
+                      <Edit className="w-4 h-4" />
+                    </Link>
+                  </div>
                 </td>
               </tr>
-            ) : (
-              filtered.map((member) => (
-                <tr key={member.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{member.full_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{member.email}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{member.staff?.department || "—"}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{member.staff?.designation || "—"}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant={member.is_active ? "success" : "secondary"}>
-                      {member.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/admin/staff/edit/${member.id}`}>
-                        <Button variant="ghost" size="sm" className="flex items-center gap-1">
-                          <Pencil className="w-3 h-3" /> Edit
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleToggleActive(member.id, member.is_active)}
-                      >
-                        {member.is_active ? "Deactivate" : "Activate"}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+            ))}
+            {staff.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">No staff members found</td></tr>
             )}
           </tbody>
-        </Table>
+        </table>
       </div>
-
-      <CredentialModal
-        isOpen={credModal.open}
-        onClose={() => setCredModal({ ...credModal, open: false })}
-        email={credModal.email}
-        tempPassword={credModal.tempPassword}
-        fullName={credModal.fullName}
-        phone={credModal.phone}
-      />
     </div>
   );
 }

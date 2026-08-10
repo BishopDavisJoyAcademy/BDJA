@@ -1,158 +1,100 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/Button";
-import { useAppStore } from "@/hooks/useStore";
-import { BookOpen, Calendar, MessageCircle, GraduationCap, Award, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
-import toast from "react-hot-toast";
-
-const steps = [
-  { title: "Welcome to BDJA!", description: "Your journey starts here.", icon: Sparkles, content: "BDJA Platform is your all-in-one hub for learning, communication, and growth." },
-  { title: "Your Dashboard", description: "Your personal command center", icon: BookOpen, content: "View your timetable, check assignments, see your grades, and access VORA learning content." },
-  { title: "Stay Organized", description: "Calendar & Timetable", icon: Calendar, content: "Your class timetable and school events are always up to date." },
-  { title: "Connect", description: "Messages & Collaboration", icon: MessageCircle, content: "Send messages to teachers, chat with classmates, and stay connected." },
-  { title: "Track Progress", description: "Grades & Character", icon: GraduationCap, content: "View your CBC assessment results, character reports, and values badges." },
-  { title: "Meet Joy", description: "Your AI Assistant", icon: Award, content: "Joy is always here to help! Ask questions about homework, get study tips, or just chat." },
-];
-
-function getDashboardPath(role: string | null): string {
-  switch (role) {
-    case "student": return "/student";
-    case "parent": return "/parent";
-    case "teacher": return "/teacher";
-    case "principal":
-    case "super_admin": return "/admin";
-    case "bursar": return "/bursar";
-    case "librarian": return "/librarian";
-    default: return "/student";
-  }
-}
-
-/**
- * Complete onboarding via server API.
- * This bypasses the RLS/cookie sync race condition.
- */
-async function completeOnboarding(token: string) {
-  const res = await fetch("/api/auth/onboarding", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to complete onboarding");
-  }
-  return res.json();
-}
+import { CheckCircle, AlertCircle } from "lucide-react";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { setIsOnboarding } = useAppStore();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [completing, setCompleting] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [completed, setCompleted] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    // Secure auth check using getUser()
-    supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
-      if (cancelled) return;
-      if (userError || !user) {
-        toast.error("Please log in first");
-        router.replace("/login");
-        return;
-      }
-      setChecking(false);
-    });
-    return () => { cancelled = true; };
-  }, [router]);
-
-  const step = steps[currentStep];
-  const Icon = step.icon;
-
-  const finishOnboarding = async () => {
-    setCompleting(true);
-
+  const handleComplete = async () => {
+    setLoading(true);
+    setError("");
     try {
-      // Secure auth check using getUser()
+      // Use getUser() for secure validation
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
-        toast.error("Session lost. Please log in again.");
-        router.push("/login");
+        setError("Session expired. Please log in again.");
+        setLoading(false);
         return;
       }
 
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
-        toast.error("Session expired. Please log in again.");
-        router.push("/login");
+        setError("Session expired. Please log in again.");
+        setLoading(false);
         return;
       }
 
-      const { profile } = await completeOnboarding(token);
-
-      setIsOnboarding(false);
-      toast.success("Welcome to BDJA!");
-      router.push(getDashboardPath(profile.role));
-    } catch (error: any) {
-      console.error("[onboarding] Error:", error);
-      toast.error(error.message || "Could not complete onboarding. Please try again.");
-      setCompleting(false);
+      const res = await fetch("/api/auth/onboarding", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to complete onboarding");
+        setLoading(false);
+        return;
+      }
+      setCompleted(true);
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleNext = async () => {
-    if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1);
-    else await finishOnboarding();
-  };
-
-  const handleSkip = async () => {
-    await finishOnboarding();
-  };
-
-  if (checking) {
+  if (completed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-bdja-primary via-bdja-accent to-bdja-dark">
-        <div className="text-white text-sm animate-pulse">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 px-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
+          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900">Welcome to BDJA!</h2>
+          <p className="text-gray-500 mt-2">Redirecting to your dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-bdja-primary via-bdja-accent to-bdja-dark p-4">
-      <div className="w-full max-w-lg">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 animate-fade-in">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 bg-bdja-secondary rounded-xl flex items-center justify-center animate-pulse-soft">
-              <Icon className="w-8 h-8 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-bdja-dark">{step.title}</h2>
-            <p className="text-sm text-bdja-secondary font-medium mt-1">{step.description}</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 px-4">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">Welcome to BDJA Platform</h1>
+        <p className="text-gray-600 mb-6">
+          Bishop Davis Joy Academy — Prayer, Commitment and Hard Work for Success.
+        </p>
+        <div className="space-y-3 mb-8">
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">1</div>
+            <p className="text-sm text-gray-600">Your account is secure and private.</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-6 mb-8">
-            <p className="text-gray-700 leading-relaxed text-center">{step.content}</p>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">2</div>
+            <p className="text-sm text-gray-600">Access your grades, timetable, and assignments.</p>
           </div>
-          <div className="flex items-center justify-center gap-2 mb-8">
-            {steps.map((_, idx) => (
-              <div key={idx} className={`h-2 rounded-full transition-all duration-300 ${idx === currentStep ? "w-8 bg-bdja-secondary" : "w-2 bg-gray-200"}`} />
-            ))}
-          </div>
-          <div className="flex items-center justify-between">
-            <button onClick={handleSkip} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">Skip Tour</button>
-            <div className="flex gap-3">
-              {currentStep > 0 && <Button variant="outline" size="sm" onClick={() => setCurrentStep(currentStep - 1)}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>}
-              <Button variant="primary" size="sm" onClick={handleNext} isLoading={completing}>
-                {currentStep === steps.length - 1 ? "Get Started" : "Next"}
-                {currentStep < steps.length - 1 && <ArrowRight className="w-4 h-4 ml-1" />}
-              </Button>
-            </div>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">3</div>
+            <p className="text-sm text-gray-600">Chat with Joy, your AI learning assistant.</p>
           </div>
         </div>
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+        <button onClick={handleComplete} disabled={loading}
+          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">
+          {loading ? "Processing..." : "Get Started"}
+        </button>
       </div>
     </div>
   );

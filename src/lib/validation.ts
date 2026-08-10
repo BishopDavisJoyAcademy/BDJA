@@ -10,6 +10,11 @@ export const passwordSchema = z.string()
   .regex(/[0-9]/, "Must contain a number")
   .regex(/[^A-Za-z0-9]/, "Must contain a special character");
 
+export const pinSchema = z.string()
+  .min(4, "PIN must be at least 4 digits")
+  .max(8, "PIN must be at most 8 digits")
+  .regex(/^\d+$/, "PIN must contain only numbers");
+
 export const createUserSchema = z.object({
   email: emailSchema,
   full_name: z.string().min(2, "Name too short").max(100, "Name too long"),
@@ -43,6 +48,14 @@ export const firstLoginPasswordSchema = z.object({
 }).refine((data) => data.new_password === data.confirm_password, {
   message: "Passwords do not match",
   path: ["confirm_password"],
+});
+
+export const firstLoginPinSchema = z.object({
+  new_pin: pinSchema,
+  confirm_pin: z.string(),
+}).refine((data) => data.new_pin === data.confirm_pin, {
+  message: "PINs do not match",
+  path: ["confirm_pin"],
 });
 
 export const chatMessageSchema = z.object({

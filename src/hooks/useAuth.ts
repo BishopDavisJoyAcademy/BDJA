@@ -22,35 +22,26 @@ export interface AuthUser {
   permissions?: string[];
 }
 
-interface AuthError {
-  type: string;
-  message: string;
-}
-
 interface AuthState {
   user: AuthUser | null;
   loading: boolean;
-  error: AuthError | null;
+  error: { type: string; message: string } | null;
 }
 
 export function useAuth() {
   const router = useRouter();
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    loading: true,
-    error: null,
-  });
+  const [state, setState] = useState<AuthState>({ user: null, loading: true, error: null });
 
   const fetchUser = useCallback(async () => {
     try {
-      // Secure: use getUser() to validate JWT with Supabase Auth server
+      // Use getUser() for secure validation
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
       if (userError || !currentUser) {
         setState({ user: null, loading: false, error: null });
         return;
       }
 
-      // Get token for API call
+      // Get session for the token
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
@@ -72,11 +63,8 @@ export function useAuth() {
       }
 
       const data = await response.json();
-      const profile = data.profile || data.user;
-
-      if (!profile) {
-        throw new Error("Profile not found");
-      }
+      const profile = data.user;
+      if (!profile) throw new Error("Profile not found");
 
       if (profile.is_active === false) {
         await supabase.auth.signOut();
@@ -94,24 +82,26 @@ export function useAuth() {
         userCategory = role === "student" ? "student" : role === "parent" ? "parent" : role === "admin" ? "admin" : "staff";
       }
 
-      const authUser: AuthUser = {
-        id: profile.id,
-        email: profile.email,
-        role,
-        user_category: userCategory,
-        full_name: profile.full_name || "User",
-        password_changed: profile.password_changed ?? false,
-        onboarding_completed: profile.onboarding_completed ?? false,
-        is_active: profile.is_active ?? true,
-        campus_id: profile.campus_id || null,
-        department: profile.department || null,
-        designation: profile.designation || null,
-        admission_number: profile.admission_number || null,
-        grade_level: profile.grade_level || null,
-        permissions: data.permissions || [],
-      };
-
-      setState({ user: authUser, loading: false, error: null });
+      setState({
+        user: {
+          id: profile.id,
+          email: profile.email,
+          role,
+          user_category: userCategory,
+          full_name: profile.full_name || "User",
+          password_changed: profile.password_changed ?? false,
+          onboarding_completed: profile.onboarding_completed ?? false,
+          is_active: profile.is_active ?? true,
+          campus_id: profile.campus_id || null,
+          department: profile.department || null,
+          designation: profile.designation || null,
+          admission_number: profile.admission_number || null,
+          grade_level: profile.grade_level || null,
+          permissions: data.permissions || [],
+        },
+        loading: false,
+        error: null,
+      });
     } catch (error: any) {
       console.error("[useAuth] Error:", error);
       setState({ user: null, loading: false, error: { type: "unknown", message: error.message } });
@@ -120,7 +110,6 @@ export function useAuth() {
 
   useEffect(() => {
     fetchUser();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
         fetchUser();
@@ -128,21 +117,15 @@ export function useAuth() {
         setState({ user: null, loading: false, error: null });
       }
     });
-
     return () => subscription.unsubscribe();
   }, [fetchUser]);
 
   const signOut = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
     await supabase.auth.signOut({ scope: "global" });
     setState({ user: null, loading: false, error: null });
     router.push("/login");
   }, [router]);
 
-  return {
-    user: state.user,
-    loading: state.loading,
-    error: state.error,
-    signOut,
-    refresh: fetchUser,
-  };
+  return { user: state.user, loading: state.loading, error: state.error, signOut, refresh: fetchUser };
 }

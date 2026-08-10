@@ -1,62 +1,35 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { Card } from "@/components/ui/Card";
-import { GraduationCap, Calendar, BookOpen, Video } from "lucide-react";
 import Link from "next/link";
+import { ClipboardList, Calendar, BookOpen, Library } from "lucide-react";
 
 export default function StudentDashboard() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && user?.user_category !== "student") {
-      router.push("/unauthorized");
-    }
-  }, [user, loading, router]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (user?.user_category !== "student") return null;
-
-  const quickLinks = [
-    { label: "My Grades", href: "/grades", icon: GraduationCap, desc: "View your academic performance" },
-    { label: "Timetable", href: "/timetable", icon: Calendar, desc: "Check your class schedule" },
-    { label: "Assignments", href: "/assignments", icon: BookOpen, desc: "View pending assignments" },
-    { label: "VORA Learning", href: "/vora", icon: Video, desc: "Access learning videos" },
-  ];
+  const { user } = useAuth();
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Student Portal</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Student Dashboard</h1>
         <p className="text-gray-500">Welcome back, {user?.full_name}</p>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {quickLinks.map((link) => (
-          <Link key={link.href} href={link.href}>
-            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-bdja-primary/10 rounded-lg">
-                  <link.icon className="w-6 h-6 text-bdja-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{link.label}</h3>
-                  <p className="text-sm text-gray-500">{link.desc}</p>
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: "My Grades", icon: ClipboardList, href: "/student/grades", color: "bg-blue-500" },
+          { label: "Timetable", icon: Calendar, href: "/student/timetable", color: "bg-green-500" },
+          { label: "Assignments", icon: BookOpen, href: "/student/assignments", color: "bg-purple-500" },
+          { label: "Library", icon: Library, href: "/library", color: "bg-orange-500" },
+        ].map((card) => {
+          const Icon = card.icon;
+          return (
+            <Link key={card.label} href={card.href} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+              <div className={`${card.color} text-white p-3 rounded-lg w-fit mb-3`}>
+                <Icon className="w-5 h-5" />
               </div>
-            </Card>
-          </Link>
-        ))}
+              <p className="font-medium text-gray-900">{card.label}</p>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

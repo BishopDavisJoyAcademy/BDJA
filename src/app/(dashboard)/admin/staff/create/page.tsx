@@ -1,202 +1,139 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card } from "@/components/ui/Card";
-import { PermissionSelector } from "@/components/permissions/PermissionSelector";
-import { supabase } from "@/lib/supabase";
-import { ArrowLeft, AlertCircle } from "lucide-react";
-import Link from "next/link";
-import toast from "react-hot-toast";
-import CredentialModal from "@/components/staff/CredentialModal";
+import { AlertCircle, CheckCircle } from "lucide-react";
+import { ADMIN_SEGMENT } from "@/lib/constants";
+
+interface Permission {
+  id: string;
+  key: string;
+  name: string;
+  category: string;
+}
 
 export default function CreateStaffPage() {
   const router = useRouter();
+  const [form, setForm] = useState({ email: "", full_name: "", phone: "", department: "General", designation: "Staff", campus_id: "" });
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [permissionIds, setPermissionIds] = useState<string[]>([]);
-  const [credModal, setCredModal] = useState<{
-    open: boolean;
-    email: string;
-    tempPassword: string;
-    fullName: string;
-    phone?: string;
-  }>({ open: false, email: "", tempPassword: "", fullName: "" });
-  const [form, setForm] = useState({
-    full_name: "",
-    email: "",
-    phone: "",
-    department: "",
-    designation: "",
-    campus_id: "",
-  });
+  const [result, setResult] = useState<{ email: string; tempPassword: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/staff/permissions")
+      .then((r) => r.json())
+      .then((data) => setPermissions(data.permissions || []))
+      .catch(console.error);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        setError("Not authenticated. Please log in again.");
-        setLoading(false);
-        return;
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) {
-        setError("Session expired. Please log in again.");
-        setLoading(false);
-        return;
-      }
-
       const res = await fetch("/api/admin/staff", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...form,
-          permissionIds,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, permissionIds: selectedPerms }),
       });
-
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json.error || `Failed to create staff (${res.status})`);
-        setLoading(false);
-        return;
-      }
-
-      if (!json.success) {
-        setError(json.error || "Failed to create staff");
-        setLoading(false);
-        return;
-      }
-
-      // Show credential modal instead of immediate redirect
-      setCredModal({
-        open: true,
-        email: json.email,
-        tempPassword: json.tempPassword,
-        fullName: form.full_name,
-        phone: form.phone || undefined,
-      });
-
-      toast.success("Staff member created successfully!");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create staff");
+      setResult({ email: data.email, tempPassword: data.tempPassword });
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="mb-6">
-        <Link href="/admin/staff" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">
-          <ArrowLeft className="w-4 h-4" /> Back to Staff
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Add Staff Member</h1>
-        <p className="text-gray-500">Create a new staff account with permissions</p>
-      </div>
+  const togglePerm = (id: string) => {
+    setSelectedPerms((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
+  };
 
+  const grouped = permissions.reduce((acc: Record<string, Permission[]>, p) => {
+    (acc[p.category] = acc[p.category] || []).push(p);
+    return acc;
+  }, {});
+
+  if (result) {
+    return (
+      <div className="max-w-lg mx-auto bg-white rounded-xl border border-gray-200 p-8 text-center">
+        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Staff Created Successfully!</h2>
+        <div className="bg-gray-50 rounded-lg p-4 text-left space-y-2 mb-4">
+          <p className="text-sm"><span className="font-medium">Email:</span> {result.email}</p>
+          <p className="text-sm"><span className="font-medium">Temporary Password:</span> <span className="font-mono bg-yellow-100 px-2 py-0.5 rounded">{result.tempPassword}</span></p>
+        </div>
+        <p className="text-sm text-red-600 mb-4">Copy this password now. It will not be shown again.</p>
+        <button onClick={() => router.push(`/${ADMIN_SEGMENT}/staff`)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          Back to Staff List
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Add New Staff Member</h1>
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
           <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Card className="p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-            <Input
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              placeholder="e.g. John Doe"
-              required
-            />
+            <input type="text" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-            <Input
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="john.doe@bdja.ac.ke"
-              required
-            />
+            <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-            <Input
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="+254 700 000 000"
-            />
+            <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <Input
-              value={form.department}
-              onChange={(e) => setForm({ ...form, department: e.target.value })}
-              placeholder="e.g. Mathematics"
-            />
+            <input type="text" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-            <Input
-              value={form.designation}
-              onChange={(e) => setForm({ ...form, designation: e.target.value })}
-              placeholder="e.g. Senior Teacher"
-            />
+            <input type="text" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Campus ID</label>
-            <Input
-              value={form.campus_id}
-              onChange={(e) => setForm({ ...form, campus_id: e.target.value })}
-              placeholder="UUID of campus"
-            />
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Permissions</h3>
-          <PermissionSelector
-            selected={permissionIds}
-            onChange={setPermissionIds}
-          />
-        </Card>
-
-        <div className="flex items-center gap-3">
-          <Button type="submit" isLoading={loading} disabled={loading}>
-            Create Staff Account
-          </Button>
-          <Link href="/admin/staff">
-            <Button variant="outline" type="button">Cancel</Button>
-          </Link>
         </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
+          <div className="space-y-3 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
+            {Object.entries(grouped).map(([category, perms]) => (
+              <div key={category}>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{category}</p>
+                <div className="flex flex-wrap gap-2">
+                  {perms.map((p) => (
+                    <label key={p.id} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs cursor-pointer transition-colors ${selectedPerms.includes(p.id) ? "bg-blue-100 text-blue-700 border border-blue-300" : "bg-gray-100 text-gray-600 border border-gray-200"}`}>
+                      <input type="checkbox" className="hidden" checked={selectedPerms.includes(p.id)} onChange={() => togglePerm(p.id)} />
+                      {p.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <button type="submit" disabled={loading}
+          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">
+          {loading ? "Creating..." : "Create Staff Member"}
+        </button>
       </form>
-
-      <CredentialModal
-        isOpen={credModal.open}
-        onClose={() => {
-          setCredModal({ ...credModal, open: false });
-          router.push("/admin/staff");
-        }}
-        email={credModal.email}
-        tempPassword={credModal.tempPassword}
-        fullName={credModal.fullName}
-        phone={credModal.phone}
-      />
     </div>
   );
 }

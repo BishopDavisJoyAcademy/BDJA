@@ -1,41 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { requireAuth, requirePermission } from "@/lib/session";
+import { grantPermissions, getAllPermissions, getPermissionCategories } from "@/lib/permissions";
+import { logPermissionChange } from "@/lib/audit";
+import { getClientIP } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.replace("Bearer ", "");
-    const admin = getSupabaseAdmin();
+    const session = await requireAuth(req);
+    requirePermission(session, "staff.manage");
 
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-    }
+    const [allPermissions, categories] = await Promise.all([
+      getAllPermissions(),
+      getPermissionCategories(),
+    ]);
 
-    const { searchParams } = new URL(req.url);
-    const staffId = searchParams.get("staffId");
-    if (!staffId) {
-      return NextResponse.json({ error: "staffId required" }, { status: 400 });
-    }
-
-    const { data, error } = await admin
-      .from("staff_permissions")
-      .select("permission_id, permissions(id, key, name, category)")
-      .eq("profile_id", staffId);
-
-    if (error) {
-      console.error("[staff permissions GET] error:", error);
-      return NextResponse.json({ error: "Failed to fetch permissions" }, { status: 500 });
-    }
-
-    return NextResponse.json({ permissions: data || [] });
+    return NextResponse.json({ permissions: allPermissions, categories });
   } catch (error: any) {
-    console.error("[staff permissions GET] Error:", error);
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
+    console.error("[permissions GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await requireAuth(req);
+    requirePermission(session, "staff.manage");
+
+    const body = await req.json();
+    const { profileId, permissionIds } = body;
+
+    if (!profileId || !Array.isArray(permissionIds)) {
+      return NextResponse.json({ error: "profileId and permissionIds required" }, { status: 400 });
+    }
+
+    const result = await grantPermissions(profileId, permissionIds, session.userId);
+
+    if (result.success) {
+      await logPermissionChange(session.userId, profileId, result.added, result.removed, getClientIP(req));
+    }
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
+    console.error("[permissions POST] Error:", error);
+    return NextResponse.json({ error: error.message || "Failed to update permissions" }, { status: 500 });
   }
 }

@@ -1,40 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { createStaff } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { grantPermissions } from "@/lib/permissions";
+import { logAudit } from "@/lib/audit";
+import { getClientIP } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const token = authHeader.replace("Bearer ", "");
+    const session = await requireAuth(req);
+    requirePermission(session, "staff.manage");
+
     const admin = getSupabaseAdmin();
-
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).single();
-    if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "staff.manage")))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (id) {
-      // Single staff member
       const { data: staff, error } = await admin
         .from("profiles")
         .select("*, staff(*)")
         .eq("id", id)
+        .eq("user_category", "staff")
         .single();
       if (error) return NextResponse.json({ error: "Staff not found" }, { status: 404 });
       return NextResponse.json({ staff });
     }
 
-    // All staff
     const { data: staff, error } = await admin
       .from("profiles")
       .select("*, staff(*)")
@@ -44,6 +37,9 @@ export async function GET(req: NextRequest) {
     if (error) return NextResponse.json({ error: "Failed to fetch staff" }, { status: 500 });
     return NextResponse.json({ staff: staff || [] });
   } catch (error: any) {
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
     console.error("[staff GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -51,18 +47,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const token = authHeader.replace("Bearer ", "");
-    const admin = getSupabaseAdmin();
-
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).single();
-    if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "staff.manage")))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const session = await requireAuth(req);
+    requirePermission(session, "staff.manage");
 
     const body = await req.json();
     if (!body.email || !body.full_name) {
@@ -77,41 +63,40 @@ export async function POST(req: NextRequest) {
       designation: body.designation,
       campusId: body.campus_id,
       permissionIds: body.permissionIds || [],
-      createdBy: user.id,
+      createdBy: session.userId,
+    });
+
+    await logAudit({
+      user_id: session.userId,
+      action: "STAFF_CREATED",
+      target_type: "staff",
+      target_id: result.userId,
+      metadata: { email: body.email, department: body.department },
+      ip_address: getClientIP(req),
     });
 
     return NextResponse.json(result);
   } catch (error: any) {
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
     console.error("[staff POST] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to create staff" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || "Failed to create staff" }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const token = authHeader.replace("Bearer ", "");
+    const session = await requireAuth(req);
+    requirePermission(session, "staff.manage");
+
     const admin = getSupabaseAdmin();
-
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).single();
-    if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "staff.manage")))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Staff ID required" }, { status: 400 });
 
     const body = await req.json();
 
-    // Update profile
     const { error: profileError } = await admin.from("profiles").update({
       full_name: body.full_name,
       email: body.email,
@@ -122,36 +107,32 @@ export async function PUT(req: NextRequest) {
     }).eq("id", id);
 
     if (profileError) {
-      console.error("[staff PUT] profile update error:", profileError);
       return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
     }
 
-    // Update staff record
-    const { error: staffError } = await admin.from("staff").update({
+    await admin.from("staff").update({
       department: body.department || "General",
       designation: body.designation || "Staff",
       updated_at: new Date().toISOString(),
     }).eq("id", id);
 
-    if (staffError) {
-      console.error("[staff PUT] staff update error:", staffError);
+    if (body.permissionIds) {
+      await grantPermissions(id, body.permissionIds, session.userId);
     }
 
-    // Update permissions: delete old, insert new
-    if (body.permissionIds) {
-      await admin.from("staff_permissions").delete().eq("profile_id", id);
-      if (body.permissionIds.length > 0) {
-        const permRecords = body.permissionIds.map((pid: string) => ({
-          profile_id: id,
-          permission_id: pid,
-        }));
-        const { error: permError } = await admin.from("staff_permissions").insert(permRecords);
-        if (permError) console.error("[staff PUT] permission update error:", permError);
-      }
-    }
+    await logAudit({
+      user_id: session.userId,
+      action: "STAFF_UPDATED",
+      target_type: "staff",
+      target_id: id,
+      ip_address: getClientIP(req),
+    });
 
     return NextResponse.json({ success: true, message: "Staff updated" });
   } catch (error: any) {
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
     console.error("[staff PUT] Error:", error);
     return NextResponse.json({ error: error.message || "Failed to update staff" }, { status: 500 });
   }
@@ -159,19 +140,10 @@ export async function PUT(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const token = authHeader.replace("Bearer ", "");
+    const session = await requireAuth(req);
+    requirePermission(session, "staff.manage");
+
     const admin = getSupabaseAdmin();
-
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-
-    const { data: profile } = await admin.from("profiles").select("user_category").eq("id", user.id).single();
-    if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "staff.manage")))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Staff ID required" }, { status: 400 });
@@ -183,8 +155,20 @@ export async function PATCH(req: NextRequest) {
     }).eq("id", id);
 
     if (error) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+
+    await logAudit({
+      user_id: session.userId,
+      action: body.is_active ? "STAFF_ACTIVATED" : "STAFF_DEACTIVATED",
+      target_type: "staff",
+      target_id: id,
+      ip_address: getClientIP(req),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
     console.error("[staff PATCH] Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

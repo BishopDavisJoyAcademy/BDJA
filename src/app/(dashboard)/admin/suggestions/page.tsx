@@ -1,198 +1,106 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
-import { Select } from "@/components/ui/Select";
-import { MessageSquare, CheckCircle, XCircle, Clock } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import toast from "react-hot-toast";
+import { useEffect, useState } from "react";
+import { AlertCircle } from "lucide-react";
 
 interface Suggestion {
   id: string;
-  type: string;
   title: string;
   description: string;
+  type: string;
   status: string;
   priority: string;
   admin_response?: string;
+  profiles?: { full_name: string };
   created_at: string;
-  profiles?: {
-    full_name: string;
-    email: string;
-    user_category: string;
-  };
 }
 
-export default function SuggestionsManagement() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+export default function SuggestionsPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [filter, setFilter] = useState("all");
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!loading && user?.user_category !== "admin") {
-      router.push("/unauthorized");
-      return;
-    }
-    if (user?.user_category === "admin") {
-      fetchSuggestions();
-    }
-  }, [user, loading, router]);
-
-  const fetchSuggestions = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const url = filter !== "all" ? `/api/admin/suggestions?status=${filter}` : "/api/admin/suggestions";
-      const res = await fetch(url, {
-        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSuggestions(data.suggestions || []);
-      }
-    } catch (err) {
-      console.error("Failed to fetch suggestions:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [responding, setResponding] = useState<string | null>(null);
+  const [responseText, setResponseText] = useState("");
 
   useEffect(() => {
     fetchSuggestions();
-  }, [filter]);
+  }, []);
 
-  const updateStatus = async (id: string, status: string) => {
+  async function fetchSuggestions() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/admin/suggestions", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({ id, status }),
-      });
-      if (res.ok) {
-        toast.success("Status updated");
-        fetchSuggestions();
-      }
-    } catch (err) {
-      toast.error("Failed to update");
+      const res = await fetch("/api/suggestions");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setSuggestions(data.suggestions || []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "bug": return <XCircle className="w-4 h-4 text-red-500" />;
-      case "improvement": return <CheckCircle className="w-4 h-4 text-green-500" />;
-      default: return <MessageSquare className="w-4 h-4 text-blue-500" />;
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, string> = {
-      open: "bg-yellow-100 text-yellow-800",
-      under_review: "bg-blue-100 text-blue-800",
-      planned: "bg-purple-100 text-purple-800",
-      implemented: "bg-green-100 text-green-800",
-      declined: "bg-red-100 text-red-800",
-      closed: "bg-gray-100 text-gray-800",
-    };
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${variants[status] || variants.open}`}>
-        {status.replace("_", " ")}
-      </span>
-    );
-  };
-
-  if (loading || isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
   }
 
-  if (user?.user_category !== "admin") return null;
+  const handleRespond = async (id: string) => {
+    try {
+      const res = await fetch("/api/suggestions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, admin_response: responseText, status: "implemented" }),
+      });
+      if (!res.ok) throw new Error("Failed to respond");
+      setResponding(null);
+      setResponseText("");
+      fetchSuggestions();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
+  if (error) return <div className="p-4 bg-red-50 text-red-700 rounded-lg flex items-center gap-2"><AlertCircle className="w-5 h-5" />{error}</div>;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Suggestions & Feedback</h1>
-        <p className="text-gray-500">Review and manage user submissions</p>
-      </div>
-
-      <div className="flex gap-2">
-        {["all", "open", "under_review", "planned", "implemented", "declined"].map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              filter === s ? "bg-bdja-primary text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            {s === "all" ? "All" : s.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-          </button>
-        ))}
-      </div>
-
+      <h1 className="text-2xl font-bold text-gray-900">Suggestions & Feedback</h1>
       <div className="space-y-4">
-        {suggestions.length === 0 ? (
-          <Card className="p-8 text-center text-gray-500">
-            <MessageSquare className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-            <p>No suggestions found</p>
-          </Card>
-        ) : (
-          suggestions.map((s) => (
-            <Card key={s.id} className="p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  {getTypeIcon(s.type)}
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{s.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{s.description}</p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                      <span>by {s.profiles?.full_name || "Unknown"}</span>
-                      <span>{s.profiles?.user_category}</span>
-                      <span>{new Date(s.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  {getStatusBadge(s.status)}
-                  <div className="flex gap-1 mt-2">
-                    {s.status !== "implemented" && (
-                      <Button size="sm" variant="ghost" onClick={() => updateStatus(s.id, "implemented")}>
-                        <CheckCircle className="w-3 h-3 text-green-600" />
-                      </Button>
-                    )}
-                    {s.status !== "declined" && (
-                      <Button size="sm" variant="ghost" onClick={() => updateStatus(s.id, "declined")}>
-                        <XCircle className="w-3 h-3 text-red-600" />
-                      </Button>
-                    )}
-                    {s.status !== "under_review" && (
-                      <Button size="sm" variant="ghost" onClick={() => updateStatus(s.id, "under_review")}>
-                        <Clock className="w-3 h-3 text-blue-600" />
-                      </Button>
-                    )}
-                  </div>
+        {suggestions.map((s) => (
+          <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <h3 className="font-semibold text-gray-900">{s.title}</h3>
+                <p className="text-xs text-gray-500">by {s.profiles?.full_name || "Unknown"} · {new Date(s.created_at).toLocaleDateString()}</p>
+              </div>
+              <div className="flex gap-2">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.priority === "critical" ? "bg-red-100 text-red-700" : s.priority === "high" ? "bg-orange-100 text-orange-700" : s.priority === "medium" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}`}>
+                  {s.priority}
+                </span>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.status === "implemented" ? "bg-green-100 text-green-700" : s.status === "under_review" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
+                  {s.status}
+                </span>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">{s.description}</p>
+            {s.admin_response && (
+              <div className="bg-blue-50 rounded-lg p-3 mb-3">
+                <p className="text-sm text-blue-800"><span className="font-medium">Response:</span> {s.admin_response}</p>
+              </div>
+            )}
+            {responding === s.id ? (
+              <div className="space-y-2">
+                <textarea value={responseText} onChange={(e) => setResponseText(e.target.value)} rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Write your response..." />
+                <div className="flex gap-2">
+                  <button onClick={() => handleRespond(s.id)} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Send Response</button>
+                  <button onClick={() => { setResponding(null); setResponseText(""); }} className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">Cancel</button>
                 </div>
               </div>
-              {s.admin_response && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
-                  <span className="font-medium text-gray-700">Admin Response:</span>
-                  <p className="text-gray-600 mt-1">{s.admin_response}</p>
-                </div>
-              )}
-            </Card>
-          ))
-        )}
+            ) : (
+              <button onClick={() => setResponding(s.id)} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                Respond
+              </button>
+            )}
+          </div>
+        ))}
+        {suggestions.length === 0 && <p className="text-center text-gray-500 py-8">No suggestions yet</p>}
       </div>
     </div>
   );

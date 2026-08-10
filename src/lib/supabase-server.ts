@@ -1,18 +1,24 @@
-/**
- * Server Supabase Admin Client
- * Bypasses RLS. Use only for server-side ops.
- */
+"use server";
+
+import { createClient } from "@supabase/supabase-js";
+
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!url || !serviceKey) {
+  throw new Error("Missing Supabase server environment variables");
+}
+
+let _admin: ReturnType<typeof createClient> | null = null;
 
 export function getSupabaseAdmin() {
-  const { createClient: createAdminClient } = require("@supabase/supabase-js");
-  return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
+  if (!_admin) {
+    _admin = createClient(url, serviceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
-    }
-  );
+    });
+  }
+  return _admin;
 }

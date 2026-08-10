@@ -1,41 +1,38 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { Card } from "@/components/ui/Card";
-import { AnimatedCounter } from "@/components/AnimatedCounter";
-import { Users, GraduationCap, UserCheck, BookOpen, Video, FileText, Calendar } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Users, GraduationCap, DollarSign, ClipboardList, BookOpen, Calendar, MessageSquare, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 export default function AdminDashboard() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
+  const [stats, setStats] = useState({ students: 0, staff: 0, parents: 0, pendingAdmissions: 0 });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && user?.user_category !== "admin") {
-      router.push("/unauthorized");
+    async function fetchStats() {
+      try {
+        const res = await fetch("/api/admin/stats");
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [user, loading, router]);
+    fetchStats();
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-bdja-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (user?.user_category !== "admin") return null;
-
-  const stats = [
-    { label: "Total Students", value: 0, icon: GraduationCap, href: "/admin/students" },
-    { label: "Total Staff", value: 0, icon: Users, href: "/admin/staff" },
-    { label: "Total Parents", value: 0, icon: UserCheck, href: "/admin/users" },
-    { label: "VORA Content", value: 0, icon: Video, href: "/admin/vora" },
-    { label: "CMS Pages", value: 0, icon: FileText, href: "/admin/pages" },
-    { label: "Calendar Events", value: 0, icon: Calendar, href: "/manage/calendar" },
-    { label: "Pending Admissions", value: 0, icon: BookOpen, href: "/manage/admissions" },
+  const cards = [
+    { label: "Students", value: stats.students, icon: GraduationCap, href: `/${ADMIN_SEGMENT}/students`, color: "bg-blue-500" },
+    { label: "Staff", value: stats.staff, icon: Users, href: `/${ADMIN_SEGMENT}/staff`, color: "bg-green-500" },
+    { label: "Parents", value: stats.parents, icon: Users, href: "#", color: "bg-purple-500" },
+    { label: "Pending Admissions", value: stats.pendingAdmissions, icon: ClipboardList, href: "/admissions", color: "bg-orange-500" },
   ];
 
   return (
@@ -46,67 +43,64 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Link key={stat.label} href={stat.href}>
-            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
+        {cards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <Link key={card.label} href={card.href} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    <AnimatedCounter value={stat.value} />
-                  </p>
+                  <p className="text-sm text-gray-500">{card.label}</p>
+                  <p className="text-2xl font-bold text-gray-900">{loading ? "..." : card.value}</p>
                 </div>
-                <stat.icon className="w-8 h-8 text-bdja-primary opacity-50" />
+                <div className={`${card.color} text-white p-3 rounded-lg`}>
+                  <Icon className="w-5 h-5" />
+                </div>
               </div>
-            </Card>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="space-y-2">
-            <Link href="/admin/staff/create" className="block p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <p className="font-medium text-gray-900">Add Staff Member</p>
-              <p className="text-sm text-gray-500">Create a new staff account with permissions</p>
+            <Link href={`/${ADMIN_SEGMENT}/staff/create`} className="block p-3 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm font-medium text-gray-700">
+              + Add New Staff Member
             </Link>
-            <Link href="/admin/vora" className="block p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <p className="font-medium text-gray-900">Manage VORA Content</p>
-              <p className="text-sm text-gray-500">Add, edit, or remove learning videos</p>
+            <Link href={`/${ADMIN_SEGMENT}/students/create`} className="block p-3 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm font-medium text-gray-700">
+              + Add New Student
             </Link>
-            <Link href="/admin/pages" className="block p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <p className="font-medium text-gray-900">CMS Pages</p>
-              <p className="text-sm text-gray-500">Manage website content and pages</p>
+            <Link href={`/${ADMIN_SEGMENT}/pages`} className="block p-3 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm font-medium text-gray-700">
+              + Edit CMS Pages
             </Link>
-            <Link href="/manage/calendar" className="block p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <p className="font-medium text-gray-900">School Calendar</p>
-              <p className="text-sm text-gray-500">Add or edit events and holidays</p>
+            <Link href="/manage/calendar" className="block p-3 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm font-medium text-gray-700">
+              + Add Calendar Event
             </Link>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">System Status</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Authentication</span>
-              <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Active</span>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h3 className="font-semibold text-gray-900 mb-4">Platform Overview</h3>
+          <div className="space-y-3 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-blue-500" />
+              <span>Manage subjects, classes, and curriculum</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Database</span>
-              <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Connected</span>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-green-500" />
+              <span>Schedule events and manage timetables</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Storage</span>
-              <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Ready</span>
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-purple-500" />
+              <span>Track fee payments and financial records</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Joy AI</span>
-              <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Online</span>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-orange-500" />
+              <span>Communicate with parents and staff</span>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

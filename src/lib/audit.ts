@@ -1,6 +1,4 @@
-/**
- * BDJA Audit Logging v5.0 - Production Hardened
- */
+"use server";
 
 import { getSupabaseAdmin } from "./supabase-server";
 
@@ -34,30 +32,16 @@ export async function logAudit(entry: AuditLogEntry): Promise<void> {
   }
 }
 
-export async function logLoginAttempt(
-  email: string,
-  success: boolean,
-  ip?: string
-): Promise<void> {
+export async function logLoginAttempt(email: string, success: boolean, ip?: string): Promise<void> {
   const admin = getSupabaseAdmin();
   try {
-    await admin.from("login_attempts").insert({
-      email,
-      ip_address: ip || null,
-      success,
-    });
+    await admin.from("login_attempts").insert({ email, ip_address: ip || null, success });
   } catch (error) {
     console.error("[audit] Failed to log login attempt:", error);
   }
 }
 
-export async function logImpersonation(
-  adminId: string,
-  targetUserId: string,
-  action: "start" | "end",
-  ip?: string,
-  userAgent?: string
-): Promise<void> {
+export async function logImpersonation(adminId: string, targetUserId: string, action: "start" | "end", ip?: string, userAgent?: string): Promise<void> {
   await logAudit({
     user_id: adminId,
     action: action === "start" ? "IMPERSONATION_START" : "IMPERSONATION_END",
@@ -69,22 +53,13 @@ export async function logImpersonation(
   });
 }
 
-export async function logPermissionChange(
-  adminId: string,
-  targetUserId: string,
-  permissionsAdded: string[],
-  permissionsRemoved: string[],
-  ip?: string
-): Promise<void> {
+export async function logPermissionChange(adminId: string, targetUserId: string, added: string[], removed: string[], ip?: string): Promise<void> {
   await logAudit({
     user_id: adminId,
     action: "PERMISSION_CHANGE",
     target_type: "staff_permissions",
     target_id: targetUserId,
-    metadata: {
-      added: permissionsAdded,
-      removed: permissionsRemoved,
-    },
+    metadata: { added, removed },
     ip_address: ip,
   });
 }

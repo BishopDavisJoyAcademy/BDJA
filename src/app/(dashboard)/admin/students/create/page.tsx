@@ -1,229 +1,108 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
-import { ArrowLeft, Loader2, Copy, Check } from "lucide-react";
-import Link from "next/link";
-import toast from "react-hot-toast";
+import { AlertCircle, CheckCircle } from "lucide-react";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
-const GRADE_LEVELS = [
-  "playgroup", "pp1", "pp2", "grade1", "grade2", "grade3", "grade4", "grade5", "grade6"
-];
+const GRADE_LEVELS = ["playgroup", "pp1", "pp2", "grade1", "grade2", "grade3", "grade4", "grade5", "grade6"];
 
-function generatePin(): string {
-  return Math.floor(1000 + Math.random() * 9000).toString();
-}
-
-export default function CreateStudent() {
-  const { user } = useAuth();
+export default function CreateStudentPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [created, setCreated] = useState(false);
-  const [credentials, setCredentials] = useState<{
-    full_name: string;
-    admission_number: string;
-    pin: string;
-    grade_level: string;
-  } | null>(null);
-  const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({
-    full_name: "",
-    admission_number: "",
-    grade_level: "grade1",
-    class_id: "",
-    campus_id: "",
-    parent_id: "",
+    email: "", full_name: "", phone: "", admission_number: "", grade_level: "grade1",
+    class_id: "", campus_id: "", parent_id: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{ email: string; tempPassword: string; admission_number: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.full_name || !form.admission_number) {
-      toast.error("Full name and admission number are required");
-      return;
-    }
-
-    const pin = generatePin();
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/admin/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          pin,
-        }),
+        body: JSON.stringify(form),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create student");
-
-      setCredentials({
-        full_name: form.full_name,
-        admission_number: form.admission_number,
-        pin,
-        grade_level: form.grade_level,
-      });
-      setCreated(true);
-      toast.success("Student created successfully!");
+      setResult({ email: data.email, tempPassword: data.tempPassword, admission_number: form.admission_number });
     } catch (err: any) {
-      toast.error(err.message);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCopy = async () => {
-    if (!credentials) return;
-    const text = `BDJA Student Login\n\nName: ${credentials.full_name}\nAdmission No: ${credentials.admission_number}\nPIN: ${credentials.pin}\nGrade: ${credentials.grade_level}\n\nLogin at: https://bdja.ac.ke/login`;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  };
-
-  if (user?.user_category !== "admin") {
+  if (result) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">You do not have permission to access this page.</p>
-      </div>
-    );
-  }
-
-  if (created && credentials) {
-    return (
-      <div className="max-w-lg mx-auto space-y-6 py-12">
-        <div className="bg-white p-8 rounded-2xl border shadow-sm text-center space-y-6">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <Check className="w-8 h-8 text-green-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Student Created!</h2>
-            <p className="text-gray-500">Share these credentials securely with the student.</p>
-          </div>
-
-          <div className="bg-gray-50 rounded-xl p-6 space-y-4 text-left">
-            <div>
-              <label className="text-xs font-medium text-gray-500 uppercase">Full Name</label>
-              <p className="text-sm font-medium text-gray-900">{credentials.full_name}</p>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 uppercase">Admission Number</label>
-              <p className="text-sm font-mono text-gray-900">{credentials.admission_number}</p>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 uppercase">PIN</label>
-              <p className="text-sm font-mono text-bdja-primary font-bold text-lg">{credentials.pin}</p>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 uppercase">Grade</label>
-              <p className="text-sm text-gray-900 capitalize">{credentials.grade_level}</p>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <Button onClick={handleCopy} variant="outline" className="flex-1 flex items-center gap-2">
-              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-              {copied ? "Copied!" : "Copy Credentials"}
-            </Button>
-            <Link href="/admin/students" className="flex-1">
-              <Button className="w-full">Done</Button>
-            </Link>
-          </div>
-
-          <p className="text-xs text-gray-400">
-            The student will be required to change this PIN on first login.
-          </p>
+      <div className="max-w-lg mx-auto bg-white rounded-xl border border-gray-200 p-8 text-center">
+        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Student Created Successfully!</h2>
+        <div className="bg-gray-50 rounded-lg p-4 text-left space-y-2 mb-4">
+          <p className="text-sm"><span className="font-medium">Email:</span> {result.email}</p>
+          <p className="text-sm"><span className="font-medium">Admission #:</span> {result.admission_number}</p>
+          <p className="text-sm"><span className="font-medium">Temporary PIN:</span> <span className="font-mono bg-yellow-100 px-2 py-0.5 rounded">{result.tempPassword}</span></p>
         </div>
+        <p className="text-sm text-red-600 mb-4">Copy this PIN now. It will not be shown again.</p>
+        <button onClick={() => router.push(`/${ADMIN_SEGMENT}/students`)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          Back to Students List
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/admin/students">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Add Student</h1>
-          <p className="text-gray-500">Create a new student account with auto-generated PIN</p>
+    <div className="max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Add New Student</h1>
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-700">{error}</p>
         </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg border shadow-sm">
+      )}
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-            <Input
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              placeholder="Jane Doe"
-              required
-            />
+            <input type="text" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Admission Number *</label>
-            <Input
-              value={form.admission_number}
-              onChange={(e) => setForm({ ...form, admission_number: e.target.value })}
-              placeholder="BDJA/2026/001"
-              required
-            />
+            <input type="text" required value={form.admission_number} onChange={(e) => setForm({ ...form, admission_number: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Grade Level</label>
-            <Select
-              value={form.grade_level}
-              onChange={(e) => setForm({ ...form, grade_level: e.target.value })}
-            >
-              {GRADE_LEVELS.map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </Select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Grade Level *</label>
+            <select value={form.grade_level} onChange={(e) => setForm({ ...form, grade_level: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {GRADE_LEVELS.map((g) => <option key={g} value={g}>{g.replace("grade", "Grade ").replace("pp", "PP ").replace("playgroup", "Playgroup")}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Class ID</label>
-            <Input
-              value={form.class_id}
-              onChange={(e) => setForm({ ...form, class_id: e.target.value })}
-              placeholder="UUID"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Campus ID</label>
-            <Input
-              value={form.campus_id}
-              onChange={(e) => setForm({ ...form, campus_id: e.target.value })}
-              placeholder="UUID"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Parent ID (optional)</label>
-            <Input
-              value={form.parent_id}
-              onChange={(e) => setForm({ ...form, parent_id: e.target.value })}
-              placeholder="Parent profile UUID"
-            />
+            <input type="text" value={form.class_id} onChange={(e) => setForm({ ...form, class_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <Button type="submit" disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Student"}
-          </Button>
-          <Link href="/admin/students">
-            <Button variant="outline" type="button">Cancel</Button>
-          </Link>
-        </div>
+        <button type="submit" disabled={loading}
+          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">
+          {loading ? "Creating..." : "Create Student"}
+        </button>
       </form>
     </div>
   );

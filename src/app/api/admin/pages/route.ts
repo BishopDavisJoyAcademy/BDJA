@@ -1,95 +1,95 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { hasPermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.replace("Bearer ", "");
+    const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
+    const { searchParams } = new URL(req.url);
+    const slug = searchParams.get("slug");
 
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    if (slug) {
+      const { data, error } = await admin.from("cms_pages").select("*").eq("slug", slug).single();
+      if (error) return NextResponse.json({ error: "Page not found" }, { status: 404 });
+      return NextResponse.json({ page: data });
     }
 
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("user_category")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "pages.edit")))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const { data: pages, error } = await admin
-      .from("cms_pages")
-      .select("*")
-      .order("updated_at", { ascending: false });
-
-    if (error) {
-      return NextResponse.json({ error: "Failed to fetch pages" }, { status: 500 });
-    }
-
-    return NextResponse.json({ pages: pages || [] });
+    const { data, error } = await admin.from("cms_pages").select("*").order("updated_at", { ascending: false });
+    if (error) return NextResponse.json({ error: "Failed to fetch pages" }, { status: 500 });
+    return NextResponse.json({ pages: data || [] });
   } catch (error: any) {
-    console.error("[api/admin/pages] Error:", error);
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
+    console.error("[pages GET] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await requireAuth(req);
+    requirePermission(session, "pages.edit");
+
+    const admin = getSupabaseAdmin();
+    const body = await req.json();
+    const { slug, title, content, meta_description, published } = body;
+
+    if (!slug || !title || !content) {
+      return NextResponse.json({ error: "Slug, title, and content are required" }, { status: 400 });
+    }
+
+    const { data, error } = await admin.from("cms_pages").insert({
+      slug,
+      title,
+      content,
+      meta_description,
+      published: published ?? false,
+      updated_by: session.userId,
+    }).select().single();
+
+    if (error) return NextResponse.json({ error: "Failed to create page" }, { status: 500 });
+    return NextResponse.json({ success: true, page: data });
+  } catch (error: any) {
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
+    console.error("[pages POST] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.replace("Bearer ", "");
+    const session = await requireAuth(req);
+    requirePermission(session, "pages.edit");
+
     const admin = getSupabaseAdmin();
-
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-    }
-
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("user_category")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || (profile.user_category !== "admin" && !(await hasPermission(user.id, "pages.edit")))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const body = await req.json();
-    const { slug, title, content, meta_description, published } = body;
+    const { id, slug, title, content, meta_description, published } = body;
 
-    const { error } = await admin
-      .from("cms_pages")
-      .upsert({
-        slug,
-        title,
-        content,
-        meta_description,
-        published,
-        updated_by: user.id,
-        updated_at: new Date().toISOString(),
-      });
+    if (!id) return NextResponse.json({ error: "Page ID required" }, { status: 400 });
 
-    if (error) {
-      return NextResponse.json({ error: "Failed to save page" }, { status: 500 });
-    }
+    const { data, error } = await admin.from("cms_pages").update({
+      slug,
+      title,
+      content,
+      meta_description,
+      published,
+      updated_by: session.userId,
+      updated_at: new Date().toISOString(),
+    }).eq("id", id).select().single();
 
-    return NextResponse.json({ success: true });
+    if (error) return NextResponse.json({ error: "Failed to update page" }, { status: 500 });
+    return NextResponse.json({ success: true, page: data });
   } catch (error: any) {
-    console.error("[api/admin/pages] PUT Error:", error);
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
+    console.error("[pages PUT] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

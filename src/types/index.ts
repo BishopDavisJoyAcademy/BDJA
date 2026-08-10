@@ -1,83 +1,43 @@
-export interface VoraContent {
-  id: string;
-  title: string;
-  summary?: string;
-  subject?: string;
-  grade_level?: string;
-  category?: string;
-  topic?: string;
-  tags?: string[];
-  channel?: string;
-  duration_seconds?: number;
-  thumbnail_url?: string;
-  youtube_url?: string;
-}
-
-export interface JoyMessage {
-  role: "user" | "assistant" | "system";
-  content: string;
-}
-
-export interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  read: boolean;
-  created_at: string;
-}
-
-export interface Campus {
-  id: string;
-  name: string;
-  location: string;
-  phone?: string;
-  email?: string;
-}
-
-export type UserCategory = 'student' | 'parent' | 'staff' | 'admin';
-export type UserRole = 'student' | 'parent' | 'staff' | 'admin';
+export type UserCategory = "student" | "parent" | "staff" | "admin";
+export type UserRole = "student" | "parent" | "staff" | "admin";
 
 export interface Profile {
   id: string;
   email: string;
   full_name: string;
-  phone?: string;
-  avatar_url?: string;
+  phone?: string | null;
+  avatar_url?: string | null;
   role: UserRole;
   user_category: UserCategory;
-  campus_id?: string;
+  campus_id?: string | null;
   is_active: boolean;
   password_changed: boolean;
   onboarding_completed: boolean;
   created_at?: string;
   updated_at?: string;
+  created_by?: string | null;
+  temp_password_hash?: string | null;
 }
 
-export interface Student {
+export interface StaffRecord {
   id: string;
-  admission_number?: string;
-  grade_level?: string;
-  class_id?: string;
+  employee_id: string;
+  department: string;
+  designation: string;
+  status: "active" | "inactive" | "on_leave" | "terminated";
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface StudentRecord {
+  id: string;
+  admission_number: string;
+  grade_level: string;
+  class_id?: string | null;
   enrollment_date?: string;
-  status: 'active' | 'inactive' | 'graduated' | 'transferred';
-}
-
-export interface Staff {
-  id: string;
-  employee_id?: string;
-  department?: string;
-  designation?: string;
-  join_date?: string;
-  status: 'active' | 'inactive' | 'suspended';
-}
-
-export interface ParentStudent {
-  id: string;
-  parent_id: string;
-  student_id: string;
-  relationship?: string;
-  is_primary?: boolean;
+  status: "active" | "inactive" | "graduated" | "transferred";
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Permission {
@@ -96,14 +56,55 @@ export interface PermissionCategory {
   sort_order: number;
 }
 
+export interface Campus {
+  id: string;
+  name: string;
+  location: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  user_id?: string;
+  action: string;
+  target_type: string;
+  target_id?: string;
+  metadata?: Record<string, any>;
+  impersonated_user_id?: string;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+}
+
+export interface ValidatedSession {
+  userId: string;
+  email: string;
+  role: UserRole;
+  userCategory: UserCategory;
+  fullName: string;
+  campusId: string | null;
+  passwordChanged: boolean;
+  onboardingCompleted: boolean;
+  isActive: boolean;
+  permissions: string[];
+}
+
+export interface AuthError {
+  code: string;
+  message: string;
+  details?: string;
+  retryAfter?: number;
+}
+
 export interface Suggestion {
   id: string;
   user_id: string;
-  type: 'idea' | 'feedback' | 'bug' | 'improvement' | 'complaint';
+  type: "idea" | "feedback" | "bug" | "improvement" | "complaint";
   title: string;
   description: string;
-  status: 'open' | 'under_review' | 'planned' | 'implemented' | 'declined' | 'closed';
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: "open" | "under_review" | "planned" | "implemented" | "declined" | "closed";
+  priority: "low" | "medium" | "high" | "critical";
   admin_response?: string;
   responded_by?: string;
   responded_at?: string;
@@ -155,7 +156,7 @@ export interface Assessment {
   strand: string;
   sub_strand: string;
   specific_learning_outcome?: string;
-  performance_level: 'beginning' | 'developing' | 'competent' | 'exceeds';
+  performance_level: "beginning" | "developing" | "competent" | "exceeds";
   score?: number;
   max_score?: number;
   term: string;
@@ -171,7 +172,7 @@ export interface Assignment {
   description?: string;
   due_date?: string;
   max_score?: number;
-  status: 'draft' | 'published' | 'closed';
+  status: "draft" | "published" | "closed";
 }
 
 export interface FeePayment {
@@ -184,7 +185,7 @@ export interface FeePayment {
   payment_date?: string;
   payment_method?: string;
   receipt_number?: string;
-  status: 'paid' | 'partial' | 'unpaid' | 'overdue';
+  status: "paid" | "partial" | "unpaid" | "overdue";
 }
 
 export interface LibraryBook {
@@ -193,7 +194,7 @@ export interface LibraryBook {
   author?: string;
   isbn?: string;
   category?: string;
-  status: 'available' | 'borrowed' | 'lost' | 'damaged';
+  status: "available" | "borrowed" | "lost" | "damaged";
   campus_id?: string;
 }
 
@@ -205,21 +206,8 @@ export interface Admission {
   parent_phone?: string;
   grade_level: string;
   campus_id?: string;
-  status: 'pending' | 'reviewing' | 'approved' | 'rejected' | 'waitlisted';
+  status: "pending" | "reviewing" | "approved" | "rejected" | "waitlisted";
   submitted_at: string;
-}
-
-export interface AuditLog {
-  id: string;
-  user_id?: string;
-  action: string;
-  target_type: string;
-  target_id?: string;
-  metadata?: Record<string, any>;
-  impersonated_user_id?: string;
-  ip_address?: string;
-  user_agent?: string;
-  created_at: string;
 }
 
 export interface Message {
@@ -232,5 +220,31 @@ export interface Message {
   created_at: string;
 }
 
-export * from "./joy";
-export * from "./attachments";
+export interface VoraContent {
+  id: string;
+  title: string;
+  summary?: string;
+  subject?: string;
+  grade_level?: string;
+  category?: string;
+  topic?: string;
+  tags?: string[];
+  channel?: string;
+  duration_seconds?: number;
+  thumbnail_url?: string;
+  youtube_url?: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  created_at: string;
+}
+
+export interface JoyMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}

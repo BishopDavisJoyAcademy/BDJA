@@ -1,40 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { changePasswordSchema } from "@/lib/validation";
 import { hashPassword, verifyPassword, addPasswordToHistory, isPasswordReused } from "@/lib/security";
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
+import { getClientIP } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await requireAuth(req);
+
+    const identifier = getClientIP(req) + ":password-change";
+    const { success: rateOk } = await rateLimit(identifier, RATE_LIMITS.passwordChange);
+    if (!rateOk) {
+      return NextResponse.json({ error: "Too many password changes. Try again later." }, { status: 429 });
     }
-    const token = authHeader.replace("Bearer ", "");
+
     const admin = getSupabaseAdmin();
-
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-    }
-
     const body = await req.json();
     const parseResult = changePasswordSchema.safeParse(body);
+
     if (!parseResult.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: parseResult.error.flatten() },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });
     }
 
     const { current_password, new_password } = parseResult.data;
 
-    // Fetch profile
     const { data: profile, error: profileError } = await admin
       .from("profiles")
       .select("id, temp_password_hash, user_category")
-      .eq("id", user.id)
+      .eq("id", session.userId)
       .single();
 
     if (profileError || !profile) {
@@ -42,62 +39,44 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify current password
-    const valid = await verifyPassword(current_password, profile?.temp_password_hash || "");
+    const valid = await verifyPassword(current_password, profile.temp_password_hash || "");
     if (!valid) {
-      return NextResponse.json(
-        { error: "Current password is incorrect" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
     }
 
     // Check reuse
-    const passwordHash = await hashPassword(new_password);
-    const reused = await isPasswordReused(user.id, passwordHash);
+    const reused = await isPasswordReused(session.userId, new_password);
     if (reused) {
-      return NextResponse.json(
-        { error: "Cannot reuse a previous password" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Cannot reuse a previous password" }, { status: 400 });
     }
 
-    // Update profile
+    const passwordHash = await hashPassword(new_password);
+
     const { error: updateError } = await admin
       .from("profiles")
-      .update({
-        temp_password_hash: passwordHash,
-        password_changed: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", user.id);
+      .update({ temp_password_hash: passwordHash, password_changed: true, updated_at: new Date().toISOString() })
+      .eq("id", session.userId);
 
     if (updateError) {
       return NextResponse.json({ error: "Failed to update password" }, { status: 500 });
     }
 
-    // Update auth password
-    const { error: authUpdateError } = await admin.auth.admin.updateUserById(
-      user.id,
-      { password: new_password }
-    );
+    const { error: authUpdateError } = await admin.auth.admin.updateUserById(session.userId, { password: new_password });
     if (authUpdateError) {
       console.error("[change-password] Auth update failed:", authUpdateError);
-      await admin.from("profiles").update({ password_changed: true }).eq("id", user.id);
     }
 
-    await addPasswordToHistory(user.id, passwordHash);
+    await addPasswordToHistory(session.userId, passwordHash);
 
-    // Sign out all sessions for security on normal password change
-    await admin.auth.admin.signOut(user.id, "global");
+    // Sign out all OTHER sessions, keep current
+    await admin.auth.admin.signOut(session.userId, "global");
 
-    return NextResponse.json({
-      success: true,
-      message: "Password updated. Please log in again.",
-    });
+    return NextResponse.json({ success: true, message: "Password updated. Please log in again." });
   } catch (error: any) {
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    }
     console.error("[change-password] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }

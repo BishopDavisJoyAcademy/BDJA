@@ -24,37 +24,27 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
   fetchPermissions: async () => {
     set({ isLoading: true, error: null });
     try {
-      // Secure auth check using getUser()
+      // Use getUser() for security
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         set({ error: "Not authenticated", isLoading: false });
         return;
       }
-
-      // Get session token for API call
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
         set({ error: "Session expired", isLoading: false });
         return;
       }
-
       const res = await fetch("/api/auth/permissions", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        throw new Error(json.error || `Failed to fetch permissions: ${res.status}`);
+        throw new Error(json.error || `Failed: ${res.status}`);
       }
-
       const data = await res.json();
-      set({
-        permissions: data.permissions || [],
-        allPermissions: data.allPermissions || [],
-        categories: data.categories || [],
-        isLoading: false,
-      });
+      set({ permissions: data.permissions || [], allPermissions: data.allPermissions || [], categories: data.categories || [], isLoading: false });
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
     }

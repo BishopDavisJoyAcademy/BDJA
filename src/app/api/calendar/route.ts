@@ -35,10 +35,22 @@ export async function POST(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const body = await req.json();
+    interface CalendarInsertRow {
+      title: string;
+      description: string | null;
+      start_date: string;
+      end_date: string | null;
+      location: string | null;
+      event_type: string;
+      is_public: boolean | null;
+      campus_id: string | null;
+      created_by: string;
+    }
+
     const { data, error } = await admin.from("calendar_events").insert({
       ...body,
       created_by: session.userId,
-    }).select().maybeSingle();
+    } as CalendarInsertRow).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create event" }, { status: 500 });
     return NextResponse.json({ success: true, event: data });

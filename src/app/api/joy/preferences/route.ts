@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     if (!data) {
       const { data: created, error: createError } = await admin
         .from("joy_user_preferences")
-        .insert({ user_id: user.id })
+        .insert({ user_id: user.id } as { user_id: string })
         .select()
         .maybeSingle();
       if (createError) throw createError;

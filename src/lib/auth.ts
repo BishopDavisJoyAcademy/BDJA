@@ -90,7 +90,7 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
 
     // Password history
     try {
-      await admin.from("password_history").insert({ user_id: authUserId, password_hash: passwordHash });
+      await admin.from("password_history").insert({ user_id: authUserId, password_hash: passwordHash } as { user_id: string; password_hash: string; created_at: string });
     } catch (err: any) {
       console.error("[auth] Password history insert failed:", err);
     }

@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       title,
       description,
       priority: priority || "medium",
-    }).select().maybeSingle();
+    } as { user_id: string; type: string; content: string; status: string | null }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create suggestion" }, { status: 500 });
     return NextResponse.json({ success: true, suggestion: data });

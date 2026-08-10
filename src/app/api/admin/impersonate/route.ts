@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { dbInsert } from "@/lib/db-helpers";
 import { logImpersonation } from "@/lib/audit";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/security";
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
       expires_at: expiresAt,
     };
 
-    await admin.from("user_sessions").insert(sessionPayload);
+    await dbInsert("user_sessions", sessionPayload);
 
     await logImpersonation(session.userId, targetUserId, "start", getClientIP(req), req.headers.get("user-agent") || undefined);
 

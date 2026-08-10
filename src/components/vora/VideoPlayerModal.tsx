@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { X, Clock, BookOpen, Save, CheckCircle } from "lucide-react";
-import { extractYouTubeId, getYouTubeEmbedUrl } from "@/lib/vora";
+import { extractYouTubeId, getYouTubeEmbedUrl } from "@/lib/vora-utils";
 
 interface VideoPlayerModalProps {
   isOpen: boolean;

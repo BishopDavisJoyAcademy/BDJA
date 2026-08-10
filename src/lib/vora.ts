@@ -1,6 +1,9 @@
 import fs from "fs";
 import path from "path";
 import { VoraContent } from "@/types";
+import { extractYouTubeId, getYouTubeEmbedUrl, getYouTubeThumbnail, formatDuration } from "./vora-utils";
+
+export { extractYouTubeId, getYouTubeEmbedUrl, getYouTubeThumbnail, formatDuration };
 
 const CONTENT_DIR = path.join(process.cwd(), "content", "youtube");
 
@@ -55,29 +58,20 @@ export function searchVoraContent(query: string, options?: {
     const topic = (item.topic || "").toLowerCase();
     const tags = (item.tags || []).map((t: string) => t.toLowerCase());
 
-    // Exact title match
     if (title.includes(q)) score += 20;
-    // Word matches in title
     qWords.forEach(w => { if (title.includes(w)) score += 5; });
-    // Subject match
     if (subject.includes(q)) score += 15;
     qWords.forEach(w => { if (subject.includes(w)) score += 4; });
-    // Category/topic match
     if (category.includes(q) || topic.includes(q)) score += 12;
     qWords.forEach(w => { if (category.includes(w) || topic.includes(w)) score += 3; });
-    // Tag match
     tags.forEach(t => {
       if (t.includes(q)) score += 10;
       qWords.forEach(w => { if (t.includes(w)) score += 2; });
     });
-    // Summary match
     if (summary.includes(q)) score += 8;
     qWords.forEach(w => { if (summary.includes(w)) score += 2; });
 
-    // Grade boost
     if (options?.grade_level && item.grade_level === options.grade_level) score += 10;
-
-    // Exact filters
     if (options?.subject && item.subject?.toLowerCase() === options.subject.toLowerCase()) score += 8;
     if (options?.category && item.category?.toLowerCase() === options.category.toLowerCase()) score += 6;
 
@@ -107,31 +101,4 @@ export function getVoraCategories(): string[] {
   const categories = new Set<string>();
   all.forEach(item => { if (item.category) categories.add(item.category); });
   return Array.from(categories).sort();
-}
-
-export function extractYouTubeId(url: string): string | null {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-    /^([a-zA-Z0-9_-]{11})$/,
-  ];
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
-}
-
-export function getYouTubeEmbedUrl(videoId: string): string {
-  return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
-}
-
-export function getYouTubeThumbnail(videoId: string): string {
-  return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-}
-
-export function formatDuration(seconds?: number): string {
-  if (!seconds) return "Unknown";
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }

@@ -57,3 +57,20 @@ export const firstLoginPinSchema = z.object({
   message: "PINs do not match",
   path: ["confirm_pin"],
 });
+
+export const chatMessageSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant", "system"]),
+    content: z.string().min(1),
+  })).min(1),
+  context: z.string().optional(),
+  stream: z.boolean().optional(),
+});
+
+export const voraSearchSchema = z.object({
+  query: z.string().min(1).optional(),
+  grade_level: z.string().optional(),
+  subject: z.string().optional(),
+  category: z.string().optional(),
+  limit: z.number().int().min(1).max(50).optional(),
+});

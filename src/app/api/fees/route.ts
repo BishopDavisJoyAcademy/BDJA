@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { z } from "zod";
+import type { Database } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 

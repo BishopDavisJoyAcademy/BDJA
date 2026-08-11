@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,9 +8,9 @@ if (!url || !serviceKey) {
   throw new Error("Missing Supabase server environment variables");
 }
 
-let _admin: ReturnType<typeof createClient<Database>> | undefined;
+let _admin: SupabaseClient<Database> | undefined;
 
-export function getSupabaseAdmin(): ReturnType<typeof createClient<Database>> {
+export function getSupabaseAdmin(): SupabaseClient<Database> {
   if (!_admin) {
     _admin = createClient<Database>(url, serviceKey, {
       auth: {

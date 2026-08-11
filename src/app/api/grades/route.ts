@@ -13,7 +13,7 @@ const assessmentInsertSchema = z.object({
   academic_year: z.string().min(1, "Academic year is required"),
   score: z.number().min(0).nullable().optional(),
   max_score: z.number().positive().nullable().optional(),
-  performance_level: z.enum(["exceeding", "meeting", "approaching", "below"]).min(1, "Performance level is required"),
+  performance_level: z.enum(["exceeding", "meeting", "approaching", "below"]),
   strand: z.string().min(1, "Strand is required"),
   sub_strand: z.string().min(1, "Sub-strand is required"),
   specific_learning_outcome: z.string().nullable().optional(),

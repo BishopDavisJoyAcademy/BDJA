@@ -1,0 +1,80 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/session";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await requireAuth(req);
+    const admin = getSupabaseAdmin();
+    const { searchParams } = new URL(req.url);
+    const classId = searchParams.get("class_id");
+
+    if (!classId) {
+      return NextResponse.json({ error: "class_id is required" }, { status: 400 });
+    }
+
+    // Verify teacher has access to this class
+    const { data: classCheck, error: classErr } = await admin
+      .from("classes")
+      .select("id, class_teacher_id")
+      .eq("id", classId)
+      .maybeSingle();
+
+    if (classErr) {
+      console.error("[teacher/students GET] class check error:", classErr);
+      return NextResponse.json({ error: "Failed to verify class access" }, { status: 500 });
+    }
+
+    const isClassTeacher = classCheck?.class_teacher_id === session.userId;
+
+    const { data: subjectCheck, error: subjErr } = await admin
+      .from("class_subjects")
+      .select("id")
+      .eq("class_id", classId)
+      .eq("teacher_id", session.userId)
+      .maybeSingle();
+
+    if (subjErr) {
+      console.error("[teacher/students GET] subject check error:", subjErr);
+    }
+
+    const isSubjectTeacher = !!subjectCheck;
+    const isAdmin = session.userCategory === "admin" || session.role === "admin";
+
+    if (!isClassTeacher && !isSubjectTeacher && !isAdmin) {
+      return NextResponse.json({ error: "You do not have access to this class" }, { status: 403 });
+    }
+
+    // Get students in this class via the students table (profile_id -> profiles)
+    const { data: students, error: studErr } = await admin
+      .from("students")
+      .select("id, admission_number, profile_id, class_id, status, profiles(id, full_name, email, phone)")
+      .eq("class_id", classId)
+      .eq("status", "active");
+
+    if (studErr) {
+      console.error("[teacher/students GET] students error:", studErr);
+      return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 });
+    }
+
+    const formatted = (students || []).map((s: any) => ({
+      id: s.id,
+      profile_id: s.profile_id,
+      full_name: s.profiles?.full_name || "Unknown",
+      email: s.profiles?.email || null,
+      phone: s.profiles?.phone || null,
+      admission_number: s.admission_number,
+      status: s.status,
+    }));
+
+    return NextResponse.json({ students: formatted });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    }
+    console.error("[teacher/students GET] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

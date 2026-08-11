@@ -66,8 +66,8 @@ export async function recordFailedLogin(userId: string | null, email: string, ip
       p_user_id: safeUserId,
       p_email: email,
       p_success: false,
-      p_ip_address: ipAddress || null,
-      p_user_agent: userAgent || null,
+      p_ip_address: ipAddress,
+      p_user_agent: userAgent,
     });
   } catch (error) {
     console.error("[security] recordFailedLogin error:", error);
@@ -81,8 +81,8 @@ export async function recordSuccessfulLogin(userId: string, email: string, ipAdd
       p_user_id: userId,
       p_email: email,
       p_success: true,
-      p_ip_address: ipAddress || null,
-      p_user_agent: userAgent || null,
+      p_ip_address: ipAddress,
+      p_user_agent: userAgent,
     });
   } catch (error) {
     console.error("[security] recordSuccessfulLogin error:", error);
@@ -97,7 +97,7 @@ export async function recordSession(userId: string, token: string, ipAddress: st
       p_user_id: userId,
       p_token_hash: tokenHash,
       p_device_info: { user_agent: userAgent },
-      p_ip_address: ipAddress || null,
+      p_ip_address: ipAddress,
       p_expires_at: expiresAt.toISOString(),
     });
   } catch (error) {

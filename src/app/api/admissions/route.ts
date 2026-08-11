@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { z } from "zod";
+import type { Database } from "@/types/database";
+
+type Json = Database["public"]["Tables"]["admissions"]["Row"]["documents"];
+type AdmissionInsert = Database["public"]["Tables"]["admissions"]["Insert"];
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +22,6 @@ const admissionInsertSchema = z.object({
   admission_number: z.string().nullable().optional(),
   date_of_birth: z.string().nullable().optional(),
   gender: z.enum(["male", "female", "other"]).nullable().optional(),
-  documents: z.record(z.unknown()).nullable().optional(),
 });
 
 const admissionUpdateSchema = z.object({
@@ -26,6 +29,19 @@ const admissionUpdateSchema = z.object({
   notes: z.string().nullable().optional(),
   reviewed_by: z.string().uuid().nullable().optional(),
 });
+
+function isJson(val: unknown): val is Json {
+  if (val === null || typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+    return true;
+  }
+  if (Array.isArray(val)) {
+    return val.every(isJson);
+  }
+  if (typeof val === "object" && val !== null) {
+    return Object.values(val).every((v) => v === undefined || isJson(v));
+  }
+  return false;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -93,10 +109,16 @@ export async function POST(req: NextRequest) {
     }
 
     const insertData = parseResult.data;
+    const payload: AdmissionInsert = { ...insertData };
+
+    // Handle documents separately with type-safe validation
+    if (rawBody.documents !== undefined && isJson(rawBody.documents)) {
+      payload.documents = rawBody.documents;
+    }
 
     const { data, error } = await admin
       .from("admissions")
-      .insert(insertData)
+      .insert(payload)
       .select()
       .maybeSingle();
 

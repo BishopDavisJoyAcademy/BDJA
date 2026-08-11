@@ -107,7 +107,6 @@ export async function PUT(req: NextRequest) {
       duration: body.duration,
       thumbnail_url: body.thumbnail_url,
       is_public: body.is_public,
-      updated_at: new Date().toISOString(),
     }).eq("id", id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

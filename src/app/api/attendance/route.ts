@@ -127,10 +127,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const updateData = {
-      ...parseResult.data,
-      updated_at: new Date().toISOString(),
-    };
+    const updateData = parseResult.data;
 
     const { data, error } = await admin
       .from("attendance")

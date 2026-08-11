@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS account_lockouts (
   locked_until TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   user_agent TEXT,
-  user_id TEXT NOT NULL
+  user_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS admin_recovery_log (
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS admin_recovery_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ip_address INET,
   reason TEXT NOT NULL,
-  target_user_id TEXT NOT NULL,
+  target_user_id UUID NOT NULL,
   user_agent TEXT
 );
 
@@ -61,14 +61,14 @@ CREATE TABLE IF NOT EXISTS login_audit (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ip_address INET,
   user_agent TEXT,
-  user_id TEXT
+  user_id UUID
 );
 
 CREATE TABLE IF NOT EXISTS password_history (
   changed_at TEXT,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   password_hash TEXT NOT NULL,
-  user_id TEXT NOT NULL
+  user_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS permission_categories (
@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
   revoked_reason TEXT,
   session_token_hash TEXT NOT NULL,
   user_agent TEXT,
-  user_id TEXT NOT NULL
+  user_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS admissions (
@@ -228,7 +228,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   action TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  impersonated_user_id TEXT,
+  impersonated_user_id UUID,
   ip_address TEXT,
   new_data JSONB,
   old_data JSONB,
@@ -1434,6 +1434,7 @@ BEGIN
 END $$;
 
 
+
 -- ============================================
 -- RLS POLICIES
 -- ============================================
@@ -1455,17 +1456,17 @@ CREATE POLICY "admissions_admin" ON admissions FOR ALL USING (EXISTS (SELECT 1 F
 
 -- assessments
 ALTER TABLE assessments ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "assessments_own" ON assessments;
-DROP POLICY IF EXISTS "assessments_staff" ON assessments;
-CREATE POLICY "assessments_own" ON assessments FOR SELECT USING (student_id = auth.uid());
-CREATE POLICY "assessments_staff" ON assessments FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'grades.manage'));
+DROP POLICY IF EXISTS "assessments_read" ON assessments;
+DROP POLICY IF EXISTS "assessments_admin" ON assessments;
+CREATE POLICY "assessments_read" ON assessments FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "assessments_admin" ON assessments FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- assignment_submissions
 ALTER TABLE assignment_submissions ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "assignment_submissions_own" ON assignment_submissions;
-DROP POLICY IF EXISTS "assignment_submissions_staff" ON assignment_submissions;
-CREATE POLICY "assignment_submissions_own" ON assignment_submissions FOR SELECT USING (student_id = auth.uid());
-CREATE POLICY "assignment_submissions_staff" ON assignment_submissions FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'grades.manage'));
+DROP POLICY IF EXISTS "assignment_submissions_read" ON assignment_submissions;
+DROP POLICY IF EXISTS "assignment_submissions_admin" ON assignment_submissions;
+CREATE POLICY "assignment_submissions_read" ON assignment_submissions FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "assignment_submissions_admin" ON assignment_submissions FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- assignments
 ALTER TABLE assignments ENABLE ROW LEVEL SECURITY;
@@ -1502,10 +1503,10 @@ CREATE POLICY "campuses_admin" ON campuses FOR ALL USING (EXISTS (SELECT 1 FROM 
 
 -- character_reports
 ALTER TABLE character_reports ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "character_reports_own" ON character_reports;
-DROP POLICY IF EXISTS "character_reports_staff" ON character_reports;
-CREATE POLICY "character_reports_own" ON character_reports FOR SELECT USING (student_id = auth.uid());
-CREATE POLICY "character_reports_staff" ON character_reports FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'grades.manage'));
+DROP POLICY IF EXISTS "character_reports_read" ON character_reports;
+DROP POLICY IF EXISTS "character_reports_admin" ON character_reports;
+CREATE POLICY "character_reports_read" ON character_reports FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "character_reports_admin" ON character_reports FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- class_subjects
 ALTER TABLE class_subjects ENABLE ROW LEVEL SECURITY;
@@ -1523,31 +1524,25 @@ CREATE POLICY "classes_admin" ON classes FOR ALL USING (EXISTS (SELECT 1 FROM pr
 
 -- cms_pages
 ALTER TABLE cms_pages ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "cms_pages_public" ON cms_pages;
 DROP POLICY IF EXISTS "cms_pages_admin" ON cms_pages;
-CREATE POLICY "cms_pages_public" ON cms_pages FOR SELECT USING (is_published = true);
 CREATE POLICY "cms_pages_admin" ON cms_pages FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- conversation_messages
 ALTER TABLE conversation_messages ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "conversation_messages_own" ON conversation_messages;
 DROP POLICY IF EXISTS "conversation_messages_admin" ON conversation_messages;
-CREATE POLICY "conversation_messages_own" ON conversation_messages FOR ALL USING (user_id = auth.uid());
 CREATE POLICY "conversation_messages_admin" ON conversation_messages FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- conversations
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "conversations_own" ON conversations;
-DROP POLICY IF EXISTS "conversations_admin" ON conversations;
 CREATE POLICY "conversations_own" ON conversations FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "conversations_admin" ON conversations FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- fee_payments
 ALTER TABLE fee_payments ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "fee_payments_own" ON fee_payments;
-DROP POLICY IF EXISTS "fee_payments_staff" ON fee_payments;
-CREATE POLICY "fee_payments_own" ON fee_payments FOR SELECT USING (student_id = auth.uid());
-CREATE POLICY "fee_payments_staff" ON fee_payments FOR ALL USING (EXISTS (SELECT 1 FROM staff_permissions sp JOIN permissions p ON sp.permission_id = p.id WHERE sp.profile_id = auth.uid() AND p.key = 'grades.manage'));
+DROP POLICY IF EXISTS "fee_payments_read" ON fee_payments;
+DROP POLICY IF EXISTS "fee_payments_admin" ON fee_payments;
+CREATE POLICY "fee_payments_read" ON fee_payments FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "fee_payments_admin" ON fee_payments FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- fee_structures
 ALTER TABLE fee_structures ENABLE ROW LEVEL SECURITY;
@@ -1559,9 +1554,14 @@ CREATE POLICY "fee_structures_admin" ON fee_structures FOR ALL USING (EXISTS (SE
 -- file_uploads
 ALTER TABLE file_uploads ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "file_uploads_own" ON file_uploads;
-DROP POLICY IF EXISTS "file_uploads_admin" ON file_uploads;
 CREATE POLICY "file_uploads_own" ON file_uploads FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "file_uploads_admin" ON file_uploads FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+
+-- grade_levels
+ALTER TABLE grade_levels ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "grade_levels_public" ON grade_levels;
+DROP POLICY IF EXISTS "grade_levels_admin" ON grade_levels;
+CREATE POLICY "grade_levels_public" ON grade_levels FOR SELECT USING (true);
+CREATE POLICY "grade_levels_admin" ON grade_levels FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- homepage_carousel
 ALTER TABLE homepage_carousel ENABLE ROW LEVEL SECURITY;
@@ -1667,15 +1667,15 @@ CREATE POLICY "login_audit_admin" ON login_audit FOR ALL USING (EXISTS (SELECT 1
 
 -- mark_sheet_templates
 ALTER TABLE mark_sheet_templates ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "mark_sheet_templates_read" ON mark_sheet_templates;
+DROP POLICY IF EXISTS "mark_sheet_templates_own" ON mark_sheet_templates;
 DROP POLICY IF EXISTS "mark_sheet_templates_admin" ON mark_sheet_templates;
-CREATE POLICY "mark_sheet_templates_read" ON mark_sheet_templates FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "mark_sheet_templates_own" ON mark_sheet_templates FOR ALL USING (created_by = auth.uid());
 CREATE POLICY "mark_sheet_templates_admin" ON mark_sheet_templates FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- messages
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "messages_own" ON messages;
-CREATE POLICY "messages_own" ON messages FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "messages_own" ON messages FOR ALL USING (sender_id = auth.uid());
 
 -- notifications
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
@@ -1703,24 +1703,18 @@ CREATE POLICY "password_history_own" ON password_history FOR ALL USING (user_id 
 
 -- permission_categories
 ALTER TABLE permission_categories ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "permission_categories_read" ON permission_categories;
 DROP POLICY IF EXISTS "permission_categories_admin" ON permission_categories;
-CREATE POLICY "permission_categories_read" ON permission_categories FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "permission_categories_admin" ON permission_categories FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- permissions
 ALTER TABLE permissions ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "permissions_read" ON permissions;
 DROP POLICY IF EXISTS "permissions_admin" ON permissions;
-CREATE POLICY "permissions_read" ON permissions FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "permissions_admin" ON permissions FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- profiles
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "profiles_own" ON profiles;
-DROP POLICY IF EXISTS "profiles_admin" ON profiles;
-CREATE POLICY "profiles_own" ON profiles FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "profiles_admin" ON profiles FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
+CREATE POLICY "profiles_own" ON profiles FOR ALL USING (id = auth.uid());
 
 -- saved_videos
 ALTER TABLE saved_videos ENABLE ROW LEVEL SECURITY;
@@ -1738,7 +1732,7 @@ CREATE POLICY "staff_admin" ON staff FOR ALL USING (EXISTS (SELECT 1 FROM profil
 ALTER TABLE staff_permissions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "staff_permissions_own" ON staff_permissions;
 DROP POLICY IF EXISTS "staff_permissions_admin" ON staff_permissions;
-CREATE POLICY "staff_permissions_own" ON staff_permissions FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "staff_permissions_own" ON staff_permissions FOR ALL USING (profile_id = auth.uid());
 CREATE POLICY "staff_permissions_admin" ON staff_permissions FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- staff_roles
@@ -1758,7 +1752,7 @@ CREATE POLICY "students_admin" ON students FOR ALL USING (EXISTS (SELECT 1 FROM 
 -- study_streaks
 ALTER TABLE study_streaks ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "study_streaks_own" ON study_streaks;
-CREATE POLICY "study_streaks_own" ON study_streaks FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "study_streaks_own" ON study_streaks FOR ALL USING (student_id = auth.uid());
 
 -- subjects
 ALTER TABLE subjects ENABLE ROW LEVEL SECURITY;
@@ -1770,29 +1764,27 @@ CREATE POLICY "subjects_admin" ON subjects FOR ALL USING (EXISTS (SELECT 1 FROM 
 -- suggestions
 ALTER TABLE suggestions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "suggestions_own" ON suggestions;
-DROP POLICY IF EXISTS "suggestions_admin" ON suggestions;
 CREATE POLICY "suggestions_own" ON suggestions FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "suggestions_admin" ON suggestions FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- teacher_mark_sheets
 ALTER TABLE teacher_mark_sheets ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "teacher_mark_sheets_own" ON teacher_mark_sheets;
 DROP POLICY IF EXISTS "teacher_mark_sheets_admin" ON teacher_mark_sheets;
-CREATE POLICY "teacher_mark_sheets_own" ON teacher_mark_sheets FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "teacher_mark_sheets_own" ON teacher_mark_sheets FOR ALL USING (teacher_id = auth.uid());
 CREATE POLICY "teacher_mark_sheets_admin" ON teacher_mark_sheets FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- teacher_registers
 ALTER TABLE teacher_registers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "teacher_registers_own" ON teacher_registers;
 DROP POLICY IF EXISTS "teacher_registers_admin" ON teacher_registers;
-CREATE POLICY "teacher_registers_own" ON teacher_registers FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "teacher_registers_own" ON teacher_registers FOR ALL USING (teacher_id = auth.uid());
 CREATE POLICY "teacher_registers_admin" ON teacher_registers FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- teacher_timetables
 ALTER TABLE teacher_timetables ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "teacher_timetables_own" ON teacher_timetables;
 DROP POLICY IF EXISTS "teacher_timetables_admin" ON teacher_timetables;
-CREATE POLICY "teacher_timetables_own" ON teacher_timetables FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "teacher_timetables_own" ON teacher_timetables FOR ALL USING (teacher_id = auth.uid());
 CREATE POLICY "teacher_timetables_admin" ON teacher_timetables FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- timetable
@@ -1810,12 +1802,12 @@ CREATE POLICY "user_sessions_own" ON user_sessions FOR ALL USING (user_id = auth
 -- values_badges
 ALTER TABLE values_badges ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "values_badges_own" ON values_badges;
-CREATE POLICY "values_badges_own" ON values_badges FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "values_badges_own" ON values_badges FOR ALL USING (student_id = auth.uid());
 
 -- vora_attempts
 ALTER TABLE vora_attempts ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "vora_attempts_own" ON vora_attempts;
-CREATE POLICY "vora_attempts_own" ON vora_attempts FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "vora_attempts_own" ON vora_attempts FOR ALL USING (student_id = auth.uid());
 
 -- vora_content
 ALTER TABLE vora_content ENABLE ROW LEVEL SECURITY;
@@ -1828,11 +1820,8 @@ CREATE POLICY "vora_content_admin" ON vora_content FOR ALL USING (EXISTS (SELECT
 
 -- vora_quizzes
 ALTER TABLE vora_quizzes ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "vora_quizzes_public" ON vora_quizzes;
 DROP POLICY IF EXISTS "vora_quizzes_admin" ON vora_quizzes;
-CREATE POLICY "vora_quizzes_public" ON vora_quizzes FOR SELECT USING (true);
 CREATE POLICY "vora_quizzes_admin" ON vora_quizzes FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
-
 
 -- ============================================
 -- SERVICE ROLE PRIVILEGES

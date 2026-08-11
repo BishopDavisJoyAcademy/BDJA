@@ -47,9 +47,9 @@ export async function POST(req: NextRequest) {
       title,
       content,
       meta_description,
-      is_published: is_published ?? false,
-      last_edited_by: session.userId,
-    } as { slug: string; title: string; content: string; meta_description: string | null; is_published: boolean | null; last_edited_by: string }).select().maybeSingle();
+      published: is_published ?? false,
+      updated_by: session.userId,
+    }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create page" }, { status: 500 });
     return NextResponse.json({ success: true, page: data });
@@ -78,8 +78,8 @@ export async function PUT(req: NextRequest) {
       title,
       content,
       meta_description,
-      is_published,
-      last_edited_by: session.userId,
+      published: is_published,
+      updated_by: session.userId,
       updated_at: new Date().toISOString(),
     }).eq("id", id).select().maybeSingle();
 

@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
     }
 
     const newCredential = isStudent
-      ? (parseResult.data as { new_pin?: string }).new_pin
-      : (parseResult.data as { new_password?: string }).new_password;
+      ? (parseResult.data as { new_pin: string }).new_pin
+      : (parseResult.data as { new_password: string }).new_password;
 
     const passwordHash = await hashPassword(newCredential);
 

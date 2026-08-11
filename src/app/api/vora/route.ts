@@ -3,8 +3,25 @@ import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { voraSearchSchema } from "@/lib/validation";
 import { z } from "zod";
+import type { Database } from "@/types/database";
+
+type Json = Database["public"]["Tables"]["vora_content"]["Row"]["captions"];
+type VoraInsert = Database["public"]["Tables"]["vora_content"]["Insert"];
 
 export const dynamic = "force-dynamic";
+
+function isJson(val: unknown): val is Json {
+  if (val === null || typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+    return true;
+  }
+  if (Array.isArray(val)) {
+    return val.every(isJson);
+  }
+  if (typeof val === "object" && val !== null) {
+    return Object.values(val).every((v) => v === undefined || isJson(v));
+  }
+  return false;
+}
 
 const voraInsertSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -25,7 +42,6 @@ const voraInsertSchema = z.object({
   class_id: z.string().uuid().nullable().optional(),
   subject_id: z.string().uuid().nullable().optional(),
   visibility: z.string().nullable().optional(),
-  captions: z.record(z.unknown()).nullable().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -80,10 +96,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const insertData = {
+    const insertData: VoraInsert = {
       ...parseResult.data,
       uploaded_by: session.userId,
     };
+    if (rawBody.captions !== undefined && isJson(rawBody.captions)) {
+      insertData.captions = rawBody.captions;
+    }
 
     const { data, error } = await admin
       .from("vora_content")

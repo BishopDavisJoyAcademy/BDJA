@@ -2,20 +2,22 @@ import { getSupabaseAdmin } from "./supabase-server";
 import type { Database } from "@/types/database";
 
 type TableName = keyof Database["public"]["Tables"];
+type TableInsert<K extends TableName> = Database["public"]["Tables"][K]["Insert"];
+type TableUpdate<K extends TableName> = Database["public"]["Tables"][K]["Update"];
 
-export async function dbInsert<K extends TableName, T extends Record<string, unknown>>(table: K, values: T) {
+export async function dbInsert<K extends TableName>(table: K, values: TableInsert<K>) {
   return getSupabaseAdmin().from(table).insert(values);
 }
 
-export async function dbInsertMany<K extends TableName, T extends Record<string, unknown>>(table: K, values: T[]) {
+export async function dbInsertMany<K extends TableName>(table: K, values: TableInsert<K>[]) {
   return getSupabaseAdmin().from(table).insert(values);
 }
 
-export async function dbUpdate<K extends TableName, T extends Record<string, unknown>>(table: K, id: string, values: Partial<T>) {
+export async function dbUpdate<K extends TableName>(table: K, id: string, values: TableUpdate<K>) {
   return getSupabaseAdmin().from(table).update(values).eq("id", id);
 }
 
-export async function dbUpsert<K extends TableName, T extends Record<string, unknown>>(table: K, values: T, conflictColumns: string[]) {
+export async function dbUpsert<K extends TableName>(table: K, values: TableInsert<K>, conflictColumns: string[]) {
   return getSupabaseAdmin().from(table).upsert(values, { onConflict: conflictColumns.join(",") });
 }
 

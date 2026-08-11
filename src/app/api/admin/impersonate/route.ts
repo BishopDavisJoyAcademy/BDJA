@@ -102,15 +102,7 @@ export async function POST(req: NextRequest) {
       expires_at: expiresAt,
     };
 
-    interface UserSessionInsert {
-      user_id: string;
-      session_token_hash: string;
-      expires_at: string;
-      ip_address: string | null;
-      user_agent: string | null;
-      created_at: string | null;
-    }
-    await getSupabaseAdmin().from("user_sessions").insert(sessionPayload as UserSessionInsert);
+    await getSupabaseAdmin().from("user_sessions").insert(sessionPayload);
 
     await logImpersonation(session.userId, targetUserId, "start", getClientIP(req), req.headers.get("user-agent") || undefined);
 

@@ -139,8 +139,9 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const updateData: Record<string, unknown> = { ...parseResult.data };
-    if (updateData.status === "verified" && !updateData.verified_by) {
+    const validated = parseResult.data;
+    const updateData: Database["public"]["Tables"]["fee_payments"]["Update"] = { ...validated };
+    if (validated.status === "verified" && !validated.verified_by) {
       updateData.verified_by = session.userId;
       updateData.verified_at = new Date().toISOString();
     }

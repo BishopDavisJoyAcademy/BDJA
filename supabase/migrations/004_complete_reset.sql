@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS permission_categories (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   icon TEXT,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  key TEXT NOT NULL,
+  key TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   sort_order INTEGER
 );

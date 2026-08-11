@@ -484,7 +484,6 @@ CREATE TABLE IF NOT EXISTS library_resources (
   subject_id TEXT,
   title TEXT NOT NULL,
   total_copies INTEGER,
-  CONSTRAINT chk_resource_status CHECK (status IN ('available', 'borrowed', 'lost', 'damaged'))
 );
 
 CREATE TABLE IF NOT EXISTS mark_sheet_templates (
@@ -668,7 +667,6 @@ CREATE TABLE IF NOT EXISTS vora_quizzes (
   order_index INTEGER,
   question TEXT NOT NULL,
   vora_id TEXT NOT NULL,
-  CONSTRAINT chk_quiz_status CHECK (status IN ('draft', 'published', 'archived'))
 );
 
 CREATE TABLE IF NOT EXISTS assessments (

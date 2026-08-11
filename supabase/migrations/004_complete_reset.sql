@@ -564,7 +564,6 @@ CREATE TABLE IF NOT EXISTS library_resources (
   subject_id TEXT,
   title TEXT NOT NULL,
   total_copies INTEGER,
-  CONSTRAINT chk_resource_status CHECK (status IN ('available', 'borrowed', 'lost', 'damaged'))
 );
 
 CREATE TABLE IF NOT EXISTS mark_sheet_templates (
@@ -748,7 +747,6 @@ CREATE TABLE IF NOT EXISTS vora_quizzes (
   order_index INTEGER,
   question TEXT NOT NULL,
   vora_id TEXT NOT NULL,
-  CONSTRAINT chk_quiz_status CHECK (status IN ('draft', 'published', 'archived'))
 );
 
 CREATE TABLE IF NOT EXISTS assessments (
@@ -2015,11 +2013,11 @@ ON CONFLICT (key) DO NOTHING;
 -- ============================================
 
 INSERT INTO campuses (name, location, phone, email)
-VALUES ('Main Campus', 'Nairobi, Kenya', '+254 700 000000', 'info@bdja.ac.ke')
+VALUES ('Bishop Davis Joy Academy Main Campus', 'Kenya Faiba, near Peaks Hotel, Nanyuki–Nturukuma', '0708 449 158', 'bishopdavisjoyacademy@gmail.com')
 ON CONFLICT DO NOTHING;
 
 -- ============================================
--- DEFAULT GRADE LEVELS
+-- DEFAULT GRADE LEVELS (Playgroup to Grade 6)
 -- ============================================
 
 INSERT INTO grade_levels (name, sort_order) VALUES
@@ -2031,10 +2029,7 @@ INSERT INTO grade_levels (name, sort_order) VALUES
  ('Grade 3', 6),
  ('Grade 4', 7),
  ('Grade 5', 8),
- ('Grade 6', 9),
- ('Grade 7', 10),
- ('Grade 8', 11),
- ('Grade 9', 12)
+ ('Grade 6', 9)
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================
@@ -2058,11 +2053,11 @@ ON CONFLICT (code) DO NOTHING;
 -- ============================================
 
 INSERT INTO cms_pages (slug, title, content, meta_description, is_published) VALUES
- ('about', 'About BDJA', '<h2>About Bishop Davis Joy Academy</h2><p>Welcome to BDJA, a place of excellence in education.</p>', 'Learn about Bishop Davis Joy Academy', true),
- ('admissions', 'Admissions', '<h2>Admissions</h2><p>Join our family of learners. Apply today!</p>', 'Apply to Bishop Davis Joy Academy', true),
- ('contact', 'Contact Us', '<h2>Contact Us</h2><p>Email: info@bdja.ac.ke<br>Phone: +254 700 000000</p>', 'Contact Bishop Davis Joy Academy', true),
- ('policies', 'School Policies', '<h2>School Policies</h2><p>Our policies ensure a safe learning environment.</p>', 'School policies at BDJA', true),
- ('faqs', 'FAQs', '<h2>Frequently Asked Questions</h2><p>Find answers to common questions here.</p>', 'Frequently asked questions about BDJA', true)
+ ('about', 'About BDJA', '<h2>About Bishop Davis Joy Academy</h2><p>Bishop Davis Joy Academy (BDJA) is a Christian CBC school offering education from Playgroup to Grade 6.</p><p><strong>Motto:</strong> Prayer, Commitment and Hard Work for Success.</p><p><strong>Mission:</strong> To encourage children in learning opportunities.</p><p><strong>Objective:</strong> To empower children to make a difference in their lives, the life of their community and the wider world.</p><p><strong>Location:</strong> Kenya Faiba, near Peaks Hotel, Nanyuki–Nturukuma.</p><p><strong>Contact:</strong> 0708 449 158 | bishopdavisjoyacademy@gmail.com | P.O. Box 3013–10400</p>', 'Learn about Bishop Davis Joy Academy', true),
+ ('admissions', 'Admissions', '<h2>Admissions Open</h2><p>Join our family of learners at Bishop Davis Joy Academy. We offer quality Christian CBC education from Playgroup to Grade 6.</p><p>Contact us today to enroll your child:</p><ul><li>Phone: 0708 449 158</li><li>Email: bishopdavisjoyacademy@gmail.com</li><li>Address: P.O. Box 3013–10400</li><li>Location: Kenya Faiba, near Peaks Hotel, Nanyuki–Nturukuma</li></ul>', 'Apply to Bishop Davis Joy Academy', true),
+ ('contact', 'Contact Us', '<h2>Contact Bishop Davis Joy Academy</h2><p>We would love to hear from you. Reach out to us through any of the following channels:</p><ul><li><strong>Phone:</strong> 0708 449 158</li><li><strong>Email:</strong> bishopdavisjoyacademy@gmail.com</li><li><strong>Postal Address:</strong> P.O. Box 3013–10400</li><li><strong>Location:</strong> Kenya Faiba, near Peaks Hotel, Nanyuki–Nturukuma</li></ul>', 'Contact Bishop Davis Joy Academy', true),
+ ('policies', 'School Policies', '<h2>School Policies</h2><p>At Bishop Davis Joy Academy, our policies ensure a safe, nurturing, and Christ-centered learning environment for all students.</p>', 'School policies at BDJA', true),
+ ('faqs', 'FAQs', '<h2>Frequently Asked Questions</h2><p><strong>What curriculum does BDJA follow?</strong><br>We follow the Competency-Based Curriculum (CBC) under the Kenyan education system.</p><p><strong>What grades do you offer?</strong><br>We offer education from Playgroup to Grade 6.</p><p><strong>Are admissions open?</strong><strong>Yes, admissions are currently open. Contact us at 0708 449 158.</strong></p>', 'Frequently asked questions about BDJA', true)
 ON CONFLICT (slug) DO NOTHING;
 
 -- ============================================
@@ -2077,17 +2072,18 @@ INSERT INTO homepage_stats (label, value, icon, sort_order, is_active) VALUES
 ON CONFLICT DO NOTHING;
 
 INSERT INTO homepage_carousel (title, subtitle, image_url, button_text, button_link, sort_order, is_active) VALUES
- ('Welcome to BDJA', 'Excellence in Education', NULL, 'Learn More', '/about', 1, true),
- ('Join Our Family', 'Admissions Open', NULL, 'Apply Now', '/admissions', 2, true)
+ ('Welcome to BDJA', 'Prayer, Commitment and Hard Work for Success', NULL, 'Learn More', '/about', 1, true),
+ ('Admissions Open', 'Join our family of learners today', NULL, 'Apply Now', '/admissions', 2, true)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO homepage_director_message (director_name, title, message, is_active) VALUES
- ('Director Name', 'A Message from the Director', 'Welcome to Bishop Davis Joy Academy...', true)
+ ('School Director', 'A Message from the Director', 'Welcome to Bishop Davis Joy Academy. Our commitment is to provide a Christ-centered education that nurtures every child to reach their full potential. Together, we build a foundation of excellence.', true)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO homepage_notices (title, content, priority, is_active) VALUES
- ('Welcome to the New Term', 'The new academic term begins soon. Get ready!', 1, true),
- ('School Fees Reminder', 'Please ensure all fees are paid by the deadline.', 2, true)
+ ('Welcome to the New Term', 'The new academic term begins soon. Get ready for another exciting year of learning at BDJA!', 1, true),
+ ('School Fees Reminder', 'Please ensure all fees are paid by the deadline. Contact the bursar for any inquiries.', 2, true),
+ ('Admissions Are Open', 'Enroll your child at Bishop Davis Joy Academy. Call 0708 449 158 or email bishopdavisjoyacademy@gmail.com.', 1, true)
 ON CONFLICT DO NOTHING;
 
 

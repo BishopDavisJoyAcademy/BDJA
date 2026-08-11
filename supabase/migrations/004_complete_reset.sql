@@ -75,7 +75,7 @@ DROP POLICY IF EXISTS "Allow authenticated read" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated delete own" ON storage.objects;
 
 -- ============================================
--- PHASE 2: CREATE SCHEMA (from 001_initial_schema.sql)
+-- PHASE 2: CREATE SCHEMA
 -- ============================================
 
 -- ============================================================
@@ -1946,7 +1946,7 @@ CREATE POLICY "Allow authenticated delete own" ON storage.objects
 
 
 -- ============================================
--- PHASE 3: SEED DATA (from 002_seed_data.sql)
+-- PHASE 3: SEED DATA
 -- ============================================
 
 -- ============================================================
@@ -2092,7 +2092,7 @@ ON CONFLICT DO NOTHING;
 
 
 -- ============================================
--- PHASE 4: ADMIN SETUP (from 003_admin_setup.sql)
+-- PHASE 4: ADMIN SETUP
 -- ============================================
 
 -- ============================================================

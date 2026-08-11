@@ -8,16 +8,16 @@ if (!url || !serviceKey) {
   throw new Error("Missing Supabase server environment variables");
 }
 
-let _admin: SupabaseClient<Database, "public"> | undefined;
+let _admin: SupabaseClient<Database> | undefined;
 
-export function getSupabaseAdmin(): SupabaseClient<Database, "public"> {
+export function getSupabaseAdmin(): SupabaseClient<Database> {
   if (!_admin) {
-    _admin = createClient<Database, "public">(url, serviceKey, {
+    _admin = createClient(url, serviceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
-    });
+    }) as unknown as SupabaseClient<Database>;
   }
   return _admin;
 }

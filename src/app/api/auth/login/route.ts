@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-client";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { recordFailedLogin, recordSuccessfulLogin, checkAccountLockout, extractDeviceInfo, getClientIP, recordSession } from "@/lib/security";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await createClient();
+    const admin = getSupabaseAdmin();
     const ip = getClientIP(req);
     const deviceInfo = extractDeviceInfo(req);
 
@@ -39,8 +41,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: lockout.message || "Account locked" }, { status: 403 });
     }
 
-    // Check profile
-    const { data: profileRows } = await supabase
+    // Check profile — use admin client to bypass RLS (session cookies not set yet)
+    const { data: profileRows } = await admin
       .from("profiles")
       .select("is_active, password_changed, onboarding_completed, user_category")
       .eq("id", userId)

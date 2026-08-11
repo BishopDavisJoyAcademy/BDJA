@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS permissions (
 
 CREATE TABLE IF NOT EXISTS profiles (
   avatar_url TEXT,
-  campus_id TEXT,
+  campus_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
   email TEXT NOT NULL,
@@ -206,7 +206,7 @@ CREATE TABLE IF NOT EXISTS saved_videos (
   summary TEXT,
   thumbnail_url TEXT,
   title TEXT NOT NULL,
-  user_id TEXT NOT NULL,
+  user_id UUID NOT NULL,
   video_id TEXT NOT NULL,
   youtube_url TEXT NOT NULL
 );
@@ -225,20 +225,20 @@ CREATE TABLE IF NOT EXISTS staff (
 
 CREATE TABLE IF NOT EXISTS staff_permissions (
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  granted_by TEXT,
+  granted_by UUID,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  permission_id TEXT NOT NULL,
-  profile_id TEXT NOT NULL
+  permission_id UUID NOT NULL,
+  profile_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS staff_roles (
-  assigned_by TEXT,
-  campus_id TEXT,
+  assigned_by UUID,
+  campus_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   permissions JSONB NOT NULL,
   role TEXT NOT NULL,
-  user_id TEXT NOT NULL
+  user_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS subjects (
@@ -256,12 +256,12 @@ CREATE TABLE IF NOT EXISTS suggestions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   priority TEXT,
   responded_at TEXT,
-  responded_by TEXT,
+  responded_by UUID,
   status TEXT NOT NULL,
   title TEXT NOT NULL,
   type TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  user_id TEXT NOT NULL,
+  user_id UUID NOT NULL,
   CONSTRAINT chk_suggestion_type CHECK (type IN ('idea', 'feedback', 'bug', 'improvement', 'complaint')),
   CONSTRAINT chk_suggestion_status CHECK (status IN ('open', 'under_review', 'planned', 'implemented', 'declined', 'closed')),
   CONSTRAINT chk_suggestion_priority CHECK (priority IN ('low', 'medium', 'high', 'critical'))
@@ -285,7 +285,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 
 CREATE TABLE IF NOT EXISTS admissions (
   admission_number TEXT,
-  campus_id TEXT NOT NULL,
+  campus_id UUID NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   date_of_birth TEXT,
   documents JSONB,
@@ -298,7 +298,7 @@ CREATE TABLE IF NOT EXISTS admissions (
   parent_email TEXT,
   parent_name TEXT,
   parent_phone TEXT,
-  reviewed_by TEXT,
+  reviewed_by UUID,
   status TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT chk_admission_status CHECK (status IN ('pending', 'reviewing', 'approved', 'rejected', 'waitlisted'))
@@ -315,14 +315,14 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   record_id TEXT,
   table_name TEXT,
   user_agent TEXT,
-  user_id TEXT
+  user_id UUID
 );
 
 CREATE TABLE IF NOT EXISTS calendar_events (
   attachments JSONB,
-  campus_id TEXT,
+  campus_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT NOT NULL,
+  created_by UUID NOT NULL,
   description TEXT,
   end_date TEXT,
   event_type TEXT NOT NULL,
@@ -336,8 +336,8 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 
 CREATE TABLE IF NOT EXISTS classes (
   academic_year TEXT NOT NULL,
-  campus_id TEXT NOT NULL,
-  class_teacher_id TEXT,
+  campus_id UUID NOT NULL,
+  class_teacher_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   grade_level TEXT NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -350,7 +350,7 @@ CREATE TABLE IF NOT EXISTS cms_pages (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_published BOOLEAN,
-  last_edited_by TEXT,
+  last_edited_by UUID,
   meta_description TEXT,
   meta_keywords TEXT,
   slug TEXT NOT NULL,
@@ -364,15 +364,15 @@ CREATE TABLE IF NOT EXISTS conversations (
   is_pinned BOOLEAN,
   title TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  user_id TEXT NOT NULL
+  user_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS fee_structures (
   academic_year TEXT NOT NULL,
   activity_fees INTEGER,
-  campus_id TEXT NOT NULL,
+  campus_id UUID NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   grade_level TEXT NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   other_fees JSONB,
@@ -395,14 +395,14 @@ CREATE TABLE IF NOT EXISTS file_uploads (
   scanned BOOLEAN,
   size_bytes INTEGER NOT NULL,
   storage_path TEXT NOT NULL,
-  user_id TEXT NOT NULL
+  user_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS homepage_carousel (
   button_link TEXT,
   button_text TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   description TEXT,
   display_order INTEGER NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -415,7 +415,7 @@ CREATE TABLE IF NOT EXISTS homepage_carousel (
 
 CREATE TABLE IF NOT EXISTS homepage_director_message (
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   director_name TEXT NOT NULL,
   director_photo_url TEXT,
   director_title TEXT NOT NULL,
@@ -428,7 +428,7 @@ CREATE TABLE IF NOT EXISTS homepage_director_message (
 
 CREATE TABLE IF NOT EXISTS homepage_footer_links (
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   display_order INTEGER NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_active BOOLEAN,
@@ -439,7 +439,7 @@ CREATE TABLE IF NOT EXISTS homepage_footer_links (
 
 CREATE TABLE IF NOT EXISTS homepage_grade_levels (
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   description TEXT,
   display_name TEXT NOT NULL,
   display_order INTEGER NOT NULL,
@@ -454,7 +454,7 @@ CREATE TABLE IF NOT EXISTS homepage_news (
   category TEXT,
   content TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   excerpt TEXT,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   image_url TEXT,
@@ -468,7 +468,7 @@ CREATE TABLE IF NOT EXISTS homepage_news (
 CREATE TABLE IF NOT EXISTS homepage_notices (
   content TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   icon_type TEXT,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_active BOOLEAN,
@@ -480,7 +480,7 @@ CREATE TABLE IF NOT EXISTS homepage_notices (
 
 CREATE TABLE IF NOT EXISTS homepage_quick_links (
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   display_order INTEGER NOT NULL,
   icon_name TEXT,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -492,7 +492,7 @@ CREATE TABLE IF NOT EXISTS homepage_quick_links (
 
 CREATE TABLE IF NOT EXISTS homepage_social_links (
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   display_order INTEGER NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_active BOOLEAN,
@@ -502,7 +502,7 @@ CREATE TABLE IF NOT EXISTS homepage_social_links (
 
 CREATE TABLE IF NOT EXISTS homepage_stats (
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   display_order INTEGER NOT NULL,
   icon_name TEXT NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -519,7 +519,7 @@ CREATE TABLE IF NOT EXISTS joy_actions (
   error_message TEXT,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   success BOOLEAN,
-  user_id TEXT NOT NULL
+  user_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS joy_analytics (
@@ -531,7 +531,7 @@ CREATE TABLE IF NOT EXISTS joy_analytics (
   resolved BOOLEAN,
   response_time_ms INTEGER,
   role TEXT,
-  user_id TEXT
+  user_id UUID
 );
 
 CREATE TABLE IF NOT EXISTS joy_user_preferences (
@@ -545,30 +545,30 @@ CREATE TABLE IF NOT EXISTS joy_user_preferences (
   show_timestamps BOOLEAN,
   theme TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  user_id TEXT NOT NULL
+  user_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS library_resources (
   author TEXT,
   available_copies INTEGER,
   borrowed_by JSONB,
-  campus_id TEXT,
+  campus_id UUID,
   cover_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   file_url TEXT,
   grade_levels TEXT[],
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   isbn TEXT,
   resource_type TEXT NOT NULL,
-  subject_id TEXT,
+  subject_id UUID,
   title TEXT NOT NULL,
   total_copies INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS mark_sheet_templates (
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT NOT NULL,
+  created_by UUID NOT NULL,
   description TEXT,
   grade_levels TEXT[] NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -580,14 +580,14 @@ CREATE TABLE IF NOT EXISTS mark_sheet_templates (
 
 CREATE TABLE IF NOT EXISTS messages (
   attachments JSONB,
-  class_id TEXT,
+  class_id UUID,
   content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   read BOOLEAN,
   read_at TEXT,
-  receiver_id TEXT,
-  sender_id TEXT NOT NULL,
+  receiver_id UUID,
+  sender_id UUID NOT NULL,
   subject TEXT
 );
 
@@ -599,30 +599,30 @@ CREATE TABLE IF NOT EXISTS notifications (
   read BOOLEAN,
   title TEXT NOT NULL,
   type TEXT NOT NULL,
-  user_id TEXT NOT NULL
+  user_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS parent_students (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_primary BOOLEAN,
-  parent_id TEXT NOT NULL,
+  parent_id UUID NOT NULL,
   relationship TEXT,
-  student_id TEXT NOT NULL
+  student_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS students (
   admission_number TEXT NOT NULL,
   barcode TEXT,
-  campus_id TEXT,
-  class_id TEXT,
+  campus_id UUID,
+  class_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   date_of_birth TEXT,
   enrollment_date TEXT,
   grade_level TEXT,
   house_team TEXT,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id TEXT,
+  profile_id UUID,
   status TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT chk_student_status CHECK (status IN ('active', 'inactive', 'graduated', 'transferred'))
@@ -633,22 +633,22 @@ CREATE TABLE IF NOT EXISTS study_streaks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   last_activity_date TEXT,
   longest_streak INTEGER,
-  student_id TEXT NOT NULL,
+  student_id UUID NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS teacher_mark_sheets (
   academic_year TEXT NOT NULL,
-  class_id TEXT NOT NULL,
+  class_id UUID NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   entries JSONB NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_template BOOLEAN,
   layout_config JSONB NOT NULL,
   max_score INTEGER,
-  subject_id TEXT,
-  teacher_id TEXT NOT NULL,
+  subject_id UUID,
+  teacher_id UUID NOT NULL,
   template_name TEXT,
   term TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -656,64 +656,64 @@ CREATE TABLE IF NOT EXISTS teacher_mark_sheets (
 );
 
 CREATE TABLE IF NOT EXISTS teacher_registers (
-  class_id TEXT NOT NULL,
+  class_id UUID NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   entries JSONB NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_template BOOLEAN,
   layout_config JSONB NOT NULL,
   register_date TEXT NOT NULL,
-  teacher_id TEXT NOT NULL,
+  teacher_id UUID NOT NULL,
   template_name TEXT,
   title TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS teacher_timetables (
-  class_id TEXT,
+  class_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   description TEXT,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_active BOOLEAN,
   is_template BOOLEAN,
   layout_config JSONB NOT NULL,
-  teacher_id TEXT NOT NULL,
+  teacher_id UUID NOT NULL,
   title TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS timetable (
-  campus_id TEXT NOT NULL,
-  class_id TEXT NOT NULL,
+  campus_id UUID NOT NULL,
+  class_id UUID NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by TEXT,
+  created_by UUID,
   day_of_week INTEGER NOT NULL,
   end_time TEXT NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   room TEXT,
   start_time TEXT NOT NULL,
-  subject_id TEXT NOT NULL,
-  teacher_id TEXT,
+  subject_id UUID NOT NULL,
+  teacher_id UUID,
   topic TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS values_badges (
-  awarded_by TEXT NOT NULL,
+  awarded_by UUID NOT NULL,
   badge_type TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   reason TEXT,
-  student_id TEXT NOT NULL
+  student_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS vora_content (
   approved BOOLEAN,
-  approved_by TEXT,
-  campus_id TEXT NOT NULL,
+  approved_by UUID,
+  campus_id UUID NOT NULL,
   captions JSONB,
-  class_id TEXT,
+  class_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
   description TEXT,
@@ -725,14 +725,14 @@ CREATE TABLE IF NOT EXISTS vora_content (
   strand TEXT,
   sub_strand TEXT,
   subject TEXT NOT NULL,
-  subject_id TEXT,
+  subject_id UUID,
   summary TEXT,
   thumbnail_url TEXT,
   title TEXT NOT NULL,
   topic TEXT,
   transcript TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  uploaded_by TEXT NOT NULL,
+  uploaded_by UUID NOT NULL,
   video_url TEXT NOT NULL,
   visibility TEXT,
   CONSTRAINT chk_vora_visibility CHECK (visibility IN ('public', 'private', 'restricted'))
@@ -746,14 +746,14 @@ CREATE TABLE IF NOT EXISTS vora_quizzes (
   options JSONB,
   order_index INTEGER,
   question TEXT NOT NULL,
-  vora_id TEXT NOT NULL
+  vora_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS assessments (
   academic_year TEXT NOT NULL,
-  assessed_by TEXT NOT NULL,
+  assessed_by UUID NOT NULL,
   change_reason TEXT,
-  class_id TEXT NOT NULL,
+  class_id UUID NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   max_score INTEGER,
@@ -761,59 +761,59 @@ CREATE TABLE IF NOT EXISTS assessments (
   score INTEGER,
   specific_learning_outcome TEXT,
   strand TEXT NOT NULL,
-  student_id TEXT NOT NULL,
+  student_id UUID NOT NULL,
   sub_strand TEXT NOT NULL,
-  subject_id TEXT NOT NULL,
+  subject_id UUID NOT NULL,
   term TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT chk_performance_level CHECK (performance_level IN ('beginning', 'developing', 'competent', 'exceeds'))
 );
 
 CREATE TABLE IF NOT EXISTS assignment_submissions (
-  assignment_id TEXT NOT NULL,
+  assignment_id UUID NOT NULL,
   attachments JSONB,
   content TEXT,
   grade JSONB,
   graded_at TEXT,
-  graded_by TEXT,
+  graded_by UUID,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   status TEXT,
-  student_id TEXT NOT NULL,
+  student_id UUID NOT NULL,
   submitted_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS assignments (
   attachments JSONB,
-  class_id TEXT NOT NULL,
+  class_id UUID NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   description TEXT,
   due_date TEXT,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   rubric JSONB,
   status TEXT,
-  subject_id TEXT NOT NULL,
-  teacher_id TEXT NOT NULL,
+  subject_id UUID NOT NULL,
+  teacher_id UUID NOT NULL,
   title TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT chk_assignment_status CHECK (status IN ('draft', 'published', 'closed'))
 );
 
 CREATE TABLE IF NOT EXISTS attendance (
-  class_id TEXT NOT NULL,
+  class_id UUID NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   date TEXT NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  marked_by TEXT NOT NULL,
+  marked_by UUID NOT NULL,
   notes TEXT,
   status TEXT NOT NULL,
-  student_id TEXT NOT NULL,
-  subject_id TEXT,
+  student_id UUID NOT NULL,
+  subject_id UUID,
   CONSTRAINT chk_attendance_status CHECK (status IN ('present', 'absent', 'late', 'excused'))
 );
 
 CREATE TABLE IF NOT EXISTS character_reports (
   academic_year TEXT NOT NULL,
-  assessed_by TEXT NOT NULL,
+  assessed_by UUID NOT NULL,
   commitment TEXT,
   compassion TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -823,22 +823,22 @@ CREATE TABLE IF NOT EXISTS character_reports (
   integrity TEXT,
   respect TEXT,
   responsibility TEXT,
-  student_id TEXT NOT NULL,
+  student_id UUID NOT NULL,
   teacher_notes TEXT,
   teamwork TEXT,
   term TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS class_subjects (
-  class_id TEXT NOT NULL,
+  class_id UUID NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  subject_id TEXT NOT NULL,
-  teacher_id TEXT
+  subject_id UUID NOT NULL,
+  teacher_id UUID
 );
 
 CREATE TABLE IF NOT EXISTS conversation_messages (
   content TEXT NOT NULL,
-  conversation_id TEXT NOT NULL,
+  conversation_id UUID NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   metadata JSONB,
@@ -849,17 +849,17 @@ CREATE TABLE IF NOT EXISTS conversation_messages (
 CREATE TABLE IF NOT EXISTS fee_payments (
   amount INTEGER NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  fee_structure_id TEXT NOT NULL,
+  fee_structure_id UUID NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   notes TEXT,
   payment_method TEXT NOT NULL,
   receipt_number TEXT,
   receipt_url TEXT,
   status TEXT,
-  student_id TEXT NOT NULL,
+  student_id UUID NOT NULL,
   transaction_ref TEXT,
   verified_at TEXT,
-  verified_by TEXT,
+  verified_by UUID,
   CONSTRAINT chk_fee_status CHECK (status IN ('paid', 'partial', 'unpaid', 'overdue'))
 );
 
@@ -867,19 +867,19 @@ CREATE TABLE IF NOT EXISTS library_borrowings (
   borrowed_at TEXT,
   due_date TEXT NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  resource_id TEXT NOT NULL,
+  resource_id UUID NOT NULL,
   returned_at TEXT,
-  staff_id TEXT,
+  staff_id UUID,
   status TEXT,
-  student_id TEXT
+  student_id UUID
 );
 
 CREATE TABLE IF NOT EXISTS parent_children (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  parent_id TEXT NOT NULL,
+  parent_id UUID NOT NULL,
   relationship TEXT,
-  student_id TEXT NOT NULL
+  student_id UUID NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS vora_attempts (
@@ -888,9 +888,10 @@ CREATE TABLE IF NOT EXISTS vora_attempts (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   score INTEGER,
-  student_id TEXT NOT NULL,
-  vora_id TEXT NOT NULL
+  student_id UUID NOT NULL,
+  vora_id UUID NOT NULL
 );
+
 -- ============================================
 -- FOREIGN KEY CONSTRAINTS
 -- ============================================
@@ -1201,6 +1202,7 @@ ALTER TABLE vora_attempts ADD CONSTRAINT vora_attempts_student_id_fkey FOREIGN K
 ALTER TABLE vora_attempts DROP CONSTRAINT IF EXISTS vora_attempts_vora_id_fkey;
 ALTER TABLE vora_attempts ADD CONSTRAINT vora_attempts_vora_id_fkey FOREIGN KEY (vora_id) REFERENCES vora_content(id) ON DELETE SET NULL;
 
+
 -- ============================================
 -- INDEXES
 -- ============================================
@@ -1288,6 +1290,7 @@ CREATE INDEX IF NOT EXISTS idx_subjects_code ON subjects(code);
 CREATE INDEX IF NOT EXISTS idx_admin_recovery_log_adminid ON admin_recovery_log(admin_id);
 CREATE INDEX IF NOT EXISTS idx_admin_recovery_log_targetuserid ON admin_recovery_log(target_user_id);
 CREATE INDEX IF NOT EXISTS idx_vora_attempts_studentid ON vora_attempts(student_id);
+
 -- ============================================
 -- FUNCTIONS
 -- ============================================
@@ -1475,11 +1478,11 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+
 -- ============================================
 -- TRIGGERS
 -- ============================================
 
--- Clean up any existing triggers on auth.users
 DO $$
 DECLARE
   t RECORD;
@@ -1498,7 +1501,6 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
--- Auto-update updated_at for all tables that have the column
 DO $$
 DECLARE
   t TEXT;
@@ -1510,6 +1512,7 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
 
 -- ============================================
 -- RLS POLICIES
@@ -1910,6 +1913,7 @@ DROP POLICY IF EXISTS "vora_quizzes_admin" ON vora_quizzes;
 CREATE POLICY "vora_quizzes_public" ON vora_quizzes FOR SELECT USING (true);
 CREATE POLICY "vora_quizzes_admin" ON vora_quizzes FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
+
 -- ============================================
 -- SERVICE ROLE PRIVILEGES
 -- ============================================
@@ -1941,7 +1945,6 @@ CREATE POLICY "Allow authenticated read" ON storage.objects
 DROP POLICY IF EXISTS "Allow authenticated delete own" ON storage.objects;
 CREATE POLICY "Allow authenticated delete own" ON storage.objects
  FOR DELETE TO authenticated USING (bucket_id = 'attachments' AND owner = auth.uid());
-
 
 -- ============================================
 -- PHASE 3: SEED DATA

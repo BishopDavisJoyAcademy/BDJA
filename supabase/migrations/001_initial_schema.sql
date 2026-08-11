@@ -483,7 +483,7 @@ CREATE TABLE IF NOT EXISTS library_resources (
   resource_type TEXT NOT NULL,
   subject_id TEXT,
   title TEXT NOT NULL,
-  total_copies INTEGER,
+  total_copies INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS mark_sheet_templates (
@@ -666,7 +666,7 @@ CREATE TABLE IF NOT EXISTS vora_quizzes (
   options JSONB,
   order_index INTEGER,
   question TEXT NOT NULL,
-  vora_id TEXT NOT NULL,
+  vora_id TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS assessments (

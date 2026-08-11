@@ -1007,14 +1007,18 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('attachments', 'attachments', true)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY IF NOT EXISTS "Allow authenticated uploads" ON storage.objects
+DROP POLICY IF EXISTS "Allow authenticated uploads" ON storage.objects;
+CREATE POLICY "Allow authenticated uploads" ON storage.objects
   FOR INSERT TO authenticated WITH CHECK (bucket_id = 'attachments');
 
-CREATE POLICY IF NOT EXISTS "Allow public read" ON storage.objects
+DROP POLICY IF EXISTS "Allow public read" ON storage.objects;
+CREATE POLICY "Allow public read" ON storage.objects
   FOR SELECT TO anon USING (bucket_id = 'attachments');
 
-CREATE POLICY IF NOT EXISTS "Allow authenticated read" ON storage.objects
+DROP POLICY IF EXISTS "Allow authenticated read" ON storage.objects;
+CREATE POLICY "Allow authenticated read" ON storage.objects
   FOR SELECT TO authenticated USING (bucket_id = 'attachments');
 
-CREATE POLICY IF NOT EXISTS "Allow authenticated delete own" ON storage.objects
+DROP POLICY IF EXISTS "Allow authenticated delete own" ON storage.objects;
+CREATE POLICY "Allow authenticated delete own" ON storage.objects
   FOR DELETE TO authenticated USING (bucket_id = 'attachments' AND owner = auth.uid());

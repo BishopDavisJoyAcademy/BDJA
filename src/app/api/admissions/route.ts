@@ -157,11 +157,14 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const updateData: Record<string, unknown> = { ...parseResult.data };
-    if (updateData.status && !updateData.reviewed_by) {
+    const validated = parseResult.data;
+    const updateData: Database["public"]["Tables"]["admissions"]["Update"] = {
+      ...validated,
+      updated_at: new Date().toISOString(),
+    };
+    if (validated.status && !validated.reviewed_by) {
       updateData.reviewed_by = session.userId;
     }
-    updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await admin
       .from("admissions")

@@ -32,12 +32,12 @@ export async function validateSession(token: string): Promise<{ session: Validat
       expires_at: string;
     }
 
-    const { data: sessionRowRaw, error: sessionError } = await admin
+    const { data: sessionRows } = await admin
       .from("user_sessions")
       .select("id, revoked_at, expires_at")
       .eq("session_token_hash", tokenHash)
-      .single();
-    const sessionRow = sessionRowRaw as SessionRow | null;
+      .limit(1);
+    const sessionRow = (sessionRows?.[0] ?? null) as SessionRow | null;
 
     if (sessionRow?.revoked_at) {
       return { session: null, error: { code: "INVALID_TOKEN", message: "Session has been revoked. Please log in again." } };
@@ -58,26 +58,26 @@ export async function validateSession(token: string): Promise<{ session: Validat
       onboarding_completed: boolean;
     }
 
-    let { data: profileRaw, error: profileError } = await admin
+    let { data: profileRows } = await admin
       .from("profiles")
       .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
       .eq("id", user.id)
-      .single();
-    let profile = profileRaw as ProfileSessionRow | null;
+      .limit(1);
+    let profile = (profileRows?.[0] ?? null) as ProfileSessionRow | null;
 
-    if (profileError || !profile) {
-      // Auto-restore missing profile (trigger may have failed or user was created outside the app)
+    if (!profile) {
+      // Auto-restore missing profile (same pattern as login route)
       const restored = await restoreMissingProfile(user.id);
       if (restored) {
-        const { data: restoredRaw } = await admin
+        const { data: restoredRows } = await admin
           .from("profiles")
           .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
           .eq("id", user.id)
-          .single();
-        profile = restoredRaw as ProfileSessionRow | null;
+          .limit(1);
+        profile = (restoredRows?.[0] ?? null) as ProfileSessionRow | null;
       }
       if (!profile) {
-        return { session: null, error: { code: "PROFILE_MISSING", message: "Your account profile is missing. Please contact the administrator.", details: profileError?.message } };
+        return { session: null, error: { code: "PROFILE_MISSING", message: "Your account profile is missing. Please contact the administrator." } };
       }
     }
 

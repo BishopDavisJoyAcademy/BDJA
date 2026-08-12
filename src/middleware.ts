@@ -154,7 +154,13 @@ export async function middleware(req: NextRequest) {
 
   // First login — must set password/PIN
   if (profile.password_changed === false) {
-    if (pathname === "/reset-password" || pathname.startsWith("/reset-password/")) {
+    // Allow reset-password page and the API endpoints that perform the actual password change
+    const allowedPaths = [
+      "/reset-password",
+      "/api/auth/first-login",
+      "/api/auth/change-password",
+    ];
+    if (allowedPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
       return res;
     }
     if (pathname.startsWith("/api/")) {

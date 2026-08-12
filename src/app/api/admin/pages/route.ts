@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       title,
       content,
       meta_description,
-      published: is_published ?? false,
+      is_published: is_published ?? false,
       updated_by: session.userId,
     }).select().maybeSingle();
 
@@ -78,7 +78,7 @@ export async function PUT(req: NextRequest) {
       title,
       content,
       meta_description,
-      published: is_published,
+      is_published: is_published,
       updated_by: session.userId,
       updated_at: new Date().toISOString(),
     }).eq("id", id).select().maybeSingle();

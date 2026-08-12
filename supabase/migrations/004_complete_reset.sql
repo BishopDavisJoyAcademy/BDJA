@@ -1933,7 +1933,6 @@ DROP POLICY IF EXISTS "Allow authenticated delete own" ON storage.objects;
 CREATE POLICY "Allow authenticated delete own" ON storage.objects
  FOR DELETE TO authenticated USING (bucket_id = 'attachments' AND owner = auth.uid());
 
--- ============================================
 -- -- ============================================================
 -- BDJA Platform — Seed Data (v4.0)
 -- Corrected to match the complete 61-table schema
@@ -2003,7 +2002,7 @@ INSERT INTO campuses (name, location, phone, email)
 VALUES ('Bishop Davis Joy Academy Main Campus', 'Kenya Faiba, near Peaks Hotel, Nanyuki–Nturukuma', '0708 449 158', 'bishopdavisjoyacademy@gmail.com')
 ON CONFLICT DO NOTHING;
 
-
+-- ============================================
 -- DEFAULT SUBJECTS
 -- ============================================
 
@@ -2057,8 +2056,8 @@ INSERT INTO homepage_notices (title, content, notice_date, priority, is_pinned, 
  ('Admissions Are Open', 'Enroll your child at Bishop Davis Joy Academy. Call 0708 449 158 or email bishopdavisjoyacademy@gmail.com.', '2026-08-12', 3, false, true)
 ON CONFLICT DO NOTHING;
 
-
-PHASE 4: ADMIN SETUP
+-- ============================================
+--PHASE 4: ADMIN SETUP
 -- ============================================
 
 -- ============================================================

@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS permissions (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   description TEXT,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  key TEXT NOT NULL,
+  key TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL
 );
 
@@ -228,7 +228,8 @@ CREATE TABLE IF NOT EXISTS staff_permissions (
   granted_by UUID,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   permission_id UUID NOT NULL,
-  profile_id UUID NOT NULL
+  profile_id UUID NOT NULL,
+  UNIQUE(profile_id, permission_id)
 );
 
 CREATE TABLE IF NOT EXISTS staff_roles (
@@ -242,7 +243,7 @@ CREATE TABLE IF NOT EXISTS staff_roles (
 );
 
 CREATE TABLE IF NOT EXISTS subjects (
-  code TEXT,
+  code TEXT UNIQUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   grade_levels TEXT[] NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -353,7 +354,7 @@ CREATE TABLE IF NOT EXISTS cms_pages (
   last_edited_by UUID,
   meta_description TEXT,
   meta_keywords TEXT,
-  slug TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
   title TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -609,7 +610,9 @@ CREATE TABLE IF NOT EXISTS parent_students (
   parent_id UUID NOT NULL,
   relationship TEXT,
   student_id UUID NOT NULL
+  UNIQUE(parent_id, student_id)
 );
+  UNIQUE(parent_id, student_id)
 
 CREATE TABLE IF NOT EXISTS students (
   admission_number TEXT NOT NULL,
@@ -834,7 +837,9 @@ CREATE TABLE IF NOT EXISTS class_subjects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   subject_id UUID NOT NULL,
   teacher_id UUID
+  UNIQUE(class_id, subject_id)
 );
+  UNIQUE(class_id, subject_id)
 
 CREATE TABLE IF NOT EXISTS conversation_messages (
   content TEXT NOT NULL,
@@ -880,7 +885,9 @@ CREATE TABLE IF NOT EXISTS parent_children (
   parent_id UUID NOT NULL,
   relationship TEXT,
   student_id UUID NOT NULL
+  UNIQUE(parent_id, student_id)
 );
+  UNIQUE(parent_id, student_id)
 
 CREATE TABLE IF NOT EXISTS vora_attempts (
   answers JSONB,

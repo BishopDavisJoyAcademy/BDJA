@@ -117,6 +117,10 @@ function buildRoutePermissions(): Record<string, string[]> {
     [`${A}/setup`]: ["admin.access"],
     [`${A}/god-mode`]: ["impersonate.users"],
     [`${A}/suggestions`]: ["suggestions.manage"],
+  };
+}
+
+const ROUTE_PERMISSIONS = buildRoutePermissions();
 
 export function getRequiredPermissions(pathname: string): string[] | null {
   for (const [route, perms] of Object.entries(ROUTE_PERMISSIONS)) {

@@ -1636,7 +1636,7 @@ ALTER TABLE file_uploads ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "file_uploads_own" ON file_uploads;
 CREATE POLICY "file_uploads_own" ON file_uploads FOR ALL USING (user_id = auth.uid());
 
-- homepage_carousel
+-- homepage_carousel
 ALTER TABLE homepage_carousel ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "homepage_carousel_public" ON homepage_carousel;
 DROP POLICY IF EXISTS "homepage_carousel_admin" ON homepage_carousel;
@@ -1675,7 +1675,7 @@ CREATE POLICY "homepage_news_admin" ON homepage_news FOR ALL USING (EXISTS (SELE
 ALTER TABLE homepage_notices ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "homepage_notices_public" ON homepage_notices;
 DROP POLICY IF EXISTS "homepage_notices_admin" ON homepage_notices;
-CREATE POLICY "homepage_notices_public" ON homepage_notices FOR SELECT USING (is_active = true AND (expires_at IS NULL OR expires_at > NOW()));
+CREATE POLICY "homepage_notices_public" ON homepage_notices FOR SELECT USING (is_active = true);
 CREATE POLICY "homepage_notices_admin" ON homepage_notices FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
 
 -- homepage_quick_links

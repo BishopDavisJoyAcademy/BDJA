@@ -1362,6 +1362,7 @@ RETURNS TRIGGER AS $$
 DECLARE
   v_raw_role TEXT;
   v_user_category TEXT;
+  v_password_changed BOOLEAN;
 BEGIN
   v_raw_role := COALESCE(NEW.raw_user_meta_data->>'role', 'student');
   v_user_category := CASE v_raw_role
@@ -1377,6 +1378,8 @@ BEGIN
     ELSE 'student'
   END;
 
+  v_password_changed := COALESCE((NEW.raw_user_meta_data->>'password_changed')::BOOLEAN, false);
+
   INSERT INTO public.profiles (
     id, email, full_name, role, user_category,
     is_active, password_changed, onboarding_completed,
@@ -1389,7 +1392,7 @@ BEGIN
     v_raw_role,
     v_user_category,
     true,
-    false,
+    v_password_changed,
     false,
     NOW(),
     NOW()
@@ -1397,8 +1400,8 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
 
   RETURN NEW;
-EXCEPTION WHEN OTHERS THEN
-  RAISE WARNING 'handle_new_user trigger error: %', SQLERRM;
+EXCEPTION WHEN unique_violation THEN
+  -- Profile already exists, safe to ignore
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

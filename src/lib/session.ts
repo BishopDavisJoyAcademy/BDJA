@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "./supabase-server";
 import { checkAccountLockout } from "./security";
 import { ValidatedSession, AuthError, UserRole, UserCategory } from "@/types";
+import { restoreMissingProfile } from "./auth";
 
 export class AuthRequiredError extends Error {
   statusCode: number;
@@ -57,15 +58,27 @@ export async function validateSession(token: string): Promise<{ session: Validat
       onboarding_completed: boolean;
     }
 
-    const { data: profileRaw, error: profileError } = await admin
+    let { data: profileRaw, error: profileError } = await admin
       .from("profiles")
       .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
       .eq("id", user.id)
       .single();
-    const profile = profileRaw as ProfileSessionRow | null;
+    let profile = profileRaw as ProfileSessionRow | null;
 
     if (profileError || !profile) {
-      return { session: null, error: { code: "PROFILE_MISSING", message: "Your account profile is missing. Please contact the administrator.", details: profileError?.message } };
+      // Auto-restore missing profile (trigger may have failed or user was created outside the app)
+      const restored = await restoreMissingProfile(user.id);
+      if (restored) {
+        const { data: restoredRaw } = await admin
+          .from("profiles")
+          .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
+          .eq("id", user.id)
+          .single();
+        profile = restoredRaw as ProfileSessionRow | null;
+      }
+      if (!profile) {
+        return { session: null, error: { code: "PROFILE_MISSING", message: "Your account profile is missing. Please contact the administrator.", details: profileError?.message } };
+      }
     }
 
     if (!profile.is_active) {

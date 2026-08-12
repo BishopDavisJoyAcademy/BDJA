@@ -42,16 +42,29 @@ export async function POST(req: NextRequest) {
     }
 
     // Check profile — use admin client to bypass RLS (session cookies not set yet)
-    const { data: profileRows } = await admin
+    let { data: profileRows } = await admin
       .from("profiles")
       .select("is_active, password_changed, onboarding_completed, user_category")
       .eq("id", userId)
       .limit(1);
-    const profile = (profileRows?.[0] ?? null) as { is_active: boolean; password_changed: boolean; onboarding_completed: boolean; user_category: string } | null;
+    let profile = (profileRows?.[0] ?? null) as { is_active: boolean; password_changed: boolean; onboarding_completed: boolean; user_category: string } | null;
 
     if (!profile) {
-      await recordFailedLogin(userId, email, ip, req.headers.get("user-agent") || "");
-      return NextResponse.json({ error: "Account profile missing" }, { status: 500 });
+      // Auto-restore missing profile
+      const { restoreMissingProfile } = await import("@/lib/auth");
+      const restored = await restoreMissingProfile(userId);
+      if (restored) {
+        const { data: restoredRows } = await admin
+          .from("profiles")
+          .select("is_active, password_changed, onboarding_completed, user_category")
+          .eq("id", userId)
+          .limit(1);
+        profile = (restoredRows?.[0] ?? null) as { is_active: boolean; password_changed: boolean; onboarding_completed: boolean; user_category: string } | null;
+      }
+      if (!profile) {
+        await recordFailedLogin(userId, email, ip, req.headers.get("user-agent") || "");
+        return NextResponse.json({ error: "Account profile missing" }, { status: 500 });
+      }
     }
 
     if (profile.is_active === false) {

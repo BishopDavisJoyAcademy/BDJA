@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { hashPassword, addPasswordToHistory } from "@/lib/security";
 import { firstLoginPasswordSchema, firstLoginPinSchema } from "@/lib/validation";
+import { restoreMissingProfile } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,15 +12,27 @@ export async function POST(req: NextRequest) {
     const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
 
-    const { data: profileRows, error: profileError } = await admin
+    let { data: profileRows, error: profileError } = await admin
       .from("profiles")
       .select("id, user_category, password_changed")
       .eq("id", session.userId)
       .limit(1);
-    const profile = (profileRows?.[0] ?? null) as { id: string; user_category: string; password_changed: boolean } | null;
+    let profile = (profileRows?.[0] ?? null) as { id: string; user_category: string; password_changed: boolean } | null;
 
     if (profileError || !profile) {
-      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      const restored = await restoreMissingProfile(session.userId);
+      if (!restored) {
+        return NextResponse.json({ error: "Profile not found and could not be restored" }, { status: 404 });
+      }
+      const { data: restoredRows } = await admin
+        .from("profiles")
+        .select("id, user_category, password_changed")
+        .eq("id", session.userId)
+        .limit(1);
+      profile = (restoredRows?.[0] ?? null) as { id: string; user_category: string; password_changed: boolean } | null;
+      if (!profile) {
+        return NextResponse.json({ error: "Profile restored but still not found" }, { status: 500 });
+      }
     }
 
     if (profile.password_changed === true) {
@@ -44,6 +57,7 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await hashPassword(newCredential);
 
+    // Step 1: Update profile first (so we can rollback if auth fails)
     const { error: updateError } = await admin
       .from("profiles")
       .update({ temp_password_hash: passwordHash, password_changed: true, updated_at: new Date().toISOString() })
@@ -53,9 +67,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to update password record" }, { status: 500 });
     }
 
-    // Update Supabase Auth password
-    const { error: authUpdateError } = await admin.auth.admin.updateUserById(session.userId, { password: newCredential });
+    // Step 2: Update Supabase Auth password AND metadata
+    const { data: authUserData, error: authUpdateError } = await admin.auth.admin.updateUserById(session.userId, {
+      password: newCredential,
+      user_metadata: { password_changed: true },
+    });
     if (authUpdateError) {
+      // Rollback: revert profile so user can try again
       await admin.from("profiles").update({ password_changed: false }).eq("id", session.userId);
       return NextResponse.json({ error: "Failed to update auth password" }, { status: 500 });
     }

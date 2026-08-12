@@ -53,6 +53,7 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
         full_name: options.fullName,
         role: options.role || "student",
         user_category: options.userCategory || options.role || "student",
+        password_changed: false,
         ...options.metadata,
       },
     });
@@ -266,6 +267,7 @@ export async function restoreMissingProfile(userId: string): Promise<boolean> {
 
     const role = authUser.user.user_metadata?.role || "student";
     const userCategory = mapOldRole(role);
+    const passwordChanged = authUser.user.user_metadata?.password_changed === true;
     const { error: insertError } = await admin.from("profiles").insert({
       id: userId,
       email: authUser.user.email || "",
@@ -274,7 +276,7 @@ export async function restoreMissingProfile(userId: string): Promise<boolean> {
       user_category: userCategory,
       campus_id: authUser.user.user_metadata?.campus_id || null,
       is_active: true,
-      password_changed: false,
+      password_changed: passwordChanged,
       onboarding_completed: false,
     });
 

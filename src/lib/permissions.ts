@@ -99,44 +99,25 @@ export async function revokeAllPermissions(profileId: string): Promise<boolean> 
 }
 
 // Route permission map — enforced in middleware AND API routes
-export const ROUTE_PERMISSIONS: Record<string, string[]> = {
-  "/admin": ["admin.access"],
-  "/admin/users": ["admin.access"],
-  "/admin/analytics": ["analytics.view"],
-  "/admin/audit": ["audit.view"],
-  "/admin/staff": ["staff.manage"],
-  "/admin/students": ["students.manage"],
-  "/admin/subjects": ["settings.manage"],
-  "/admin/content": ["content.manage"],
-  "/admin/campuses": ["settings.manage"],
-  "/admin/pages": ["pages.edit"],
-  "/admin/setup": ["admin.access"],
-  "/admin/god-mode": ["impersonate.users"],
-  "/admin/suggestions": ["suggestions.manage"],
-  "/teacher": ["grades.view", "attendance.view", "timetable.view"],
-  "/teacher/marks": ["grades.manage"],
-  "/teacher/registers": ["attendance.manage"],
-  "/teacher/timetables": ["timetable.manage"],
-  "/fees": ["fees.view", "fees.manage"],
-  "/library": ["library.view", "library.manage"],
-  "/grades": ["grades.view", "grades.manage"],
-  "/attendance": ["attendance.view", "attendance.manage"],
-  "/timetable": ["timetable.view", "timetable.manage"],
-  "/assignments": ["assignments.view", "assignments.manage"],
-  "/admissions": ["admissions.view", "admissions.manage"],
-  "/manage/admissions": ["admissions.manage"],
-  "/manage/calendar": ["calendar.manage"],
-  "/manage/library": ["library.manage"],
-  "/manage/vora": ["vora.manage"],
-  "/vora": ["vora.view", "vora.manage"],
-  "/calendar": ["calendar.view", "calendar.manage"],
-  "/messages": ["messages.send"],
-  "/student": [],
-  "/student/parent": [],
-  "/parent": [],
-  "/parent/fees": ["fees.view"],
-  "/parent/grades": ["grades.view"],
-};
+export import { ADMIN_SEGMENT } from "./constants";
+
+function buildRoutePermissions(): Record<string, string[]> {
+  const A = `/${ADMIN_SEGMENT}`;
+  return {
+    // Admin routes
+    [A]: ["admin.access"],
+    [`${A}/users`]: ["admin.access"],
+    [`${A}/analytics`]: ["analytics.view"],
+    [`${A}/audit`]: ["audit.view"],
+    [`${A}/staff`]: ["staff.manage"],
+    [`${A}/students`]: ["students.manage"],
+    [`${A}/subjects`]: ["settings.manage"],
+    [`${A}/content`]: ["content.manage"],
+    [`${A}/campuses`]: ["settings.manage"],
+    [`${A}/pages`]: ["pages.edit"],
+    [`${A}/setup`]: ["admin.access"],
+    [`${A}/god-mode`]: ["impersonate.users"],
+    [`${A}/suggestions`]: ["suggestions.manage"],
 
 export function getRequiredPermissions(pathname: string): string[] | null {
   for (const [route, perms] of Object.entries(ROUTE_PERMISSIONS)) {

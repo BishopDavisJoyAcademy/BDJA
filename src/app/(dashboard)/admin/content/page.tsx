@@ -1,4 +1,5 @@
 "use client";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -73,13 +74,13 @@ export default function ContentManagement() {
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
           <div className="space-y-2">
-            <button onClick={() => router.push("/admin/pages")} className="w-full text-left p-3 border border-gray-100 rounded-lg hover:bg-gray-50 flex items-center gap-3">
+            <button onClick={() => router.push(`/${ADMIN_SEGMENT}/pages`)} className="w-full text-left p-3 border border-gray-100 rounded-lg hover:bg-gray-50 flex items-center gap-3">
               <Globe className="w-4 h-4 text-blue-600" /> CMS Pages
             </button>
             <button onClick={() => router.push("/manage/library")} className="w-full text-left p-3 border border-gray-100 rounded-lg hover:bg-gray-50 flex items-center gap-3">
               <BookOpen className="w-4 h-4 text-green-600" /> Library Catalog
             </button>
-            <button onClick={() => router.push("/admin/vora")} className="w-full text-left p-3 border border-gray-100 rounded-lg hover:bg-gray-50 flex items-center gap-3">
+            <button onClick={() => router.push(`/${ADMIN_SEGMENT}/vora`)} className="w-full text-left p-3 border border-gray-100 rounded-lg hover:bg-gray-50 flex items-center gap-3">
               <Video className="w-4 h-4 text-purple-600" /> VORA Content
             </button>
           </div>

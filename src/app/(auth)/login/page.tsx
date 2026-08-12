@@ -1,4 +1,5 @@
 "use client";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -55,7 +56,7 @@ export default function LoginPage() {
         return;
       }
       const cat = data.user.user_category;
-      if (cat === "admin") router.push("/admin");
+      if (cat === "admin") router.push(`/${ADMIN_SEGMENT}`);
       else if (cat === "staff") router.push("/teacher");
       else if (cat === "parent") router.push("/parent");
       else router.push("/student");

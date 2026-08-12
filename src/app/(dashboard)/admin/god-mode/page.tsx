@@ -1,4 +1,5 @@
 "use client";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -82,7 +83,7 @@ export default function GodModePage() {
       });
       setImpersonating(null);
       toast.success("Returned to admin view");
-      router.push("/admin");
+      router.push(`/${ADMIN_SEGMENT}`);
     } catch (err: any) {
       toast.error(err.message);
     }

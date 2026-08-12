@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 export default function DashboardRedirector() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function DashboardRedirector() {
     }
 
     const cat = user.user_category;
-    if (cat === "admin") router.push("/admin");
+    if (cat === "admin") router.push(`/${ADMIN_SEGMENT}`);
     else if (cat === "staff") router.push("/teacher");
     else if (cat === "parent") router.push("/parent");
     else router.push("/student");

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 // ============================================================
 // BDJA Platform — Next.js Middleware
@@ -175,7 +176,7 @@ export async function middleware(req: NextRequest) {
 
   // Admin routes (internal path after rewrite is /admin/*)
   const internalPathname = req.nextUrl.pathname;
-  if (internalPathname.startsWith("/admin/") || internalPathname === "/admin") {
+  if (internalPathname.startsWith(`/${ADMIN_SEGMENT}/`) || internalPathname === `/${ADMIN_SEGMENT}`) {
     if (category !== "admin") {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });

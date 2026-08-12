@@ -1,4 +1,5 @@
 "use client";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -198,12 +199,12 @@ export function TopBar() {
                   <User className="w-4 h-4" />
                   My Profile
                 </Link>
-                <Link href="/admin/settings" onClick={() => setShowProfile(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <Link href={`/${ADMIN_SEGMENT}/settings`} onClick={() => setShowProfile(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                   <Settings className="w-4 h-4" />
                   Settings
                 </Link>
                 {user?.user_category === "admin" && (
-                  <Link href="/admin" onClick={() => setShowProfile(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  <Link href={`/${ADMIN_SEGMENT}`} onClick={() => setShowProfile(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                     <Shield className="w-4 h-4" />
                     Admin Dashboard
                   </Link>

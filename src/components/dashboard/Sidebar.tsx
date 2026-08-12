@@ -1,4 +1,5 @@
 "use client";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +17,7 @@ const getDashboardHref = (userCategory: string | null) => {
   if (userCategory === "student") return "/student";
   if (userCategory === "parent") return "/student";
   if (userCategory === "staff") return "/teacher";
-  if (userCategory === "admin") return "/admin";
+  if (userCategory === "admin") return `/${ADMIN_SEGMENT}`;
   return "/student";
 };
 
@@ -53,17 +54,17 @@ const staffNavItems: NavItem[] = [
 ];
 
 const adminNavItems: NavItem[] = [
-  { label: "Staff", href: "/admin/staff", icon: Users },
-  { label: "Students", href: "/admin/students", icon: GraduationCap },
-  { label: "God Mode", href: "/admin/god-mode", icon: Eye },
-  { label: "Suggestions", href: "/admin/suggestions", icon: MessageSquareText },
-  { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { label: "Audit Logs", href: "/admin/audit", icon: Shield },
-  { label: "CMS Pages", href: "/admin/pages", icon: FileText },
-  { label: "VORA Content", href: "/admin/vora", icon: Video },
-  { label: "Content", href: "/admin/content", icon: FileText },
-  { label: "Campuses", href: "/admin/campuses", icon: MapPin },
-  { label: "Settings", href: "/admin/settings", icon: Settings },
+  { label: "Staff", href: `/${ADMIN_SEGMENT}/staff`, icon: Users },
+  { label: "Students", href: `/${ADMIN_SEGMENT}/students`, icon: GraduationCap },
+  { label: "God Mode", href: `/${ADMIN_SEGMENT}/god-mode`, icon: Eye },
+  { label: "Suggestions", href: `/${ADMIN_SEGMENT}/suggestions`, icon: MessageSquareText },
+  { label: "Analytics", href: `/${ADMIN_SEGMENT}/analytics`, icon: BarChart3 },
+  { label: "Audit Logs", href: `/${ADMIN_SEGMENT}/audit`, icon: Shield },
+  { label: "CMS Pages", href: `/${ADMIN_SEGMENT}/pages`, icon: FileText },
+  { label: "VORA Content", href: `/${ADMIN_SEGMENT}/vora`, icon: Video },
+  { label: "Content", href: `/${ADMIN_SEGMENT}/content`, icon: FileText },
+  { label: "Campuses", href: `/${ADMIN_SEGMENT}/campuses`, icon: MapPin },
+  { label: "Settings", href: `/${ADMIN_SEGMENT}/settings`, icon: Settings },
 ];
 
 export function Sidebar() {

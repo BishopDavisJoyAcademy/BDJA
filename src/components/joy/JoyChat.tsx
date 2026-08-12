@@ -1,4 +1,5 @@
 "use client";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { flushSync } from "react-dom";
@@ -275,7 +276,7 @@ export function JoyChat() {
         else if (target === "library") path = "/library";
         else if (target === "messages") path = "/messages";
         else if (target === "admissions") path = "/manage/admissions";
-        else if (target === "admin") path = "/admin";
+        else if (target === "admin") path = `/${ADMIN_SEGMENT}`;
         else if (target === "teacher") path = "/teacher";
         else if (target === "student") path = "/student";
         else if (target === "parent") path = "/parent";

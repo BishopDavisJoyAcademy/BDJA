@@ -245,7 +245,7 @@ CREATE TABLE IF NOT EXISTS staff_roles (
 CREATE TABLE IF NOT EXISTS subjects (
   code TEXT UNIQUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  grade_levels TEXT[] NOT NULL,
+  grade_levels TEXT[],
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL
 );
@@ -571,7 +571,7 @@ CREATE TABLE IF NOT EXISTS mark_sheet_templates (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID NOT NULL,
   description TEXT,
-  grade_levels TEXT[] NOT NULL,
+  grade_levels TEXT[],
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_active BOOLEAN,
   layout_config JSONB NOT NULL,
@@ -612,7 +612,6 @@ CREATE TABLE IF NOT EXISTS parent_students (
   student_id UUID NOT NULL,
   UNIQUE(parent_id, student_id)
 );
-  UNIQUE(parent_id, student_id)
 
 CREATE TABLE IF NOT EXISTS students (
   admission_number TEXT NOT NULL,
@@ -839,7 +838,6 @@ CREATE TABLE IF NOT EXISTS class_subjects (
   teacher_id UUID,
   UNIQUE(class_id, subject_id)
 );
-  UNIQUE(class_id, subject_id)
 
 CREATE TABLE IF NOT EXISTS conversation_messages (
   content TEXT NOT NULL,
@@ -887,7 +885,6 @@ CREATE TABLE IF NOT EXISTS parent_children (
   student_id UUID NOT NULL,
   UNIQUE(parent_id, student_id)
 );
-  UNIQUE(parent_id, student_id)
 
 CREATE TABLE IF NOT EXISTS vora_attempts (
   answers JSONB,

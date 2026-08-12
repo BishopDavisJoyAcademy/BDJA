@@ -25,7 +25,16 @@ export async function GET(req: NextRequest) {
     if (!data) {
       const { data: created, error: createError } = await admin
         .from("joy_user_preferences")
-        .insert({ user_id: user.id } as { user_id: string })
+        .insert({
+          user_id: user.id,
+          theme: "light",
+          personality_mode: "friendly",
+          language_preference: "en",
+          font_size: "medium",
+          show_timestamps: true,
+          enable_sound: true,
+          enable_streaming: true,
+        })
         .select()
         .maybeSingle();
       if (createError) throw createError;
@@ -63,7 +72,16 @@ export async function POST(req: NextRequest) {
 
     const { data, error: dbError } = await admin
       .from("joy_user_preferences")
-      .upsert({ user_id: user.id, ...update }, { onConflict: "user_id" })
+      .upsert({
+        user_id: user.id,
+        theme: update.theme ?? "light",
+        personality_mode: update.personality_mode ?? "friendly",
+        language_preference: update.language_preference ?? "en",
+        font_size: update.font_size ?? "medium",
+        show_timestamps: update.show_timestamps ?? true,
+        enable_sound: update.enable_sound ?? true,
+        enable_streaming: update.enable_streaming ?? true,
+      }, { onConflict: "user_id" })
       .select()
       .maybeSingle();
 

@@ -474,6 +474,7 @@ CREATE TABLE IF NOT EXISTS homepage_notices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_active BOOLEAN,
   is_pinned BOOLEAN,
+  priority INTEGER,
   notice_date TEXT NOT NULL,
   title TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -2037,26 +2038,26 @@ ON CONFLICT (slug) DO NOTHING;
 -- DEFAULT HOMEPAGE CONTENT
 -- ============================================
 
-INSERT INTO homepage_stats (label, value, icon, sort_order, is_active) VALUES
+INSERT INTO homepage_stats (label, value, icon_name, display_order, is_active) VALUES
  ('Students', '500+', 'users', 1, true),
  ('Teachers', '50+', 'graduation-cap', 2, true),
  ('Years of Excellence', '10+', 'award', 3, true),
  ('Subjects', '15+', 'book-open', 4, true)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO homepage_carousel (title, subtitle, image_url, button_text, button_link, sort_order, is_active) VALUES
+INSERT INTO homepage_carousel (title, subtitle, image_url, button_text, button_link, display_order, is_active) VALUES
  ('Welcome to BDJA', 'Prayer, Commitment and Hard Work for Success', NULL, 'Learn More', '/about', 1, true),
  ('Admissions Open', 'Join our family of learners today', NULL, 'Apply Now', '/admissions', 2, true)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO homepage_director_message (director_name, title, message, is_active) VALUES
+INSERT INTO homepage_director_message (director_name, director_title, message, is_active) VALUES
  ('School Director', 'A Message from the Director', 'Welcome to Bishop Davis Joy Academy. Our commitment is to provide a Christ-centered education that nurtures every child to reach their full potential. Together, we build a foundation of excellence.', true)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO homepage_notices (title, content, priority, is_active) VALUES
- ('Welcome to the New Term', 'The new academic term begins soon. Get ready for another exciting year of learning at BDJA!', 1, true),
- ('School Fees Reminder', 'Please ensure all fees are paid by the deadline. Contact the bursar for any inquiries.', 2, true),
- ('Admissions Are Open', 'Enroll your child at Bishop Davis Joy Academy. Call 0708 449 158 or email bishopdavisjoyacademy@gmail.com.', 1, true)
+INSERT INTO homepage_notices (title, content, is_active) VALUES
+ ('Welcome to the New Term', 'The new academic term begins soon. Get ready for another exciting year of learning at BDJA!', true),
+ ('School Fees Reminder', 'Please ensure all fees are paid by the deadline. Contact the bursar for any inquiries.', true),
+ ('Admissions Are Open', 'Enroll your child at Bishop Davis Joy Academy. Call 0708 449 158 or email bishopdavisjoyacademy@gmail.com.', true)
 ON CONFLICT DO NOTHING;
 
 

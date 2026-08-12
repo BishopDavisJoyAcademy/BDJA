@@ -394,6 +394,7 @@ CREATE TABLE IF NOT EXISTS homepage_notices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   is_active BOOLEAN,
   is_pinned BOOLEAN,
+  priority INTEGER,
   notice_date TEXT NOT NULL,
   title TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()

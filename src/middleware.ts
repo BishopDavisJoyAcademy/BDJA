@@ -1,31 +1,41 @@
 import { NextResponse } from "next/server";
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 
-const PUBLIC_PAGES = [
+// ============================================================
+// BDJA Platform — Next.js Middleware
+// Enforces authentication, first-login password/PIN setup,
+// onboarding completion, account status, and role-based access.
+// ============================================================
+
+// Public paths that do not require authentication
+const PUBLIC_PATHS = [
   "/",
   "/login",
-  "/register",
-  "/forgot-password",
-  "/reset-password",
-  "/contact",
   "/about",
   "/academics",
   "/admissions",
-  "/news-events",
-  "/notices",
-  "/downloads",
-  "/library",
-  "/vora",
-  "/help",
-  "/faqs",
-  "/gallery",
-  "/policies",
-  "/calendar",
+  "/contact",
   "/students",
+  "/library",
+  "/news-events",
+  "/downloads",
+  "/help",
+  "/notices",
+  "/vora",
+  "/reset-password",
+  "/onboarding",
+  "/unauthorized",
+  "/api/auth/login",
+  "/api/auth/student-login",
+  "/api/auth/refresh",
+  "/api/health",
+  "/api/vora/public",
+  "/api/onboarding",
 ];
 
+// Public API prefixes (checked before auth)
 const PUBLIC_API_PREFIXES = [
   "/api/health",
   "/api/auth/student-login",
@@ -35,81 +45,58 @@ const PUBLIC_API_PREFIXES = [
   "/api/onboarding",
 ];
 
-const STATIC_ASSETS = ["/_next", "/static", "/favicon.ico", "/logo", "/images", "/grades", "/slides", "/manifest.json"];
+// API endpoints allowed when password change is required
+// These are the APIs needed to complete the password/PIN change flow
+const PASSWORD_CHANGE_APIS = [
+  "/api/auth/first-login",
+  "/api/auth/change-password",
+  "/api/auth/logout",
+  "/api/auth/me",
+];
 
-const ADMIN_SEGMENT = process.env.NEXT_PUBLIC_ADMIN_SEGMENT || "admin";
+// API endpoints allowed when onboarding is required
+// These are the APIs needed to complete the onboarding flow
+const ONBOARDING_APIS = [
+  "/api/auth/onboarding",
+  "/api/auth/logout",
+  "/api/auth/me",
+];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Skip static assets
-  if (STATIC_ASSETS.some((p) => pathname.startsWith(p))) {
+  // Allow public paths and API prefixes without auth
+  if (
+    PUBLIC_PATHS.includes(pathname) ||
+    PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  ) {
     return NextResponse.next();
   }
 
-  // Public pages
-  if (PUBLIC_PAGES.some((r) => pathname === r || pathname.startsWith(r + "/"))) {
-    return NextResponse.next();
-  }
-
-  // Public API prefixes
-  if (PUBLIC_API_PREFIXES.some((r) => pathname.startsWith(r))) {
-    return NextResponse.next();
-  }
-
-  // ============================================
-  // ADMIN SEGMENT OBSCURITY
-  // ============================================
-  // If someone hits the raw /admin path but segment is different, block it
-  if (ADMIN_SEGMENT !== "admin" && (pathname === "/admin" || pathname.startsWith("/admin/"))) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Not Found" }, { status: 404 });
-    }
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-
-  // Rewrite obscured admin pages to internal /admin/*
-  if (pathname === `/${ADMIN_SEGMENT}` || pathname.startsWith(`/${ADMIN_SEGMENT}/`)) {
-    const internalPath = pathname.replace(`/${ADMIN_SEGMENT}`, "/admin");
-    const url = req.nextUrl.clone();
-    url.pathname = internalPath;
-    // Continue with auth checks below on the rewritten path
-    req = new NextRequest(url, req);
-  }
-
-  // Rewrite obscured admin API to internal /api/admin/*
-  if (pathname.startsWith(`/api/${ADMIN_SEGMENT}/`)) {
-    const internalPath = pathname.replace(`/api/${ADMIN_SEGMENT}`, "/api/admin");
-    const url = req.nextUrl.clone();
-    url.pathname = internalPath;
-    req = new NextRequest(url, req);
-  }
-
-  const res = NextResponse.next();
-
-  // Create Supabase server client
+  // Initialize Supabase SSR client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return req.cookies.get(name)?.value;
+        getAll() {
+          return req.cookies.getAll();
         },
-        set(name: string, value: string, options: any) {
-          res.cookies.set(name, value, options);
-        },
-        remove(name: string, options: any) {
-          res.cookies.set(name, "", { ...options, maxAge: 0 });
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            req.cookies.set(name, value);
+          });
         },
       },
     }
   );
 
-  // Secure validation using getUser()
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (userError || !user) {
+  // No session — redirect or 401
+  if (!user) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -118,21 +105,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  interface MiddlewareProfile {
-    user_category: string;
-    password_changed: boolean;
-    onboarding_completed: boolean;
-    is_active: boolean;
-  }
-
-  // Fetch profile using admin client to bypass RLS (middleware anon client is subject to RLS)
+  // Use admin client to bypass RLS for profile lookup in middleware
   const admin = getSupabaseAdmin();
   const { data: profileRows, error: profileError } = await admin
     .from("profiles")
     .select("user_category, password_changed, onboarding_completed, is_active")
     .eq("id", user.id)
     .limit(1);
-  const profile = (profileRows?.[0] ?? null) as MiddlewareProfile | null;
+  const profile = (profileRows?.[0] ?? null) as {
+    user_category: string;
+    password_changed: boolean;
+    onboarding_completed: boolean;
+    is_active: boolean;
+  } | null;
 
   if (profileError || !profile) {
     console.error("[middleware] Profile missing for user:", user.id, "error:", profileError?.message);
@@ -154,14 +139,12 @@ export async function middleware(req: NextRequest) {
 
   // First login — must set password/PIN
   if (profile.password_changed === false) {
-    // Allow reset-password page and the API endpoints that perform the actual password change
-    const allowedPaths = [
-      "/reset-password",
-      "/api/auth/first-login",
-      "/api/auth/change-password",
-    ];
-    if (allowedPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-      return res;
+    if (
+      pathname === "/reset-password" ||
+      pathname.startsWith("/reset-password/") ||
+      PASSWORD_CHANGE_APIS.some((p) => pathname === p || pathname.startsWith(p + "/"))
+    ) {
+      return NextResponse.next();
     }
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Password change required" }, { status: 403 });
@@ -175,8 +158,12 @@ export async function middleware(req: NextRequest) {
 
   // Onboarding not completed
   if (profile.onboarding_completed === false) {
-    if (pathname === "/onboarding" || pathname.startsWith("/onboarding/")) {
-      return res;
+    if (
+      pathname === "/onboarding" ||
+      pathname.startsWith("/onboarding/") ||
+      ONBOARDING_APIS.some((p) => pathname === p || pathname.startsWith(p + "/"))
+    ) {
+      return NextResponse.next();
     }
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Onboarding required" }, { status: 403 });
@@ -195,53 +182,43 @@ export async function middleware(req: NextRequest) {
       }
       return NextResponse.redirect(new URL("/unauthorized", req.url));
     }
-    return res;
   }
 
   // Student routes
-  if (internalPathname.startsWith("/student/") || internalPathname === "/student") {
-    if (category !== "student" && category !== "admin") {
+  if (pathname.startsWith("/student/")) {
+    if (category !== "student") {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
       return NextResponse.redirect(new URL("/unauthorized", req.url));
     }
-    return res;
   }
 
   // Parent routes
-  if (internalPathname.startsWith("/parent/") || internalPathname === "/parent") {
-    if (category !== "parent" && category !== "admin") {
+  if (pathname.startsWith("/parent/")) {
+    if (category !== "parent") {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
       return NextResponse.redirect(new URL("/unauthorized", req.url));
     }
-    return res;
   }
 
   // Teacher/Staff routes
-  if (internalPathname.startsWith("/teacher/") || internalPathname === "/teacher") {
+  if (pathname.startsWith("/teacher/") || pathname.startsWith("/staff/")) {
     if (category !== "staff" && category !== "admin") {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
       return NextResponse.redirect(new URL("/unauthorized", req.url));
     }
-    return res;
   }
 
-  // Dashboard root redirects
-  if (internalPathname === "/dashboard") {
-    if (category === "admin") return NextResponse.redirect(new URL(`/${ADMIN_SEGMENT}`, req.url));
-    if (category === "student") return NextResponse.redirect(new URL("/student", req.url));
-    if (category === "parent") return NextResponse.redirect(new URL("/parent", req.url));
-    if (category === "staff") return NextResponse.redirect(new URL("/teacher", req.url));
-  }
-
-  return res;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

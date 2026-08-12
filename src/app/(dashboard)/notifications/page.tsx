@@ -7,11 +7,11 @@ import { Bell, CheckCheck, MailOpen, Trash2, AlertCircle, Info, CheckCircle, Cal
 interface Notification {
   id: string;
   title: string;
-  message: string;
+  content: string;
   type: "info" | "success" | "warning" | "error";
   read: boolean;
   created_at: string;
-  link?: string;
+  action_url?: string;
 }
 
 export default function NotificationsPage() {
@@ -194,7 +194,7 @@ export default function NotificationsPage() {
                   <span className="text-xs text-gray-400 shrink-0">{formatTime(n.created_at)}</span>
                 </div>
                 <p className={`text-sm mt-1 ${n.read ? "text-gray-500" : "text-gray-700"}`}>
-                  {n.message}
+                  {n.content}
                 </p>
                 <div className="flex items-center gap-3 mt-3">
                   {!n.read && (
@@ -206,9 +206,9 @@ export default function NotificationsPage() {
                       Mark as read
                     </button>
                   )}
-                  {n.link && (
+                  {n.action_url && (
                     <a
-                      href={n.link}
+                      href={n.action_url}
                       className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
                     >
                       <Calendar className="w-4 h-4" />

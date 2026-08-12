@@ -1,3 +1,4 @@
+import { ADMIN_SEGMENT } from "./constants";
 import { getSupabaseAdmin } from "./supabase-server";
 
 export async function getUserPermissions(userId: string): Promise<string[]> {
@@ -99,8 +100,6 @@ export async function revokeAllPermissions(profileId: string): Promise<boolean> 
 }
 
 // Route permission map — enforced in middleware AND API routes
-export import { ADMIN_SEGMENT } from "./constants";
-
 function buildRoutePermissions(): Record<string, string[]> {
   const A = `/${ADMIN_SEGMENT}`;
   return {

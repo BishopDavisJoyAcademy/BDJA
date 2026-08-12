@@ -51,15 +51,6 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = getSupabaseAdmin();
-    interface SuggestionInsertRow {
-      user_id: string;
-      type: string;
-      title: string;
-      description: string;
-      priority: string | null;
-      status: string | undefined;
-    }
-
     const { data, error } = await admin.from("suggestions").insert({
       user_id: session.userId,
       type,
@@ -67,7 +58,7 @@ export async function POST(req: NextRequest) {
       description,
       priority: priority || "medium",
       status: "pending",
-    } as SuggestionInsertRow).select().maybeSingle();
+    }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create suggestion" }, { status: 500 });
     return NextResponse.json({ success: true, suggestion: data });

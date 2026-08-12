@@ -1556,14 +1556,7 @@ ALTER TABLE file_uploads ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "file_uploads_own" ON file_uploads;
 CREATE POLICY "file_uploads_own" ON file_uploads FOR ALL USING (user_id = auth.uid());
 
--- grade_levels
-ALTER TABLE grade_levels ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "grade_levels_public" ON grade_levels;
-DROP POLICY IF EXISTS "grade_levels_admin" ON grade_levels;
-CREATE POLICY "grade_levels_public" ON grade_levels FOR SELECT USING (true);
-CREATE POLICY "grade_levels_admin" ON grade_levels FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND user_category = 'admin'));
-
--- homepage_carousel
+- homepage_carousel
 ALTER TABLE homepage_carousel ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "homepage_carousel_public" ON homepage_carousel;
 DROP POLICY IF EXISTS "homepage_carousel_admin" ON homepage_carousel;

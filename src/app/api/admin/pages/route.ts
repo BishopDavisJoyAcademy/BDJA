@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       content,
       meta_description,
       is_published: is_published ?? false,
-      updated_by: session.userId,
+      last_edited_by: session.userId,
     }).select().maybeSingle();
 
     if (error) return NextResponse.json({ error: "Failed to create page" }, { status: 500 });
@@ -79,7 +79,7 @@ export async function PUT(req: NextRequest) {
       content,
       meta_description,
       is_published: is_published,
-      updated_by: session.userId,
+      last_edited_by: session.userId,
       updated_at: new Date().toISOString(),
     }).eq("id", id).select().maybeSingle();
 

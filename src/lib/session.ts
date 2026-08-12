@@ -22,8 +22,11 @@ export async function validateSession(token: string): Promise<{ session: Validat
 
     const { data: { user }, error: authError } = await admin.auth.getUser(token);
     if (authError || !user) {
+      console.error("[validateSession] auth.getUser failed:", authError?.message);
       return { session: null, error: { code: "INVALID_TOKEN", message: "Your session has expired. Please log in again." } };
     }
+
+    console.log("[validateSession] Auth user found:", user.id, user.email);
 
     const tokenHash = require("crypto").createHash("sha256").update(token).digest("hex");
     interface SessionRow {
@@ -58,27 +61,46 @@ export async function validateSession(token: string): Promise<{ session: Validat
       onboarding_completed: boolean;
     }
 
-    let { data: profileRows } = await admin
+    // Strategy 1: Query by ID (normal path)
+    let { data: profileRows, error: profileError } = await admin
       .from("profiles")
       .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
       .eq("id", user.id)
       .limit(1);
     let profile = (profileRows?.[0] ?? null) as ProfileSessionRow | null;
 
+    console.log("[validateSession] Profile by ID:", profile ? "FOUND" : "MISSING", "error:", profileError?.message || "none");
+
+    // Strategy 2: Query by email (ID mismatch fallback)
+    if (!profile && user.email) {
+      const { data: emailRows, error: emailError } = await admin
+        .from("profiles")
+        .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
+        .eq("email", user.email)
+        .limit(1);
+      profile = (emailRows?.[0] ?? null) as ProfileSessionRow | null;
+      console.log("[validateSession] Profile by email:", profile ? "FOUND" : "MISSING", "error:", emailError?.message || "none");
+    }
+
+    // Strategy 3: Auto-restore missing profile
     if (!profile) {
-      // Auto-restore missing profile (same pattern as login route)
+      console.log("[validateSession] Attempting restoreMissingProfile for:", user.id);
       const restored = await restoreMissingProfile(user.id);
+      console.log("[validateSession] restoreMissingProfile result:", restored);
       if (restored) {
-        const { data: restoredRows } = await admin
+        const { data: restoredRows, error: restoredError } = await admin
           .from("profiles")
           .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
           .eq("id", user.id)
           .limit(1);
         profile = (restoredRows?.[0] ?? null) as ProfileSessionRow | null;
+        console.log("[validateSession] Profile after restore:", profile ? "FOUND" : "STILL MISSING", "error:", restoredError?.message || "none");
       }
-      if (!profile) {
-        return { session: null, error: { code: "PROFILE_MISSING", message: "Your account profile is missing. Please contact the administrator." } };
-      }
+    }
+
+    if (!profile) {
+      console.error("[validateSession] CRITICAL: Profile completely missing for user:", user.id, user.email);
+      return { session: null, error: { code: "PROFILE_MISSING", message: "Your account profile is missing. Please contact the administrator." } };
     }
 
     if (!profile.is_active) {
@@ -108,7 +130,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
 
     return { session, error: null };
   } catch (error: any) {
-    console.error("[session] Validation error:", error);
+    console.error("[validateSession] Validation error:", error);
     return { session: null, error: { code: "INTERNAL_ERROR", message: "Session validation failed. Please try again." } };
   }
 }

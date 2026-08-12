@@ -259,16 +259,26 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
 export async function restoreMissingProfile(userId: string): Promise<boolean> {
   const admin = getSupabaseAdmin();
   try {
-    const { data: authUser, error: authError } = await admin.auth.admin.getUserById(userId);
-    if (authError || !authUser.user) return false;
+    console.log("[restoreMissingProfile] Starting for userId:", userId);
 
-    const { data: existing } = await admin.from("profiles").select("id").eq("id", userId).maybeSingle();
-    if (existing) return true;
+    const { data: authUser, error: authError } = await admin.auth.admin.getUserById(userId);
+    if (authError || !authUser.user) {
+      console.error("[restoreMissingProfile] getUserById failed:", authError?.message);
+      return false;
+    }
+    console.log("[restoreMissingProfile] Auth user found:", authUser.user.email, "meta:", JSON.stringify(authUser.user.user_metadata));
+
+    const { data: existing } = await admin.from("profiles").select("id").eq("id", userId).limit(1);
+    if (existing && existing.length > 0) {
+      console.log("[restoreMissingProfile] Profile already exists");
+      return true;
+    }
 
     const role = authUser.user.user_metadata?.role || "student";
     const userCategory = mapOldRole(role);
     const passwordChanged = authUser.user.user_metadata?.password_changed === true;
-    const { error: insertError } = await admin.from("profiles").insert({
+
+    const insertData = {
       id: userId,
       email: authUser.user.email || "",
       full_name: authUser.user.user_metadata?.full_name || "User",
@@ -278,11 +288,19 @@ export async function restoreMissingProfile(userId: string): Promise<boolean> {
       is_active: true,
       password_changed: passwordChanged,
       onboarding_completed: false,
-    });
+    };
+    console.log("[restoreMissingProfile] Inserting profile:", JSON.stringify(insertData));
 
-    return !insertError;
-  } catch (err) {
-    console.error("[auth] Restore profile failed:", err);
+    const { error: insertError } = await admin.from("profiles").insert(insertData);
+    if (insertError) {
+      console.error("[restoreMissingProfile] Insert FAILED:", insertError.message, insertError.code, insertError.details);
+      return false;
+    }
+
+    console.log("[restoreMissingProfile] Profile inserted successfully");
+    return true;
+  } catch (err: any) {
+    console.error("[restoreMissingProfile] Exception:", err.message, err.stack);
     return false;
   }
 }

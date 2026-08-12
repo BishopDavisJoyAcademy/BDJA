@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    console.log("[first-login] Request received");
     const session = await requireAuth(req);
+    console.log("[first-login] Auth success, userId:", session.userId, "passwordChanged:", session.passwordChanged);
     const admin = getSupabaseAdmin();
 
     let { data: profileRows, error: profileError } = await admin

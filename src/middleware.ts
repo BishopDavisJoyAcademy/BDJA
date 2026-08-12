@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
 
 const PUBLIC_PAGES = [
   "/",
@@ -124,15 +125,17 @@ export async function middleware(req: NextRequest) {
     is_active: boolean;
   }
 
-  // Fetch profile
-  const { data: profileRaw, error: profileError } = await supabase
+  // Fetch profile using admin client to bypass RLS (middleware anon client is subject to RLS)
+  const admin = getSupabaseAdmin();
+  const { data: profileRows, error: profileError } = await admin
     .from("profiles")
     .select("user_category, password_changed, onboarding_completed, is_active")
     .eq("id", user.id)
-    .single();
-  const profile = profileRaw as MiddlewareProfile | null;
+    .limit(1);
+  const profile = (profileRows?.[0] ?? null) as MiddlewareProfile | null;
 
   if (profileError || !profile) {
+    console.error("[middleware] Profile missing for user:", user.id, "error:", profileError?.message);
     await supabase.auth.signOut();
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Profile missing" }, { status: 401 });

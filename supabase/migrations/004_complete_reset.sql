@@ -2008,23 +2008,7 @@ INSERT INTO campuses (name, location, phone, email)
 VALUES ('Bishop Davis Joy Academy Main Campus', 'Kenya Faiba, near Peaks Hotel, Nanyuki–Nturukuma', '0708 449 158', 'bishopdavisjoyacademy@gmail.com')
 ON CONFLICT DO NOTHING;
 
--- ============================================
--- DEFAULT GRADE LEVELS (Playgroup to Grade 6)
--- ============================================
 
-INSERT INTO grade_levels (name, sort_order) VALUES
- ('Playgroup', 1),
- ('Pre-Primary 1', 2),
- ('Pre-Primary 2', 3),
- ('Grade 1', 4),
- ('Grade 2', 5),
- ('Grade 3', 6),
- ('Grade 4', 7),
- ('Grade 5', 8),
- ('Grade 6', 9)
-ON CONFLICT (name) DO NOTHING;
-
--- ============================================
 -- DEFAULT SUBJECTS
 -- ============================================
 

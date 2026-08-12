@@ -609,7 +609,7 @@ CREATE TABLE IF NOT EXISTS parent_students (
   is_primary BOOLEAN,
   parent_id UUID NOT NULL,
   relationship TEXT,
-  student_id UUID NOT NULL
+  student_id UUID NOT NULL,
   UNIQUE(parent_id, student_id)
 );
   UNIQUE(parent_id, student_id)
@@ -836,7 +836,7 @@ CREATE TABLE IF NOT EXISTS class_subjects (
   class_id UUID NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   subject_id UUID NOT NULL,
-  teacher_id UUID
+  teacher_id UUID,
   UNIQUE(class_id, subject_id)
 );
   UNIQUE(class_id, subject_id)
@@ -884,7 +884,7 @@ CREATE TABLE IF NOT EXISTS parent_children (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_id UUID NOT NULL,
   relationship TEXT,
-  student_id UUID NOT NULL
+  student_id UUID NOT NULL,
   UNIQUE(parent_id, student_id)
 );
   UNIQUE(parent_id, student_id)
@@ -2012,16 +2012,16 @@ ON CONFLICT DO NOTHING;
 -- DEFAULT SUBJECTS
 -- ============================================
 
-INSERT INTO subjects (name, code, description) VALUES
- ('Mathematics', 'MATH', 'Core mathematics subject'),
- ('English', 'ENG', 'English language and literature'),
- ('Kiswahili', 'KIS', 'Kiswahili language'),
- ('Science', 'SCI', 'General science'),
- ('Social Studies', 'SST', 'Social studies and geography'),
- ('Religious Education', 'RE', 'Christian religious education'),
- ('Creative Arts', 'ART', 'Art and craft'),
- ('Physical Education', 'PE', 'Physical education and sports'),
- ('Computer Studies', 'COMP', 'Computer literacy and programming')
+INSERT INTO subjects (name, code) VALUES
+ ('Mathematics', 'MATH'),
+ ('English', 'ENG'),
+ ('Kiswahili', 'KIS'),
+ ('Science', 'SCI'),
+ ('Social Studies', 'SST'),
+ ('Religious Education', 'RE'),
+ ('Creative Arts', 'ART'),
+ ('Physical Education', 'PE'),
+ ('Computer Studies', 'COMP')
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================

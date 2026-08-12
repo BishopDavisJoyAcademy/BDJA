@@ -71,16 +71,16 @@ ON CONFLICT DO NOTHING;
 -- DEFAULT SUBJECTS
 -- ============================================
 
-INSERT INTO subjects (name, code, description) VALUES
- ('Mathematics', 'MATH', 'Core mathematics subject'),
- ('English', 'ENG', 'English language and literature'),
- ('Kiswahili', 'KIS', 'Kiswahili language'),
- ('Science', 'SCI', 'General science'),
- ('Social Studies', 'SST', 'Social studies and geography'),
- ('Religious Education', 'RE', 'Christian religious education'),
- ('Creative Arts', 'ART', 'Art and craft'),
- ('Physical Education', 'PE', 'Physical education and sports'),
- ('Computer Studies', 'COMP', 'Computer literacy and programming')
+INSERT INTO subjects (name, code) VALUES
+ ('Mathematics', 'MATH'),
+ ('English', 'ENG'),
+ ('Kiswahili', 'KIS'),
+ ('Science', 'SCI'),
+ ('Social Studies', 'SST'),
+ ('Religious Education', 'RE'),
+ ('Creative Arts', 'ART'),
+ ('Physical Education', 'PE'),
+ ('Computer Studies', 'COMP')
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================

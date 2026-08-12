@@ -529,7 +529,7 @@ CREATE TABLE IF NOT EXISTS parent_students (
   is_primary BOOLEAN,
   parent_id UUID NOT NULL,
   relationship TEXT,
-  student_id UUID NOT NULL
+  student_id UUID NOT NULL,
   UNIQUE(parent_id, student_id)
 );
   UNIQUE(parent_id, student_id)
@@ -756,7 +756,7 @@ CREATE TABLE IF NOT EXISTS class_subjects (
   class_id UUID NOT NULL,
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   subject_id UUID NOT NULL,
-  teacher_id UUID
+  teacher_id UUID,
   UNIQUE(class_id, subject_id)
 );
   UNIQUE(class_id, subject_id)
@@ -804,7 +804,7 @@ CREATE TABLE IF NOT EXISTS parent_children (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_id UUID NOT NULL,
   relationship TEXT,
-  student_id UUID NOT NULL
+  student_id UUID NOT NULL,
   UNIQUE(parent_id, student_id)
 );
   UNIQUE(parent_id, student_id)

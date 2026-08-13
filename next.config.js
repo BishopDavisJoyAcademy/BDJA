@@ -13,6 +13,17 @@ const nextConfig = {
       { protocol: "https", hostname: "**" },
     ],
   },
+  async rewrites() {
+    const segment = process.env.NEXT_PUBLIC_ADMIN_SEGMENT || "admin";
+    return [
+      // Page routes: /secret/* → /admin/*
+      { source: `/${segment}/:path*`, destination: "/admin/:path*" },
+      { source: `/${segment}`, destination: "/admin" },
+      // API routes: /api/secret/* → /api/admin/*
+      { source: `/api/${segment}/:path*`, destination: "/api/admin/:path*" },
+      { source: `/api/${segment}`, destination: "/api/admin" },
+    ];
+  },
   async headers() {
     return [
       {

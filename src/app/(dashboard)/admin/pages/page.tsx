@@ -69,8 +69,7 @@ ${form.content}` }],
       });
       const html = (res as { message?: string; success?: boolean }).message || "";
       // Extract HTML from markdown code blocks if present
-      const match = html.match(/```html
-?([\s\S]*?)```/);
+      const match = html.match(/```html\s*([\s\S]*?)\s*```/);
       const cleanHtml = match ? match[1].trim() : html;
       setForm((prev) => ({ ...prev, content: cleanHtml }));
       toast.success("Joy transformed your content!");

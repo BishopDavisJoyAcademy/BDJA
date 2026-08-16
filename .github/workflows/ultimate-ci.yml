@@ -51,7 +51,7 @@ jobs:
     permissions:
       contents: read
     outputs:
-      cache-key: ${{ steps.cache.outputs.cache-primary-key }}
+      cache-key: ${{ steps.key.outputs.cache-key }}
       node-modules-cached: ${{ steps.cache.outputs.cache-hit }}
       lockfile-exists: ${{ steps.detect.outputs.lockfile }}
     steps:
@@ -73,7 +73,7 @@ jobs:
             echo "Lockfile: pnpm-lock.yaml"
           else
             echo "lockfile=none" >> "$GITHUB_OUTPUT"
-            echo "No lockfile found — will use npm install"
+            echo "::warning::No lockfile found. Run 'npm install' locally and commit the lockfile."
           fi
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -83,13 +83,12 @@ jobs:
         id: key
         run: |
           LOCKFILE="${{ steps.detect.outputs.lockfile }}"
-          if [ "$LOCKFILE" != "none" ]; then
+          if [ "$LOCKFILE" != "none" ] && [ -f "$LOCKFILE" ]; then
             HASH=$(sha256sum "$LOCKFILE" | cut -d' ' -f1 | head -c 16)
-            echo "cache-key=${{ runner.os }}-node-modules-${HASH}" >> "$GITHUB_OUTPUT"
           else
             HASH=$(sha256sum package.json | cut -d' ' -f1 | head -c 16)
-            echo "cache-key=${{ runner.os }}-node-modules-${HASH}" >> "$GITHUB_OUTPUT"
           fi
+          echo "cache-key=${{ runner.os }}-node-modules-${HASH}" >> "$GITHUB_OUTPUT"
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         id: cache
@@ -109,7 +108,7 @@ jobs:
           elif [ "$LOCKFILE" == "pnpm-lock.yaml" ]; then
             pnpm install --frozen-lockfile
           else
-            echo "::warning::No lockfile found. Using npm install (not recommended for CI)."
+            echo "::warning::No lockfile — using npm install (slower, non-deterministic)."
             npm install
           fi
       - name: Validate lockfile integrity
@@ -211,7 +210,7 @@ jobs:
           echo "" >> tsc-report.txt
           npx tsc --noEmit --pretty 2>&1 | tee -a tsc-report.txt || true
           CODE=${PIPESTATUS[0]}
-          ERRORS=$(grep -cE "^.*error TS[0-9]+" tsc-report.txt || echo "0")
+          ERRORS=$(grep -cE "error TS[0-9]+" tsc-report.txt 2>/dev/null)
           END=$(date +%s)
           DURATION=$((END - START))
           echo "" >> tsc-report.txt
@@ -512,8 +511,18 @@ jobs:
         with:
           path: node_modules
           key: ${{ needs.setup.outputs.cache-key }}
+      - name: Check for lockfile
+        id: lockfile-check
+        run: |
+          if [ -f "package-lock.json" ] || [ -f "yarn.lock" ] || [ -f "pnpm-lock.yaml" ]; then
+            echo "has_lockfile=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_lockfile=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No lockfile found. Skipping security audit. Run 'npm install' locally and commit the lockfile."
+          fi
       - name: Run npm audit
         id: audit
+        if: steps.lockfile-check.outputs.has_lockfile == 'true'
         run: |
           if [ "${{ github.event.inputs.skip_audit }}" == "true" ]; then
             echo "result=skipped" >> "$GITHUB_OUTPUT"
@@ -542,6 +551,13 @@ jobs:
           fi
           exit $CODE
         continue-on-error: true
+      - name: Skip audit (no lockfile)
+        if: steps.lockfile-check.outputs.has_lockfile != 'true'
+        run: |
+          echo "result=skipped" >> "$GITHUB_OUTPUT"
+          echo "vulns=0" >> "$GITHUB_OUTPUT"
+          echo "deprecated=0" >> "$GITHUB_OUTPUT"
+          echo "No lockfile — audit skipped." > audit-report.txt
       - name: Upload audit report
         if: always() && steps.audit.outputs.result != 'skipped'
         uses: actions/upload-artifact@v4

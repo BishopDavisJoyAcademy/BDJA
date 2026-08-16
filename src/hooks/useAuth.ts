@@ -1,24 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
-import { UserRole, UserCategory } from "@/types";
+import { supabase } from "@/lib/supabase-client";
 
 export interface AuthUser {
   id: string;
-  email: string | null;
-  role: UserRole;
-  user_category: UserCategory;
-  full_name: string;
-  password_changed: boolean;
-  onboarding_completed: boolean;
-  is_active: boolean;
+  email: string;
+  full_name: string | null;
+  role: string;
+  user_category: string | null;
   campus_id: string | null;
-  department?: string | null;
-  designation?: string | null;
-  admission_number?: string | null;
-  grade_level?: string | null;
+  avatar_url: string | null;
+  is_active: boolean;
+  must_change_password: boolean;
   permissions?: string[];
 }
 
@@ -28,104 +22,126 @@ interface AuthState {
   error: { type: string; message: string } | null;
 }
 
+interface SignInResult {
+  success: boolean;
+  error: string | null;
+  mustChangePassword?: boolean;
+}
+
 export function useAuth() {
-  const router = useRouter();
-  const [state, setState] = useState<AuthState>({ user: null, loading: true, error: null });
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    loading: true,
+    error: null,
+  });
 
   const fetchUser = useCallback(async () => {
     try {
-      // Use getUser() for secure validation
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-      if (userError || !currentUser) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         setState({ user: null, loading: false, error: null });
         return;
       }
 
-      // Get session for the token
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) {
-        setState({ user: null, loading: false, error: { type: "session_expired", message: "Session expired" } });
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, role, user_category, campus_id, avatar_url, is_active, must_change_password")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profileError || !profile || !profile.is_active) {
+        setState({
+          user: null,
+          loading: false,
+          error: { type: "auth", message: "Account inactive or not found" },
+        });
         return;
       }
 
-      const response = await fetch("/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data: permData } = await supabase
+        .from("staff_permissions")
+        .select("permissions(permission_key)")
+        .eq("staff_id", profile.id);
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          await supabase.auth.signOut();
-          setState({ user: null, loading: false, error: { type: "session_expired", message: "Session expired" } });
-          return;
-        }
-        throw new Error("Failed to load user data");
-      }
-
-      const data = await response.json();
-      const profile = data.user;
-      if (!profile) throw new Error("Profile not found");
-
-      if (profile.is_active === false) {
-        await supabase.auth.signOut();
-        setState({ user: null, loading: false, error: { type: "account_suspended", message: "Account suspended" } });
-        return;
-      }
-
-      const rawRole = profile.role || "student";
-      const role: UserRole = ["student", "parent", "staff", "admin"].includes(rawRole)
-        ? rawRole
-        : ["principal", "super_admin"].includes(rawRole) ? "admin" : "staff";
-
-      let userCategory: UserCategory = profile.user_category;
-      if (!userCategory || !["student", "parent", "staff", "admin"].includes(userCategory)) {
-        userCategory = role === "student" ? "student" : role === "parent" ? "parent" : role === "admin" ? "admin" : "staff";
-      }
+      const permissions = (permData || [])
+        .map((p: { permissions: { permission_key: string } | null }) => p.permissions?.permission_key)
+        .filter((k): k is string => Boolean(k));
 
       setState({
-        user: {
-          id: profile.id,
-          email: profile.email,
-          role,
-          user_category: userCategory,
-          full_name: profile.full_name || "User",
-          password_changed: profile.password_changed ?? false,
-          onboarding_completed: profile.onboarding_completed ?? false,
-          is_active: profile.is_active ?? true,
-          campus_id: profile.campus_id || null,
-          department: profile.department || null,
-          designation: profile.designation || null,
-          admission_number: profile.admission_number || null,
-          grade_level: profile.grade_level || null,
-          permissions: data.permissions || [],
-        },
+        user: { ...profile, permissions },
         loading: false,
         error: null,
       });
-    } catch (error: unknown) {
-      console.error("[useAuth] Error:", error);
-      setState({ user: null, loading: false, error: { type: "unknown", message: (error instanceof Error ? error.message : "Authentication failed") } });
+    } catch {
+      setState({
+        user: null,
+        loading: false,
+        error: { type: "unknown", message: "Failed to load user" },
+      });
     }
   }, []);
 
   useEffect(() => {
     fetchUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
-        fetchUser();
-      } else if (event === "SIGNED_OUT") {
-        setState({ user: null, loading: false, error: null });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (session) fetchUser();
+        else setState({ user: null, loading: false, error: null });
       }
-    });
-    return () => subscription.unsubscribe();
+    );
+
+    return () => {
+      listener?.subscription?.unsubscribe();
+    };
   }, [fetchUser]);
 
-  const signOut = useCallback(async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    await supabase.auth.signOut({ scope: "global" });
-    setState({ user: null, loading: false, error: null });
-    router.push("/login");
-  }, [router]);
+  const signIn = useCallback(
+    async (email: string, password: string): Promise<SignInResult> => {
+      setState((s) => ({ ...s, loading: true, error: null }));
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
 
-  return { user: state.user, loading: state.loading, error: state.error, signOut, refresh: fetchUser };
+        await fetchUser();
+
+        return {
+          success: true,
+          error: null,
+          mustChangePassword: data.user?.user_metadata?.must_change_password,
+        };
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Invalid credentials";
+        setState((s) => ({
+          ...s,
+          loading: false,
+          error: { type: "auth", message },
+        }));
+        return { success: false, error: message };
+      }
+    },
+    [fetchUser]
+  );
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    setState({ user: null, loading: false, error: null });
+  }, []);
+
+  const refresh = useCallback(async () => {
+    await fetchUser();
+  }, [fetchUser]);
+
+  return {
+    user: state.user,
+    loading: state.loading,
+    error: state.error,
+    signIn,
+    signOut,
+    refresh,
+  };
 }

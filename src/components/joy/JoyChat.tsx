@@ -172,9 +172,9 @@ export function JoyChat() {
   // Voice input
   useEffect(() => {
     if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
-      const SpeechRecognition = (window as unknown as Record<string, unknown>).webkitSpeechRecognition as typeof SpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
+      const SpeechRecognitionCtor = (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognition }).webkitSpeechRecognition;
+      if (!SpeechRecognitionCtor) { toast.error("Speech recognition not supported"); return; }
+      recognitionRef.current = new SpeechRecognitionCtor();
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = "en-US";
       recognitionRef.current.onresult = (event: Event & { results: SpeechRecognitionResultList; resultIndex: number }) => {
@@ -207,7 +207,11 @@ export function JoyChat() {
     for (const item of Array.from(items)) {
       if (item.type.startsWith("image/")) {
         const file = item.getAsFile();
-        if (file) addFiles({ 0: file, length: 1, item: () => file } as unknown, "photos");
+        if (file) {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          addFiles(dt.files, "photos");
+        }
       }
     }
   };
@@ -260,7 +264,7 @@ export function JoyChat() {
   };
 
   // Execute actions on frontend
-  const executeFrontendActions = useCallback((actions: Record<string, unknown>[][]) => {
+  const executeFrontendActions = useCallback((actions: Record<string, unknown>[]) => {
     if (!actions || actions.length === 0) return;
     for (const action of actions) {
       if (action.type === "navigate" && action.target) {
@@ -726,7 +730,7 @@ export function JoyChat() {
             </div>
             <div>
               <label className="text-xs font-medium mb-2 block" style={{ color: theme.textMuted }}>Personality</label>
-              <select value={preferences.personality_mode} onChange={(e) => updatePreferences({ personality_mode: e.target.value as unknown })} className="w-full px-3 py-2 rounded-lg text-sm border" style={{ background: theme.background, borderColor: theme.border, color: theme.text }}>
+              <select value={preferences.personality_mode} onChange={(e) => updatePreferences({ personality_mode: e.target.value as "auto" | "playful" | "study_buddy" | "professional" | "efficient" })} className="w-full px-3 py-2 rounded-lg text-sm border" style={{ background: theme.background, borderColor: theme.border, color: theme.text }}>
                 <option value="auto">Auto (Based on Role)</option>
                 <option value="playful">Playful (Young Students)</option>
                 <option value="study_buddy">Study Buddy (Older Students)</option>
@@ -808,14 +812,14 @@ export function JoyChat() {
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        code({ node, inline, className, children, ...props }: Record<string, unknown>) {
-                          const match = /language-(\w+)/.exec(className || "");
+                        code({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode } & React.HTMLAttributes<HTMLElement>) {
+                          const match = /language-(\w+)/.exec((className as string) || "");
                           return !inline && match ? (
-                            <SyntaxHighlighter style={oneDark as unknown} language={match[1]} PreTag="div" {...props}>
+                            <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>
                               {String(children).replace(/\n$/, "")}
                             </SyntaxHighlighter>
                           ) : (
-                            <code className={className} {...props}>{children}</code>
+                            <code className={className || ""} {...props}>{String(children || "").replace(/\n$/, "")}</code>
                           );
                         },
                       }}

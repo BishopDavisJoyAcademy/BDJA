@@ -2087,6 +2087,46 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          academic_year: string | null
+          address: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          id: string
+          school_name: string | null
+          terms: Json | null
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          academic_year?: string | null
+          address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          id?: string
+          school_name?: string | null
+          terms?: Json | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          academic_year?: string | null
+          address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          id?: string
+          school_name?: string | null
+          terms?: Json | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2169,6 +2209,55 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+
+      runtime_errors: {
+        Row: {
+          component: string | null
+          created_at: string | null
+          id: string
+          joy_analysis: string | null
+          message: string
+          resolved: boolean | null
+          source: string | null
+          stack: string | null
+          timestamp: string | null
+          updated_at: string | null
+          url: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          component?: string | null
+          created_at?: string | null
+          id?: string
+          joy_analysis?: string | null
+          message: string
+          resolved?: boolean | null
+          source?: string | null
+          stack?: string | null
+          timestamp?: string | null
+          updated_at?: string | null
+          url?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          component?: string | null
+          created_at?: string | null
+          id?: string
+          joy_analysis?: string | null
+          message?: string
+          resolved?: boolean | null
+          source?: string | null
+          stack?: string | null
+          timestamp?: string | null
+          updated_at?: string | null
+          url?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       saved_videos: {
         Row: {

@@ -1,110 +1,95 @@
 import { getSupabaseAdmin } from "./supabase-server";
-import { JoyAction } from "@/types/joy";
+import { getErrorMessage } from "./errors";
+
+export interface ActionPayload {
+  table: string;
+  data?: Record<string, unknown>;
+  id?: string;
+  filters?: Record<string, unknown>;
+}
 
 export interface ActionResult {
   success: boolean;
   message: string;
-  data?: Record<string, unknown>;
+  data?: Record<string, unknown> | Record<string, unknown>[] | null;
   error?: string;
 }
 
 export async function executeJoyAction(
-  userId: string,
-  userCategory: string,
-  action: JoyAction
+  actionType: string,
+  actionPayload: ActionPayload
 ): Promise<ActionResult> {
   const admin = getSupabaseAdmin();
 
   try {
-    switch (action.type) {
-      case "navigate":
-        return { success: true, message: `Navigate to ${action.target}`, data: { path: action.target } };
-
-      case "refresh":
-        return { success: true, message: `Refresh ${action.target}`, data: { target: action.target } };
-
-      case "create_record": {
-        if (!action.payload?.table) {
-          return { success: false, message: "Missing table name", error: "No table specified" };
+    switch (actionType) {
+      case "create": {
+        if (!actionPayload.data) {
+          return { success: false, message: "No data provided for create action" };
         }
         const { data, error } = await admin
-          .from(action.payload.table)
-          .insert(action.payload.data)
+          .from(actionPayload.table)
+          .insert([actionPayload.data])
           .select()
           .single();
-        if (error) throw error;
-        return { success: true, message: `Created ${action.payload.table} record`, data };
+        if (error) return { success: false, message: error.message };
+        return {
+          success: true,
+          message: `Created ${actionPayload.table} record`,
+          data: data as Record<string, unknown> | null,
+        };
       }
 
-      case "update_record": {
-        if (!action.payload?.table || !action.payload?.id) {
-          return { success: false, message: "Missing table or id", error: "Invalid payload" };
+      case "update": {
+        if (!actionPayload.id || !actionPayload.data) {
+          return { success: false, message: "ID and data required for update" };
         }
         const { data, error } = await admin
-          .from(action.payload.table)
-          .update(action.payload.data)
-          .eq("id", action.payload.id)
+          .from(actionPayload.table)
+          .update(actionPayload.data)
+          .eq("id", actionPayload.id)
           .select()
           .single();
-        if (error) throw error;
-        return { success: true, message: `Updated ${action.payload.table} record`, data };
+        if (error) return { success: false, message: error.message };
+        return {
+          success: true,
+          message: `Updated ${actionPayload.table} record`,
+          data: data as Record<string, unknown> | null,
+        };
       }
 
-      case "delete_record": {
-        if (!action.payload?.table || !action.payload?.id) {
-          return { success: false, message: "Missing table or id", error: "Invalid payload" };
+      case "delete": {
+        if (!actionPayload.id) {
+          return { success: false, message: "ID required for delete" };
         }
         const { error } = await admin
-          .from(action.payload.table)
+          .from(actionPayload.table)
           .delete()
-          .eq("id", action.payload.id);
-        if (error) throw error;
-        return { success: true, message: `Deleted ${action.payload.table} record` };
+          .eq("id", actionPayload.id);
+        if (error) return { success: false, message: error.message };
+        return { success: true, message: `Deleted ${actionPayload.table} record` };
       }
 
-      case "notify": {
-        if (!action.payload?.user_id || !action.payload?.message) {
-          return { success: false, message: "Missing notification data", error: "Invalid payload" };
+      case "query": {
+        let query = admin.from(actionPayload.table).select("*");
+        if (actionPayload.filters) {
+          for (const [key, value] of Object.entries(actionPayload.filters)) {
+            query = query.eq(key, value);
+          }
         }
-        interface NotificationInsertRow {
-          user_id: string;
-          title: string;
-          content: string | null;
-          type: string;
-          action_url: string | null;
-          read: boolean | null;
-        }
-
-        const { error } = await admin.from("notifications").insert({
-          user_id: action.payload.user_id,
-          title: action.payload.title || "Joy AI",
-          content: action.payload.message || null,
-          type: action.payload.type || "info",
-          action_url: action.payload.action_url || null,
-          read: false,
-        } as NotificationInsertRow);
-        if (error) throw error;
-        return { success: true, message: "Notification sent" };
+        const { data, error } = await query;
+        if (error) return { success: false, message: error.message };
+        return {
+          success: true,
+          message: `Queried ${actionPayload.table}`,
+          data: data as Record<string, unknown>[] | null,
+        };
       }
 
       default:
-        return { success: false, message: "Unknown action type", error: `Type: ${action.type}` };
+        return { success: false, message: `Unknown action type: ${actionType}` };
     }
   } catch (err: unknown) {
     return { success: false, message: getErrorMessage(err), error: getErrorMessage(err) };
   }
-}
-
-export function getAvailableActions(userCategory: string): string[] {
-  const common = ["navigate", "refresh", "export"];
-
-  if (userCategory === "admin") {
-    return [...common, "create_record", "update_record", "delete_record", "notify", "open_modal"];
-  }
-
-  if (userCategory === "staff") {
-    return [...common, "create_record", "update_record", "notify"];
-  }
-
-  return common;
 }

@@ -1,43 +1,88 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertCircle, Users, GraduationCap, BookOpen, ClipboardList } from "lucide-react";
+import { useState, useEffect } from "react";
 import { apiGet } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/errors";
+import { Card } from "@/components/ui/Card";
+import { Loader2, Users, GraduationCap, UserCheck, FileText } from "lucide-react";
+
+interface AdminStats {
+  students: number;
+  staff: number;
+  parents: number;
+  pendingAdmissions: number;
+}
 
 export default function AnalyticsPage() {
-  const [stats, setStats] = useState({ students: 0, staff: 0, parents: 0, pendingAdmissions: 0 });
+  const [stats, setStats] = useState<AdminStats>({
+    students: 0,
+    staff: 0,
+    parents: 0,
+    pendingAdmissions: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    apiGet("/api/admin/stats").then((d) => { setStats(d); setLoading(false); }).catch((err) => { setError(getErrorMessage(err)); setLoading(false); });
+    apiGet<{ students: number; staff: number; parents: number; pendingAdmissions: number }>("/api/admin/stats")
+      .then((d) => {
+        setStats({
+          students: d.students || 0,
+          staff: d.staff || 0,
+          parents: d.parents || 0,
+          pendingAdmissions: d.pendingAdmissions || 0,
+        });
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(getErrorMessage(err));
+        setLoading(false);
+      });
   }, []);
 
-  if (loading) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-400"></div></div>;
-  if (error) return <div className="p-4 bg-red-500/10 text-red-400 rounded-xl flex items-center gap-2 border border-red-500/20"><AlertCircle className="w-5 h-5" />{error}</div>;
-
-  const cards = [
-    { label: "Total Students", value: stats.students, icon: GraduationCap, color: "from-blue-500 to-blue-600" },
-    { label: "Total Staff", value: stats.staff, icon: Users, color: "from-emerald-500 to-emerald-600" },
-    { label: "Total Parents", value: stats.parents, icon: Users, color: "from-violet-500 to-violet-600" },
-    { label: "Pending Admissions", value: stats.pendingAdmissions, icon: ClipboardList, color: "from-amber-500 to-amber-600" },
-  ];
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-amber-400" /></div>;
+  if (error) return <div className="p-4 bg-red-500/10 text-red-400 rounded-xl">{error}</div>;
 
   return (
     <div className="space-y-6">
-      <div><h1 className="text-3xl font-bold text-white">Analytics & Reports</h1><p className="text-gray-400 mt-1">Platform overview and key metrics</p></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {cards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <div key={card.label} className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
-              <div className="flex items-center justify-between">
-                <div><p className="text-sm text-gray-400">{card.label}</p><p className="text-3xl font-bold text-white mt-1">{card.value}</p></div>
-                <div className={`bg-gradient-to-br ${card.color} text-white p-3 rounded-xl shadow-lg`}><Icon className="w-6 h-6" /></div>
-              </div>
+      <h1 className="text-2xl font-bold text-white">Analytics</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <GraduationCap className="w-8 h-8 text-amber-400" />
+            <div>
+              <p className="text-sm text-gray-400">Students</p>
+              <p className="text-2xl font-bold text-white">{stats.students}</p>
             </div>
-          );
-        })}
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <Users className="w-8 h-8 text-emerald-400" />
+            <div>
+              <p className="text-sm text-gray-400">Staff</p>
+              <p className="text-2xl font-bold text-white">{stats.staff}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <UserCheck className="w-8 h-8 text-blue-400" />
+            <div>
+              <p className="text-sm text-gray-400">Parents</p>
+              <p className="text-2xl font-bold text-white">{stats.parents}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <FileText className="w-8 h-8 text-purple-400" />
+            <div>
+              <p className="text-sm text-gray-400">Pending Admissions</p>
+              <p className="text-2xl font-bold text-white">{stats.pendingAdmissions}</p>
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   );

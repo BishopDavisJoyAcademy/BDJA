@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { getClientIP } from "@/lib/security";
-import { RuntimeError } from "@/lib/errors";
-import { getErrorMessage } from "@/lib/errors";
+import { RuntimeError, getErrorMessage, AuthRequiredError, PermissionDeniedError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +24,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ errors: data || [] });
   } catch (error: unknown) {
     const message = error instanceof Error ? getErrorMessage(error) : "Authentication failed";
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: message }, { status: (error as AuthRequiredError & { statusCode?: number }).statusCode || 401 });
+    if (error instanceof AuthRequiredError) {
+      return NextResponse.json({ error: message }, { status: error.statusCode || 401 });
+    }
+    if (error instanceof PermissionDeniedError) {
+      return NextResponse.json({ error: message }, { status: error.statusCode || 403 });
     }
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -64,7 +66,9 @@ export async function PATCH(req: NextRequest) {
     if (!body.id) return NextResponse.json({ error: "Error ID required" }, { status: 400 });
 
     const admin = getSupabaseAdmin();
-    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const updateData: { updated_at: string; resolved?: boolean; joy_analysis?: string } = {
+      updated_at: new Date().toISOString(),
+    };
     if (body.resolved !== undefined) updateData.resolved = body.resolved;
     if (body.joy_analysis !== undefined) updateData.joy_analysis = body.joy_analysis;
 
@@ -73,8 +77,11 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? getErrorMessage(error) : "Authentication failed";
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: message }, { status: (error as AuthRequiredError & { statusCode?: number }).statusCode || 401 });
+    if (error instanceof AuthRequiredError) {
+      return NextResponse.json({ error: message }, { status: error.statusCode || 401 });
+    }
+    if (error instanceof PermissionDeniedError) {
+      return NextResponse.json({ error: message }, { status: error.statusCode || 403 });
     }
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -94,8 +101,11 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? getErrorMessage(error) : "Authentication failed";
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: message }, { status: (error as AuthRequiredError & { statusCode?: number }).statusCode || 401 });
+    if (error instanceof AuthRequiredError) {
+      return NextResponse.json({ error: message }, { status: error.statusCode || 401 });
+    }
+    if (error instanceof PermissionDeniedError) {
+      return NextResponse.json({ error: message }, { status: error.statusCode || 403 });
     }
     return NextResponse.json({ error: message }, { status: 500 });
   }

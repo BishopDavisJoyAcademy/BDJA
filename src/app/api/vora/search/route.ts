@@ -1,46 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchVoraContent } from "@/lib/vora";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { searchYouTubeAsVora } from "@/lib/youtube";
-import { voraSearchSchema } from "@/lib/validation";
 import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
+interface VoraContent {
+  id: string;
+  title: string;
+  description: string | null;
+  video_url: string | null;
+  thumbnail_url: string | null;
+  grade_level: string | null;
+  subject: string | null;
+  category: string;
+  duration_seconds: number | null;
+  is_published: boolean;
+  created_at: string | null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const query = searchParams.get("q") || "";
-    const grade_level = searchParams.get("grade_level") || undefined;
-    const subject = searchParams.get("subject") || undefined;
-    const category = searchParams.get("category") || undefined;
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const query = searchParams.get("q");
+    const grade_level = searchParams.get("grade_level");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "10", 10), 20);
 
-    const parseResult = voraSearchSchema.safeParse({
-      query,
-      grade_level,
-      subject,
-      category,
-      limit,
-    });
-
-    if (!parseResult.success) {
-      return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });
+    if (!query) {
+      return NextResponse.json({ error: "Query parameter 'q' is required" }, { status: 400 });
     }
 
-    const localResults = searchVoraContent(query, { grade_level, subject, limit });
+    const admin = getSupabaseAdmin();
+    let dbQuery = admin.from("vora_content").select("*").eq("is_published", true);
+    if (grade_level) dbQuery = dbQuery.eq("grade_level", grade_level);
 
-    let youtubeResults: Record<string, unknown>[] = [];
-    if (localResults.length === 0 && query.length > 3) {
-      youtubeResults = await searchYouTubeAsVora(query, grade_level, Math.min(limit, 5));
+    const { data: dbResults, error } = await dbQuery
+      .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
+      .limit(limit);
+
+    if (error) return NextResponse.json({ error: "Search failed" }, { status: 500 });
+
+    let youtubeResults: VoraContent[] = [];
+    try {
+      youtubeResults = (await searchYouTubeAsVora(query, grade_level, Math.min(limit, 5))) as VoraContent[];
+    } catch {
+      // YouTube search is optional
     }
 
-    return NextResponse.json({
-      local: localResults,
-      youtube: youtubeResults,
-      total: localResults.length + youtubeResults.length,
-    });
+    const combined = [...(dbResults || []), ...youtubeResults];
+    return NextResponse.json({ results: combined });
   } catch (error: unknown) {
-    console.error("[api/vora/search] Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("[vora/search] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

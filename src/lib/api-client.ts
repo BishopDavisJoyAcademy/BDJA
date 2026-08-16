@@ -1,68 +1,70 @@
-"use client";
+import { getErrorMessage } from "./errors";
 
-import { supabase } from "@/lib/supabase";
+const API_BASE = "";
 
-let cachedToken: string | null = null;
-let tokenExpiry: number = 0;
-
-async function getAuthToken(): Promise<string | null> {
-  const now = Date.now();
-  if (cachedToken && tokenExpiry > now + 60000) return cachedToken;
-  const { data: { session } } = await supabase.auth.getSession();
-  cachedToken = session?.access_token || null;
-  tokenExpiry = session?.expires_at ? session.expires_at * 1000 : 0;
-  return cachedToken;
+interface ApiErrorResponse {
+  error?: string;
+  message?: string;
 }
 
-export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const token = await getAuthToken();
-  const headers = new Headers(init?.headers || {});
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  headers.set("Content-Type", headers.get("Content-Type") || "application/json");
-  return fetch(input, { ...init, headers, credentials: "include" });
-}
-
-export async function apiGet(url: string): Promise<unknown> {
-  const res = await apiFetch(url);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" }));
-    throw new Error((err as { error?: string }).error || `HTTP ${res.status}`);
+class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
   }
-  return res.json();
 }
 
-export async function apiPost(url: string, body: unknown): Promise<unknown> {
-  const res = await apiFetch(url, { method: "POST", body: JSON.stringify(body) });
+async function apiRequest<T>(
+  method: string,
+  endpoint: string,
+  body?: unknown,
+  options?: RequestInit
+): Promise<T> {
+  const url = endpoint.startsWith("http") ? endpoint : `${API_BASE}${endpoint}`;
+  const res = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+    body: body ? JSON.stringify(body) : undefined,
+    ...options,
+  });
+
+  const data = (await res.json().catch(() => ({}))) as T & ApiErrorResponse;
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" }));
-    throw new Error((err as { error?: string }).error || `HTTP ${res.status}`);
+    const msg = data.error || data.message || `HTTP ${res.status}`;
+    throw new ApiError(msg, res.status);
   }
-  return res.json();
+
+  return data;
 }
 
-export async function apiPut(url: string, body: unknown): Promise<unknown> {
-  const res = await apiFetch(url, { method: "PUT", body: JSON.stringify(body) });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" }));
-    throw new Error((err as { error?: string }).error || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
+export const apiGet = <T>(endpoint: string, options?: RequestInit) =>
+  apiRequest<T>("GET", endpoint, undefined, options);
 
-export async function apiPatch(url: string, body?: unknown): Promise<unknown> {
-  const res = await apiFetch(url, { method: "PATCH", body: body ? JSON.stringify(body) : undefined });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" }));
-    throw new Error((err as { error?: string }).error || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
+export const apiPost = <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
+  apiRequest<T>("POST", endpoint, body, options);
 
-export async function apiDelete(url: string): Promise<unknown> {
-  const res = await apiFetch(url, { method: "DELETE" });
+export const apiPut = <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
+  apiRequest<T>("PUT", endpoint, body, options);
+
+export const apiPatch = <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
+  apiRequest<T>("PATCH", endpoint, body, options);
+
+export const apiDelete = <T>(endpoint: string, options?: RequestInit) =>
+  apiRequest<T>("DELETE", endpoint, undefined, options);
+
+export async function apiFetch(endpoint: string, options?: RequestInit) {
+  const res = await fetch(
+    endpoint.startsWith("http") ? endpoint : `${API_BASE}${endpoint}`,
+    options
+  );
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" }));
-    throw new Error((err as { error?: string }).error || `HTTP ${res.status}`);
+    throw new Error(
+      (data as ApiErrorResponse).error || `HTTP ${res.status}`
+    );
   }
-  return res.json();
+  return data;
 }

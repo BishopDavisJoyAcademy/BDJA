@@ -1,7 +1,71 @@
 import { JoyMessage } from "@/types";
 
-const AEVIBRON_ENDPOINT = process.env.NEXT_PUBLIC_AEVIBRON_ENDPOINT || "https://api.aevibron.com/api/v1/chat";
-const AEVIBRON_KEY = process.env.AEVIBRON_API_KEY || "";
+function getAevibronEndpoint(): string {
+  const url = process.env.NEXT_PUBLIC_AEVIBRON_ENDPOINT;
+  if (!url) {
+    throw new Error("NEXT_PUBLIC_AEVIBRON_ENDPOINT environment variable is required");
+  }
+  return url;
+}
+
+function getAevibronKey(): string {
+  const key = process.env.AEVIBRON_API_KEY;
+  if (!key) {
+    throw new Error("AEVIBRON_API_KEY environment variable is required");
+  }
+  return key;
+}
+
+export interface TimetableEntry {
+  day_of_week: string;
+  subject?: string;
+  subjects?: { name: string } | null;
+  start_time: string;
+  end_time: string;
+}
+
+export interface GradeEntry {
+  subject?: string;
+  subjects?: { name: string } | null;
+  score: number;
+  max_score?: number;
+}
+
+export interface AssignmentEntry {
+  subject?: string;
+  subjects?: { name: string } | null;
+  title: string;
+  due_date: string;
+}
+
+export interface FeeEntry {
+  amount_paid?: number;
+  balance?: number;
+}
+
+export interface AttendanceEntry {
+  status: string;
+}
+
+export interface CalendarEventEntry {
+  title: string;
+  date: string;
+}
+
+export interface VoraResultEntry {
+  title: string;
+  subject: string;
+  grade_level: string;
+  video_url: string;
+}
+
+export interface ChildEntry {
+  students?: {
+    admission_number?: string;
+    classes?: { name: string } | null;
+    grade_level?: string;
+  } | null;
+}
 
 export interface AevibronContext {
   userName?: string;
@@ -9,17 +73,34 @@ export interface AevibronContext {
   gradeLevel?: string;
   designation?: string;
   campusId?: string;
-  timetable?: Record<string, unknown>[];
-  grades?: Record<string, unknown>[];
-  assignments?: Record<string, unknown>[];
-  fees?: Record<string, unknown>[];
-  attendance?: Record<string, unknown>[];
-  calendarEvents?: Record<string, unknown>[];
-  voraResults?: Record<string, unknown>[];
-  children?: Record<string, unknown>[];
+  timetable?: TimetableEntry[];
+  grades?: GradeEntry[];
+  assignments?: AssignmentEntry[];
+  fees?: FeeEntry[];
+  attendance?: AttendanceEntry[];
+  calendarEvents?: CalendarEventEntry[];
+  voraResults?: VoraResultEntry[];
+  children?: ChildEntry[];
   availableActions?: string[];
   personality?: string;
   language?: string;
+}
+
+interface AevibronPayload {
+  model: string;
+  messages: Array<{ role: string; content: string }>;
+  temperature: number;
+  max_tokens: number;
+  stream?: boolean;
+}
+
+interface AevibronResponse {
+  choices?: Array<{
+    message?: { content?: string };
+    delta?: { content?: string };
+  }>;
+  content?: string;
+  reply?: string;
 }
 
 function buildSystemPrompt(ctx?: AevibronContext): string {
@@ -89,32 +170,32 @@ DESIGNATION: ${ctx.designation}`;
     prompt += `
 
 TIMETABLE (next few classes):
-${ctx.timetable.slice(0, 5).map((t: Record<string, unknown>) => `- ${t.day_of_week}: ${t.subjects?.name || t.subject} (${t.start_time}-${t.end_time})`).join("\n")}`;
+${ctx.timetable.slice(0, 5).map((t) => `- ${t.day_of_week}: ${t.subjects?.name || t.subject || "Unknown"} (${t.start_time}-${t.end_time})`).join("\n")}`;
   }
 
   if (ctx?.grades && ctx.grades.length > 0) {
     prompt += `
 
 RECENT GRADES:
-${ctx.grades.slice(0, 5).map((g: Record<string, unknown>) => `- ${g.subjects?.name || g.subject}: ${g.score}/${g.max_score || 100}`).join("\n")}`;
+${ctx.grades.slice(0, 5).map((g) => `- ${g.subjects?.name || g.subject || "Unknown"}: ${g.score}/${g.max_score || 100}`).join("\n")}`;
   }
 
   if (ctx?.assignments && ctx.assignments.length > 0) {
     prompt += `
 
 PENDING ASSIGNMENTS:
-${ctx.assignments.slice(0, 5).map((a: Record<string, unknown>) => `- ${a.subjects?.name || a.subject}: ${a.title} (Due: ${a.due_date})`).join("\n")}`;
+${ctx.assignments.slice(0, 5).map((a) => `- ${a.subjects?.name || a.subject || "Unknown"}: ${a.title} (Due: ${a.due_date})`).join("\n")}`;
   }
 
   if (ctx?.fees && ctx.fees.length > 0) {
     prompt += `
 
 FEE RECORDS:
-${ctx.fees.slice(0, 3).map((f: Record<string, unknown>) => `- ${f.amount_paid ? `Paid: KES ${f.amount_paid}` : `Balance: KES ${f.balance || 0}`}`).join("\n")}`;
+${ctx.fees.slice(0, 3).map((f) => `- ${f.amount_paid ? `Paid: KES ${f.amount_paid}` : `Balance: KES ${f.balance || 0}`}`).join("\n")}`;
   }
 
   if (ctx?.attendance && ctx.attendance.length > 0) {
-    const present = ctx.attendance.filter((a: Record<string, unknown>) => a.status === "present").length;
+    const present = ctx.attendance.filter((a) => a.status === "present").length;
     const total = ctx.attendance.length;
     prompt += `
 
@@ -125,24 +206,28 @@ ATTENDANCE: ${present}/${total} days present recently.`;
     prompt += `
 
 UPCOMING EVENTS:
-${ctx.calendarEvents.slice(0, 3).map((e: Record<string, unknown>) => `- ${e.title}: ${e.date}`).join("\n")}`;
+${ctx.calendarEvents.slice(0, 3).map((e) => `- ${e.title}: ${e.date}`).join("\n")}`;
   }
 
   if (ctx?.voraResults && ctx.voraResults.length > 0) {
     prompt += `
 
 RELEVANT LEARNING VIDEOS:
-${ctx.voraResults.slice(0, 3).map((v: Record<string, unknown>) => `- ${v.title} (${v.subject}, ${v.grade_level}): ${v.video_url}`).join("\n")}`;
+${ctx.voraResults.slice(0, 3).map((v) => `- ${v.title} (${v.subject}, ${v.grade_level}): ${v.video_url}`).join("\n")}`;
   }
 
   if (ctx?.children && ctx.children.length > 0) {
     prompt += `
 
 CHILDREN:
-${ctx.children.slice(0, 3).map((c: Record<string, unknown>) => `- ${c.students?.admission_number || "Student"}: Grade ${c.students?.classes?.name || c.students?.grade_level}`).join("\n")}`;
+${ctx.children.slice(0, 3).map((c) => {
+      const s = c.students;
+      const id = s?.admission_number || "Student";
+      const grade = s?.classes?.name || s?.grade_level || "Unknown";
+      return `- ${id}: Grade ${grade}`;
+    }).join("\n")}`;
   }
 
-  // ACTIONS — CRITICAL FIX
   if (ctx?.availableActions && ctx.availableActions.length > 0) {
     prompt += `
 
@@ -151,7 +236,7 @@ ${ctx.availableActions.map((a) => `- ${a}`).join("\n")}
 
 ACTION FORMAT — When you need to perform an action, output it as a JSON block at the VERY END of your response, AFTER your natural language reply. Use this exact format:
 
-{\"actions\":[{\"type\":\"navigate\",\"target\":\"TARGET_NAME\",\"payload\":{}}]}
+{"actions":[{"type":"navigate","target":"TARGET_NAME","payload":{}}]}
 
 Valid targets: fees_management, vora, grades, timetable, assignments, attendance, calendar, library, messages, admissions, admin, teacher, student, parent, profile, settings.
 
@@ -170,12 +255,14 @@ CURRENT DATE: ${new Date().toLocaleDateString("en-KE", { weekday: "long", year: 
 }
 
 export async function chatWithJoy(
-  messages: { role: string; content: string }[],
+  messages: Array<{ role: string; content: string }>,
   context?: AevibronContext
 ): Promise<string> {
+  const endpoint = getAevibronEndpoint();
+  const key = getAevibronKey();
   const systemPrompt = buildSystemPrompt(context);
 
-  const payload = {
+  const payload: AevibronPayload = {
     model: "aevibron-core-v3",
     messages: [
       { role: "system", content: systemPrompt },
@@ -185,22 +272,21 @@ export async function chatWithJoy(
     max_tokens: 2048,
   };
 
-  const res = await fetch(AEVIBRON_ENDPOINT, {
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Aevibron-Key": AEVIBRON_KEY,
+      "X-Aevibron-Key": key,
     },
     body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
     throw new Error(err.error?.message || `Aevibron error: ${res.status}`);
   }
 
-  const data = await res.json();
-  // Handle both direct response and choices format
+  const data = (await res.json()) as AevibronResponse;
   if (data.choices && data.choices[0]?.message?.content) {
     return data.choices[0].message.content;
   }
@@ -210,20 +296,19 @@ export async function chatWithJoy(
   if (data.reply) {
     return data.reply;
   }
-  if (typeof data === "string") {
-    return data;
-  }
   throw new Error("Unexpected response format from Aevibron");
 }
 
 export async function streamJoy(
-  messages: { role: string; content: string }[],
+  messages: Array<{ role: string; content: string }>,
   onChunk: (chunk: string) => void,
   context?: AevibronContext
 ): Promise<void> {
+  const endpoint = getAevibronEndpoint();
+  const key = getAevibronKey();
   const systemPrompt = buildSystemPrompt(context);
 
-  const payload = {
+  const payload: AevibronPayload = {
     model: "aevibron-core-v3",
     messages: [
       { role: "system", content: systemPrompt },
@@ -234,17 +319,17 @@ export async function streamJoy(
     stream: true,
   };
 
-  const res = await fetch(AEVIBRON_ENDPOINT, {
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Aevibron-Key": AEVIBRON_KEY,
+      "X-Aevibron-Key": key,
     },
     body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
     throw new Error(err.error?.message || `Aevibron error: ${res.status}`);
   }
 
@@ -261,13 +346,13 @@ export async function streamJoy(
     buffer = lines.pop() || "";
     for (const line of lines) {
       if (line.startsWith("data: ")) {
-        const data = line.slice(6);
-        if (data === "[DONE]") continue;
+        const dataStr = line.slice(6);
+        if (dataStr === "[DONE]") continue;
         try {
-          const parsed = JSON.parse(data);
-          const chunk = parsed.choices?.[0]?.delta?.content || parsed.delta?.content || parsed.chunk || "";
+          const parsed = JSON.parse(dataStr) as AevibronResponse;
+          const chunk = parsed.choices?.[0]?.delta?.content || "";
           if (chunk) onChunk(chunk);
-        } catch { /* ignore */ }
+        } catch { /* ignore malformed chunks */ }
       }
     }
   }

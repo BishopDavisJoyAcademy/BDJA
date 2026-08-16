@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/session";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/security";
 import { chatMessageSchema } from "@/lib/validation";
-import { getErrorMessage } from "@/lib/errors";
+import { getErrorMessage, AuthRequiredError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -32,11 +32,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI service not configured" }, { status: 503 });
     }
 
-    // Build system prompt with school context
     const systemPrompt = `You are Joy, the AI learning assistant for Bishop Davis Joy Academy. You are helpful, friendly, and knowledgeable about CBC education in Kenya. You assist students, parents, and staff with academic questions, school information, and general learning support. Be concise and accurate. If you don't know something, say so.`;
 
     const fullMessages = [
-      { role: "system", content: systemPrompt },
+      { role: "system" as const, content: systemPrompt },
       ...messages,
     ];
 
@@ -49,15 +48,17 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: "aevibron-core-v3",
         messages: fullMessages,
-        stream: stream || false,
-        temperature: 0.7,
-        max_tokens: 2048,
+        context: context || undefined,
+        stream: stream ?? false,
       }),
     });
 
     if (!res.ok) {
-      const errText = await res.text();
-      return NextResponse.json({ error: "AI service error", details: errText }, { status: 502 });
+      const errorData = await res.json().catch(() => ({}));
+      return NextResponse.json(
+        { error: errorData.error || "AI service error" },
+        { status: res.status }
+      );
     }
 
     if (stream) {
@@ -71,18 +72,13 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
-    const content = data.choices?.[0]?.message?.content || "Sorry, I couldn't process that.";
-
-    return NextResponse.json({
-      success: true,
-      message: content,
-      model: data.model,
-    });
+    return NextResponse.json(data);
   } catch (error: unknown) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: (error instanceof Error ? getErrorMessage(error) : "Chat request failed") }, { status: error.statusCode || 401 });
+    const message = error instanceof Error ? getErrorMessage(error) : "Chat request failed";
+    if (error instanceof AuthRequiredError) {
+      return NextResponse.json({ error: message }, { status: error.statusCode || 401 });
     }
     console.error("[chat] Error:", error);
-    return NextResponse.json({ error: "Chat failed" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

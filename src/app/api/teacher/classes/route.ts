@@ -1,55 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { getErrorMessage } from "@/lib/errors";
+import { getErrorMessage, AuthRequiredError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
+
+interface ClassRecord {
+  id: string;
+  name: string;
+  grade_level: string;
+  stream: string | null;
+  academic_year: string;
+  campus_id: string;
+}
 
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
+    const { searchParams } = new URL(req.url);
+    const teacherId = searchParams.get("teacherId");
 
-    // Get classes where this teacher is the class teacher OR teaches a subject in the class
-    const { data: classTeacherClasses, error: ctError } = await admin
-      .from("classes")
-      .select("id, name, grade_level, stream, academic_year, campus_id")
-      .eq("class_teacher_id", session.userId);
-
-    if (ctError) {
-      console.error("[teacher/classes GET] class_teacher error:", ctError);
+    let query = admin.from("classes").select("*");
+    if (teacherId) {
+      const { data: assignments } = await admin
+        .from("teacher_registers")
+        .select("class_id")
+        .eq("teacher_id", teacherId);
+      const classIds = (assignments || []).map((a) => a.class_id).filter(Boolean);
+      if (classIds.length > 0) query = query.in("id", classIds);
     }
 
-    const { data: subjectTeacherClasses, error: stError } = await admin
-      .from("class_subjects")
-      .select("classes(id, name, grade_level, stream, academic_year, campus_id)")
-      .eq("teacher_id", session.userId);
+    const { data, error } = await query.order("name", { ascending: true });
+    if (error) return NextResponse.json({ error: "Failed to fetch classes" }, { status: 500 });
 
-    if (stError) {
-      console.error("[teacher/classes GET] subject_teacher error:", stError);
-    }
-
-    // Merge and deduplicate
-    const classMap = new Map<string, { id: string; name: string; grade_level: string; stream: string | null; academic_year: string; campus_id: string }>();
-
-    (classTeacherClasses || []).forEach((c) => {
-      classMap.set(c.id, c);
-    });
-
-    (subjectTeacherClasses || []).forEach((item) => {
-      const c = (item as Record<string, unknown>).classes;
-      if (c && !classMap.has(c.id)) {
-        classMap.set(c.id, c);
+    const classMap = new Map<string, ClassRecord>();
+    for (const c of (data || [])) {
+      const record = c as ClassRecord;
+      if (record && record.id && !classMap.has(record.id)) {
+        classMap.set(record.id, record);
       }
-    });
-
-    const classes = Array.from(classMap.values());
-    return NextResponse.json({ classes });
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: getErrorMessage(error) }, { status: (error instanceof Error && "statusCode" in error ? (error as Error & { statusCode?: number }).statusCode : undefined) || 401 });
     }
-    console.error("[teacher/classes GET] Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+
+    return NextResponse.json({ classes: Array.from(classMap.values()) });
+  } catch (error: unknown) {
+    if (error instanceof AuthRequiredError) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
+    }
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

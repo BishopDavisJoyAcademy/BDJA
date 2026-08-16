@@ -1,8 +1,8 @@
-name: PR Comment with Detailed CI Results
+name: PR Comment with CI Results
 
 on:
   workflow_run:
-    workflows: ["Ultimate CI — Setup, Type, Lint, Test, Build, Audit, Format"]
+    workflows: ["Ultimate CI"]
     types: [completed]
 
 permissions:
@@ -15,27 +15,50 @@ jobs:
   comment:
     name: Post PR Comment
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.event == 'pull_request'
 
     steps:
+      - name: Debug workflow run info
+        run: |
+          echo "Workflow run event: ${{ github.event.workflow_run.event }}"
+          echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Workflow run status: ${{ github.event.workflow_run.status }}"
+          echo "Head branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
+          echo "Run ID: ${{ github.event.workflow_run.id }}"
+
       - name: Find associated PR
         id: find-pr
         uses: actions/github-script@v7
         with:
           script: |
             const run = context.payload.workflow_run;
+            console.log("Looking for open PR with head branch:", run.head_branch);
+            console.log("Workflow run event type:", run.event);
+
+            // Only process pull_request events
+            if (run.event !== 'pull_request') {
+              console.log("Skipping: not a pull_request event (was:", run.event, ")");
+              core.setOutput('found', 'false');
+              core.setOutput('reason', 'not-a-pr-event');
+              return;
+            }
+
             const { data: pullRequests } = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
               head: `${context.repo.owner}:${run.head_branch}`
             });
+
             if (pullRequests.length === 0) {
-              console.log("No open PR found for branch: " + run.head_branch);
+              console.log("No open PR found for branch:", run.head_branch);
               core.setOutput('found', 'false');
+              core.setOutput('reason', 'no-open-pr');
               return;
             }
+
             const pr = pullRequests[0];
+            console.log("Found PR #" + pr.number + ": " + pr.title);
             core.setOutput('found', 'true');
             core.setOutput('number', pr.number);
             core.setOutput('title', pr.title);
@@ -55,6 +78,8 @@ jobs:
             const headSha = '${{ steps.find-pr.outputs.head_sha }}';
             const run = context.payload.workflow_run;
 
+            console.log("Fetching jobs for run", runId);
+
             // Fetch all jobs for this workflow run
             const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
               owner: context.repo.owner,
@@ -63,6 +88,8 @@ jobs:
             });
 
             const jobs = jobsData.jobs;
+            console.log("Found", jobs.length, "jobs");
+
             const jobMap = {};
             jobs.forEach(job => {
               jobMap[job.name] = {
@@ -130,7 +157,6 @@ jobs:
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
             const artifactsUrl = `${runUrl}#artifacts`;
 
-            // Build body using array join to avoid multi-line template literal issues
             const artifactLinks = [
               '<details>',
               '<summary>📦 Download Reports</summary>',

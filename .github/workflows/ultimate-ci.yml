@@ -1,4 +1,4 @@
-name: Ultimate CI — Setup, Type, Lint, Test, Build, Audit, Format
+name: Ultimate CI
 
 on:
   push:
@@ -53,43 +53,80 @@ jobs:
     outputs:
       cache-key: ${{ steps.cache.outputs.cache-primary-key }}
       node-modules-cached: ${{ steps.cache.outputs.cache-hit }}
+      lockfile-exists: ${{ steps.detect.outputs.lockfile }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Detect lockfile
+        id: detect
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "lockfile=package-lock.json" >> "$GITHUB_OUTPUT"
+            echo "Lockfile: package-lock.json"
+          elif [ -f "yarn.lock" ]; then
+            echo "lockfile=yarn.lock" >> "$GITHUB_OUTPUT"
+            echo "Lockfile: yarn.lock"
+          elif [ -f "pnpm-lock.yaml" ]; then
+            echo "lockfile=pnpm-lock.yaml" >> "$GITHUB_OUTPUT"
+            echo "Lockfile: pnpm-lock.yaml"
+          else
+            echo "lockfile=none" >> "$GITHUB_OUTPUT"
+            echo "No lockfile found — will use npm install"
+          fi
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+      - name: Compute cache key
+        id: key
+        run: |
+          LOCKFILE="${{ steps.detect.outputs.lockfile }}"
+          if [ "$LOCKFILE" != "none" ]; then
+            HASH=$(sha256sum "$LOCKFILE" | cut -d' ' -f1 | head -c 16)
+            echo "cache-key=${{ runner.os }}-node-modules-${HASH}" >> "$GITHUB_OUTPUT"
+          else
+            HASH=$(sha256sum package.json | cut -d' ' -f1 | head -c 16)
+            echo "cache-key=${{ runner.os }}-node-modules-${HASH}" >> "$GITHUB_OUTPUT"
+          fi
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         id: cache
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ steps.key.outputs.cache-key }}
           restore-keys: |
             ${{ runner.os }}-node-modules-
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: |
+          LOCKFILE="${{ steps.detect.outputs.lockfile }}"
+          if [ "$LOCKFILE" == "package-lock.json" ]; then
+            npm ci
+          elif [ "$LOCKFILE" == "yarn.lock" ]; then
+            yarn install --frozen-lockfile
+          elif [ "$LOCKFILE" == "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile
+          else
+            echo "::warning::No lockfile found. Using npm install (not recommended for CI)."
+            npm install
+          fi
       - name: Validate lockfile integrity
+        if: steps.detect.outputs.lockfile == 'package-lock.json'
         run: |
           echo "::group::Lockfile Validation"
           npm prune --dry-run 2>&1 | grep -q "up to date" && echo "Lockfile valid" || {
             echo "Lockfile out of sync. Run 'npm install' and commit the changes."
             exit 1
           }
-          LOCKFILE_VERSION=$(node -e "console.log(require('./package-lock.json').lockfileVersion || 'unknown')")
-          echo "Lockfile version: $LOCKFILE_VERSION"
           echo "::endgroup::"
       - name: Save node_modules cache
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ steps.key.outputs.cache-key }}
 
   commit-lint:
     name: Commit Lint
@@ -112,7 +149,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.setup.outputs.cache-key }}
       - name: Check commit messages
         run: |
           echo "::group::Commit Message Lint"
@@ -157,7 +194,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.setup.outputs.cache-key }}
       - name: Run TypeScript
         id: tsc
         run: |
@@ -225,7 +262,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.setup.outputs.cache-key }}
       - name: Run ESLint
         id: eslint
         run: |
@@ -283,7 +320,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.setup.outputs.cache-key }}
       - name: Run tests
         id: test
         run: |
@@ -369,14 +406,14 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.setup.outputs.cache-key }}
       - name: Restore Next.js build cache
         uses: actions/cache/restore@v4
         with:
           path: .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-${{ hashFiles('package.json') }}-
       - name: Setup build environment
         run: |
           echo "NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co" > .env.local
@@ -441,7 +478,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
       - name: Upload build report
         if: always() && steps.build.outputs.result != 'skipped'
         uses: actions/upload-artifact@v4
@@ -474,7 +511,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.setup.outputs.cache-key }}
       - name: Run npm audit
         id: audit
         run: |
@@ -537,7 +574,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.setup.outputs.cache-key }}
       - name: Check formatting
         id: prettier
         run: |
@@ -610,7 +647,7 @@ jobs:
           elif [ "$TSC" == "fail" ]; then
             echo "| TypeScript | Fail | $TSC_ERR error(s) - ${TSC_DUR}s |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| TypeScript | Unknown | - |" >> $GITHUB_STEP_SUMMARY
+            echo "| TypeScript | Skipped | — |" >> $GITHUB_STEP_SUMMARY
           fi
           LINT="${{ needs.lint.outputs.result }}"
           LINT_ERR="${{ needs.lint.outputs.errors }}"
@@ -652,7 +689,7 @@ jobs:
           elif [ "$AUDIT" == "fail" ]; then
             echo "| Security Audit | Fail | $AUDIT_VULN vuln(s) - $AUDIT_DEP outdated |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| Security Audit | Skipped | - |" >> $GITHUB_STEP_SUMMARY
+            echo "| Security Audit | Skipped | — |" >> $GITHUB_STEP_SUMMARY
           fi
           FORMAT="${{ needs.format.outputs.result }}"
           FORMAT_FIXED="${{ needs.format.outputs.fixed }}"

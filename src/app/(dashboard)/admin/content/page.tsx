@@ -1,95 +1,77 @@
 "use client";
-import { ADMIN_SEGMENT } from "@/lib/constants";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/Card";
-import { FileText, Globe, BookOpen, Video, Loader2 } from "lucide-react";
-
-interface ContentStat {
-  label: string;
-  count: number;
-  icon: React.ReactNode;
-  color: string;
-}
+import { FileText, Globe, BookOpen, Video, Loader2, ArrowRight } from "lucide-react";
+import { ADMIN_SEGMENT } from "@/lib/constants";
+import { apiGet } from "@/lib/api-client";
+import Link from "next/link";
 
 export default function ContentManagement() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState<ContentStat[]>([]);
+  const [stats, setStats] = useState({ cmsPages: 0, libraryResources: 0, voraVideos: 0, documents: 0 });
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    if (!loading && user?.role !== "admin") {
-      router.push("/unauthorized");
-    }
-  }, [user, loading, router]);
-
-  useEffect(() => {
+    if (!authLoading && user?.role !== "admin") { router.push("/unauthorized"); return; }
     if (user?.role === "admin") {
-      // Simulated stats — in production these would come from aggregated API calls
-      setStats([
-        { label: "CMS Pages", count: 0, icon: <Globe className="w-5 h-5" />, color: "bg-blue-50 text-blue-600" },
-        { label: "Library Resources", count: 0, icon: <BookOpen className="w-5 h-5" />, color: "bg-green-50 text-green-600" },
-        { label: "VORA Videos", count: 0, icon: <Video className="w-5 h-5" />, color: "bg-purple-50 text-purple-600" },
-        { label: "Documents", count: 0, icon: <FileText className="w-5 h-5" />, color: "bg-orange-50 text-orange-600" },
-      ]);
-      setFetching(false);
+      Promise.all([
+        apiGet("/api/admin/pages"),
+        apiGet("/api/library"),
+        apiGet("/api/admin/vora"),
+      ]).then(([pagesData, libData, voraData]) => {
+        setStats({
+          cmsPages: (pagesData.pages || []).length,
+          libraryResources: (libData.resources || libData.books || []).length,
+          voraVideos: (voraData.videos || []).length,
+          documents: 0, // Could be expanded with a documents table
+        });
+        setFetching(false);
+      }).catch(() => setFetching(false));
     }
-  }, [user]);
+  }, [user, authLoading, router]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-bdja-primary animate-spin" />
-      </div>
-    );
-  }
-
+  if (authLoading) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-400"></div></div>;
   if (user?.role !== "admin") return null;
+
+  const statCards = [
+    { label: "CMS Pages", count: stats.cmsPages, icon: Globe, href: `/${ADMIN_SEGMENT}/pages`, color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+    { label: "Library Resources", count: stats.libraryResources, icon: BookOpen, href: "/library", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
+    { label: "VORA Videos", count: stats.voraVideos, icon: Video, href: `/${ADMIN_SEGMENT}/vora`, color: "bg-violet-500/10 text-violet-400 border-violet-500/20" },
+    { label: "Documents", count: stats.documents, icon: FileText, href: "#", color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Content Management</h1>
-        <p className="text-gray-500">Manage all platform content from one place</p>
-      </div>
-
+      <div><h1 className="text-3xl font-bold text-white">Content Management</h1><p className="text-gray-400 mt-1">Manage all platform content from one place</p></div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <Card key={s.label} className="p-4 hover:shadow-md transition-shadow cursor-pointer">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${s.color}`}>{s.icon}</div>
-              <div>
-                <p className="text-sm text-gray-500">{s.label}</p>
-                <p className="text-2xl font-bold text-gray-900">{s.count}</p>
+        {statCards.map((s) => {
+          const Icon = s.icon;
+          return (
+            <Link key={s.label} href={s.href} className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 hover:border-slate-600 transition-all group">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${s.color}`}><Icon className="w-5 h-5" /></div>
+                <div>
+                  <p className="text-sm text-gray-400">{s.label}</p>
+                  <p className="text-2xl font-bold text-white">{fetching ? "—" : s.count}</p>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
+              <div className="mt-3 flex items-center gap-1 text-xs text-gray-500 group-hover:text-amber-400 transition-colors"><span>Manage</span><ArrowRight className="w-3 h-3" /></div>
+            </Link>
+          );
+        })}
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">Quick Links</h3>
           <div className="space-y-2">
-            <button onClick={() => router.push(`/${ADMIN_SEGMENT}/pages`)} className="w-full text-left p-3 border border-gray-100 rounded-lg hover:bg-gray-50 flex items-center gap-3">
-              <Globe className="w-4 h-4 text-blue-600" /> CMS Pages
-            </button>
-            <button onClick={() => router.push("/manage/library")} className="w-full text-left p-3 border border-gray-100 rounded-lg hover:bg-gray-50 flex items-center gap-3">
-              <BookOpen className="w-4 h-4 text-green-600" /> Library Catalog
-            </button>
-            <button onClick={() => router.push(`/${ADMIN_SEGMENT}/vora`)} className="w-full text-left p-3 border border-gray-100 rounded-lg hover:bg-gray-50 flex items-center gap-3">
-              <Video className="w-4 h-4 text-purple-600" /> VORA Content
-            </button>
+            <Link href={`/${ADMIN_SEGMENT}/pages`} className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 border border-slate-700/30 hover:border-slate-600 transition-all text-sm font-medium text-gray-200"><FileText className="w-4 h-4 text-amber-400" /> CMS Pages</Link>
+            <Link href="/manage/library" className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 border border-slate-700/30 hover:border-slate-600 transition-all text-sm font-medium text-gray-200"><BookOpen className="w-4 h-4 text-emerald-400" /> Library</Link>
+            <Link href={`/${ADMIN_SEGMENT}/vora`} className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 border border-slate-700/30 hover:border-slate-600 transition-all text-sm font-medium text-gray-200"><Video className="w-4 h-4 text-violet-400" /> VORA Videos</Link>
           </div>
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Content Overview</h3>
-          <p className="text-sm text-gray-500">Manage pages, resources, videos, and documents across the platform. Use the quick links above to navigate to specific content areas.</p>
-        </Card>
+        </div>
       </div>
     </div>
   );

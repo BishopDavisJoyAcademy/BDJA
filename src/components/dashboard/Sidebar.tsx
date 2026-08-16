@@ -24,7 +24,7 @@ const getDashboardHref = (userCategory: string | null) => {
 interface NavItem {
   label: string;
   href: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   module?: keyof ReturnType<typeof useModuleVisibility>;
   showFor?: string[];
 }

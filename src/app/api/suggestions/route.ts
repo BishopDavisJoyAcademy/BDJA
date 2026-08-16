@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, requirePermission } from "@/lib/session";
+import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
+import { logAudit } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -11,23 +12,22 @@ export async function GET(req: NextRequest) {
     const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
-
-    let query = admin.from("suggestions").select("*, profiles(full_name)");
-
-    if (session.userCategory !== "admin") {
-      query = query.eq("user_id", session.userId);
-    }
-
+    const id = searchParams.get("id");
     const status = searchParams.get("status");
-    if (status) query = query.eq("status", status);
 
-    const { data, error } = await query.order("created_at", { ascending: false });
-    if (error) return NextResponse.json({ error: "Failed to fetch suggestions" }, { status: 500 });
-    return NextResponse.json({ suggestions: data || [] });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    if (id) {
+      const { data, error } = await admin.from("suggestions").select("*, profiles(full_name)").eq("id", id).maybeSingle();
+      if (error || !data) return NextResponse.json({ error: "Suggestion not found" }, { status: 404 });
+      return NextResponse.json({ suggestion: data });
     }
+
+    let query = admin.from("suggestions").select("*, profiles(full_name)").order("created_at", { ascending: false });
+    if (status) query = query.eq("status", status);
+    const { data: suggestions, error } = await query;
+    if (error) return NextResponse.json({ error: "Failed to fetch suggestions" }, { status: 500 });
+    return NextResponse.json({ suggestions: suggestions || [] });
+  } catch (error: unknown) {
+    if (error.name === "AuthRequiredError") return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     console.error("[suggestions GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -36,69 +36,57 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-
-    const identifier = getClientIP(req) + ":suggestions";
-    const { success: rateOk } = await rateLimit(identifier, RATE_LIMITS.suggestions);
-    if (!rateOk) {
-      return NextResponse.json({ error: "Too many suggestions. Try again later." }, { status: 429 });
-    }
-
-    const body = await req.json();
-    const { type, title, description, priority } = body;
-
-    if (!type || !title || !description) {
-      return NextResponse.json({ error: "Type, title, and description are required" }, { status: 400 });
-    }
-
     const admin = getSupabaseAdmin();
-    const { data, error } = await admin.from("suggestions").insert({
-      user_id: session.userId,
-      type,
-      title,
-      description,
-      priority: priority || "medium",
-      status: "pending",
-    }).select().maybeSingle();
-
+    const body = await req.json();
+    if (!body.title || !body.description) return NextResponse.json({ error: "Title and description are required" }, { status: 400 });
+    const { data, error } = await admin.from("suggestions").insert([{
+      title: body.title, description: body.description, type: body.type || "general",
+      priority: body.priority || "medium", status: "open", created_by: session.userId,
+    }]).select().single();
     if (error) return NextResponse.json({ error: "Failed to create suggestion" }, { status: 500 });
-    return NextResponse.json({ success: true, suggestion: data });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
-    }
+    await logAudit({ user_id: session.userId, action: "SUGGESTION_CREATED", table_name: "suggestions", record_id: data.id, new_data: { title: body.title }, ip_address: getClientIP(req) });
+    return NextResponse.json(data);
+  } catch (error: unknown) {
+    if (error.name === "AuthRequiredError") return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     console.error("[suggestions POST] Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) || "Failed to create suggestion" }, { status: 500 });
   }
 }
 
 export async function PATCH(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "suggestions.manage");
-
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { id, admin_response, status: newStatus } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "Suggestion ID required" }, { status: 400 });
-    }
-
-    const updates: any = {};
-    if (admin_response !== undefined) updates.admin_response = admin_response;
-    if (newStatus !== undefined) updates.status = newStatus;
-    updates.responded_by = session.userId;
-    updates.responded_at = new Date().toISOString();
-    updates.updated_at = new Date().toISOString();
-
-    const { data, error } = await admin.from("suggestions").update(updates).eq("id", id).select().maybeSingle();
+    if (!body.id) return NextResponse.json({ error: "Suggestion ID required" }, { status: 400 });
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (body.status) updateData.status = body.status;
+    if (body.admin_response !== undefined) updateData.admin_response = body.admin_response;
+    const { error } = await admin.from("suggestions").update(updateData).eq("id", body.id);
     if (error) return NextResponse.json({ error: "Failed to update suggestion" }, { status: 500 });
-    return NextResponse.json({ success: true, suggestion: data });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
-    }
+    await logAudit({ user_id: session.userId, action: "SUGGESTION_UPDATED", table_name: "suggestions", record_id: body.id, ip_address: getClientIP(req) });
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    if (error.name === "AuthRequiredError") return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     console.error("[suggestions PATCH] Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) || "Failed to update suggestion" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await requireAuth(req);
+    const admin = getSupabaseAdmin();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Suggestion ID required" }, { status: 400 });
+    const { error } = await admin.from("suggestions").delete().eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to delete suggestion" }, { status: 500 });
+    await logAudit({ user_id: session.userId, action: "SUGGESTION_DELETED", table_name: "suggestions", record_id: id, ip_address: getClientIP(req) });
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    if (error.name === "AuthRequiredError") return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
+    console.error("[suggestions DELETE] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) || "Failed to delete suggestion" }, { status: 500 });
   }
 }

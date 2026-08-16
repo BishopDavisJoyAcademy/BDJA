@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchVoraContent } from "@/lib/vora";
 import { searchYouTubeAsVora } from "@/lib/youtube";
 import { voraSearchSchema } from "@/lib/validation";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
 
     const localResults = searchVoraContent(query, { grade_level, subject, limit });
 
-    let youtubeResults: any[] = [];
+    let youtubeResults: Record<string, unknown>[] = [];
     if (localResults.length === 0 && query.length > 3) {
       youtubeResults = await searchYouTubeAsVora(query, grade_level, Math.min(limit, 5));
     }
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
       youtube: youtubeResults,
       total: localResults.length + youtubeResults.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/vora/search] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

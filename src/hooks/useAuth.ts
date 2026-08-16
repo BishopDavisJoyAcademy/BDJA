@@ -102,9 +102,9 @@ export function useAuth() {
         loading: false,
         error: null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[useAuth] Error:", error);
-      setState({ user: null, loading: false, error: { type: "unknown", message: error.message } });
+      setState({ user: null, loading: false, error: { type: "unknown", message: (error instanceof Error ? error.message : "Authentication failed") } });
     }
   }, []);
 

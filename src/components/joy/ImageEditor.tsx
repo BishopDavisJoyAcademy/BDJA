@@ -12,7 +12,7 @@ interface ImageEditorProps {
   src: string;
   onSave: (dataUrl: string) => void;
   onClose: () => void;
-  theme: any;
+  theme: Record<string, unknown>;
 }
 
 export function ImageEditor({ src, onSave, onClose, theme }: ImageEditorProps) {
@@ -257,7 +257,7 @@ export function ImageEditor({ src, onSave, onClose, theme }: ImageEditorProps) {
             ].map((tool) => (
               <button
                 key={tool.id}
-                onClick={() => setActiveTool(tool.id as any)}
+                onClick={() => setActiveTool(tool.id as string)}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                   activeTool === tool.id ? "" : "hover:bg-black/5"

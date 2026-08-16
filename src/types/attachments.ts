@@ -26,7 +26,7 @@ export interface PollData {
 }
 
 export interface WhiteboardData {
-  strokes: any[];
+  strokes: Record<string, unknown>[];
   width: number;
   height: number;
   background: string;

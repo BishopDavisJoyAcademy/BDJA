@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/session";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/security";
 import { chatMessageSchema } from "@/lib/validation";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -77,9 +78,9 @@ export async function POST(req: NextRequest) {
       message: content,
       model: data.model,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+      return NextResponse.json({ error: (error instanceof Error ? getErrorMessage(error) : "Chat request failed") }, { status: error.statusCode || 401 });
     }
     console.error("[chat] Error:", error);
     return NextResponse.json({ error: "Chat failed" }, { status: 500 });

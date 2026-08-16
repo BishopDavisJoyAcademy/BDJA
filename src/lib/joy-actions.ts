@@ -4,7 +4,7 @@ import { JoyAction } from "@/types/joy";
 export interface ActionResult {
   success: boolean;
   message: string;
-  data?: any;
+  data?: Record<string, unknown>;
   error?: string;
 }
 
@@ -90,8 +90,8 @@ export async function executeJoyAction(
       default:
         return { success: false, message: "Unknown action type", error: `Type: ${action.type}` };
     }
-  } catch (err: any) {
-    return { success: false, message: err.message, error: err.message };
+  } catch (err: unknown) {
+    return { success: false, message: getErrorMessage(err), error: getErrorMessage(err) };
   }
 }
 

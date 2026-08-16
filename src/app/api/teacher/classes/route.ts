@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     });
 
     (subjectTeacherClasses || []).forEach((item) => {
-      const c = (item as any).classes;
+      const c = (item as Record<string, unknown>).classes;
       if (c && !classMap.has(c.id)) {
         classMap.set(c.id, c);
       }
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ classes });
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: (error instanceof Error && "statusCode" in error ? (error as Error & { statusCode?: number }).statusCode : undefined) || 401 });
     }
     console.error("[teacher/classes GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

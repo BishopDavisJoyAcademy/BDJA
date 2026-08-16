@@ -2,171 +2,83 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Check, Shield } from "lucide-react";
 import { ADMIN_SEGMENT } from "@/lib/constants";
+import { apiGet, apiPut } from "@/lib/api-client";
+import toast from "react-hot-toast";
+import { getErrorMessage } from "@/lib/errors";
 
-interface Permission {
-  id: string;
-  key: string;
-  name: string;
-  category: string;
-}
+interface Permission { id: string; key: string; name: string; description?: string; permission_categories?: { name: string }; }
+interface StaffMember { id: string; full_name: string; email: string; phone?: string; campus_id?: string; is_active: boolean; staff?: { department: string; designation: string }; }
 
 export default function EditStaffPage() {
-  const router = useRouter();
-  const params = useParams();
-  const id = params.id as string;
-
-  const [form, setForm] = useState({ full_name: "", email: "", phone: "", department: "", designation: "", is_active: true });
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
+  const router = useRouter(); const params = useParams(); const id = params.id as string;
+  const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
+  const [permissions, setPermissions] = useState<Permission[]>([]); const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
+  const [form, setForm] = useState<Partial<StaffMember>>({});
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [staffRes, permRes] = await Promise.all([
-          fetch(`/api/admin/staff?id=${id}`),
-          fetch("/api/admin/staff/permissions"),
-        ]);
-        const staffData = await staffRes.json();
-        const permData = await permRes.json();
-
-        if (staffData.staff) {
-          setForm({
-            full_name: staffData.staff.full_name || "",
-            email: staffData.staff.email || "",
-            phone: staffData.staff.phone || "",
-            department: staffData.staff.staff?.department || "",
-            designation: staffData.staff.staff?.designation || "",
-            is_active: staffData.staff.is_active ?? true,
-          });
-        }
-        setPermissions(permData.permissions || []);
-        setSelectedPerms((permData.permissions || []).filter((p: any) => p.granted).map((p: any) => p.id));
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setFetching(false);
-      }
-    }
-    load();
+    Promise.all([apiGet(`/api/admin/staff?id=${id}`), apiGet("/api/admin/staff/permissions")])
+      .then(([staffData, permsData]) => {
+        const s = staffData.staff;
+        setForm({ full_name: s.full_name, email: s.email, phone: s.phone, campus_id: s.campus_id, is_active: s.is_active, staff: s.staff });
+        setPermissions(permsData.permissions || []); setLoading(false);
+      }).catch((err) => { toast.error(getErrorMessage(err)); setLoading(false); });
   }, [id]);
 
+  const togglePerm = (pid: string) => { setSelectedPerms((prev) => prev.includes(pid) ? prev.filter((p) => p !== pid) : [...prev, pid]); };
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+    e.preventDefault(); setSaving(true);
     try {
-      const res = await fetch(`/api/admin/staff?id=${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, permissionIds: selectedPerms }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update");
-      setSaved(true);
-      setTimeout(() => router.push(`/${ADMIN_SEGMENT}/staff`), 1500);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      await apiPut(`/api/admin/staff?id=${id}`, { full_name: form.full_name, email: form.email, phone: form.phone, campus_id: form.campus_id, is_active: form.is_active, department: form.staff?.department, designation: form.staff?.designation, permissionIds: selectedPerms });
+      toast.success("Staff updated successfully"); router.push(`/${ADMIN_SEGMENT}/staff`);
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); } finally { setSaving(false); }
   };
 
-  const togglePerm = (pid: string) => {
-    setSelectedPerms((prev) => prev.includes(pid) ? prev.filter((p) => p !== pid) : [...prev, pid]);
-  };
+  const grouped = permissions.reduce((acc, p) => { const cat = p.permission_categories?.name || "General"; if (!acc[cat]) acc[cat] = []; acc[cat].push(p); return acc; }, {} as Record<string, Permission[]>);
 
-  const grouped = permissions.reduce((acc: Record<string, Permission[]>, p) => {
-    (acc[p.category] = acc[p.category] || []).push(p);
-    return acc;
-  }, {});
-
-  if (fetching) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
-
-  if (saved) {
-    return (
-      <div className="max-w-lg mx-auto bg-white rounded-xl border border-gray-200 p-8 text-center">
-        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-gray-900">Staff Updated!</h2>
-        <p className="text-gray-500 mt-2">Redirecting...</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-400"></div></div>;
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Staff Member</h1>
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-700">{error}</p>
+    <div className="max-w-3xl mx-auto space-y-6">
+      <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"><ArrowLeft className="w-4 h-4" /> Back to Staff</button>
+      <h1 className="text-3xl font-bold text-white">Edit Staff</h1>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 space-y-5">
+          <h3 className="font-semibold text-white">Basic Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label className="block text-sm font-medium text-gray-300 mb-1.5">Full Name</label><input required value={form.full_name || ""} onChange={(e) => setForm({...form, full_name: e.target.value})} className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-amber-500/50" /></div>
+            <div><label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label><input required type="email" value={form.email || ""} onChange={(e) => setForm({...form, email: e.target.value})} className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-amber-500/50" /></div>
+            <div><label className="block text-sm font-medium text-gray-300 mb-1.5">Phone</label><input value={form.phone || ""} onChange={(e) => setForm({...form, phone: e.target.value})} className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-amber-500/50" /></div>
+            <div><label className="block text-sm font-medium text-gray-300 mb-1.5">Department</label><input value={form.staff?.department || ""} onChange={(e) => setForm({...form, staff: {...form.staff, department: e.target.value}})} className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-amber-500/50" /></div>
+            <div><label className="block text-sm font-medium text-gray-300 mb-1.5">Designation</label><input value={form.staff?.designation || ""} onChange={(e) => setForm({...form, staff: {...form.staff, designation: e.target.value}})} className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-amber-500/50" /></div>
+            <div><label className="block text-sm font-medium text-gray-300 mb-1.5">Campus ID</label><input value={form.campus_id || ""} onChange={(e) => setForm({...form, campus_id: e.target.value})} className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-amber-500/50" /></div>
+          </div>
+          <label className="flex items-center gap-3 mt-4 cursor-pointer">
+            <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({...form, is_active: e.target.checked})} className="w-4 h-4 rounded border-slate-600 text-amber-500 bg-slate-900 focus:ring-amber-500/20" />
+            <span className="text-sm text-gray-300">Account Active</span>
+          </label>
         </div>
-      )}
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-            <input type="text" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-            <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <input type="text" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-            <input type="text" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="is_active" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-              className="w-4 h-4 text-blue-600 rounded" />
-            <label htmlFor="is_active" className="text-sm font-medium text-gray-700">Active</label>
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
-          <div className="space-y-3 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
-            {Object.entries(grouped).map(([category, perms]) => (
-              <div key={category}>
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{category}</p>
-                <div className="flex flex-wrap gap-2">
-                  {perms.map((p) => (
-                    <label key={p.id} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs cursor-pointer transition-colors ${selectedPerms.includes(p.id) ? "bg-blue-100 text-blue-700 border border-blue-300" : "bg-gray-100 text-gray-600 border border-gray-200"}`}>
-                      <input type="checkbox" className="hidden" checked={selectedPerms.includes(p.id)} onChange={() => togglePerm(p.id)} />
-                      {p.name}
-                    </label>
-                  ))}
-                </div>
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 space-y-5">
+          <h3 className="font-semibold text-white flex items-center gap-2"><Shield className="w-5 h-5 text-violet-400" /> Permissions</h3>
+          {Object.entries(grouped).map(([category, perms]) => (
+            <div key={category} className="space-y-2">
+              <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider">{category}</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {perms.map((p) => (
+                  <button key={p.id} type="button" onClick={() => togglePerm(p.id)} className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${selectedPerms.includes(p.id) ? "bg-violet-500/10 border-violet-500/30 text-violet-300" : "bg-slate-900/30 border-slate-700/50 text-gray-400 hover:border-slate-600"}`}>
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${selectedPerms.includes(p.id) ? "bg-violet-500 border-violet-500" : "border-slate-600"}`}>{selectedPerms.includes(p.id) && <Check className="w-3 h-3 text-white" />}</div>
+                    <div><p className="text-sm font-medium">{p.name}</p><p className="text-xs opacity-70">{p.description}</p></div>
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-        <div className="flex gap-3">
-          <button type="submit" disabled={loading}
-            className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">
-            {loading ? "Saving..." : "Save Changes"}
-          </button>
-          <button type="button" onClick={() => router.push(`/${ADMIN_SEGMENT}/staff`)}
-            className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors">
-            Cancel
-          </button>
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={() => router.back()} className="px-6 py-2.5 rounded-xl border border-slate-600 text-gray-300 hover:bg-slate-700/50 transition-all text-sm font-medium">Cancel</button>
+          <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-medium hover:from-amber-600 hover:to-amber-700 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 flex items-center gap-2">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}{saving ? "Saving..." : "Save Changes"}</button>
         </div>
       </form>
     </div>

@@ -10,7 +10,7 @@ interface AttachmentChipProps {
   onRemove: (id: string) => void;
   onPreview: (attachment: AttachmentFile) => void;
   onUpload?: (id: string) => void;
-  theme: any;
+  theme: Record<string, unknown>;
 }
 
 export function AttachmentChip({ attachment, formatFileSize, onRemove, onPreview, onUpload, theme }: AttachmentChipProps) {

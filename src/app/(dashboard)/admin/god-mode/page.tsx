@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Search, Eye, EyeOff, Shield, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
+import { getErrorMessage } from "@/lib/errors";
 
 interface UserResult {
   id: string;
@@ -44,8 +45,8 @@ export default function GodModePage() {
       } else {
         toast.error(data.error || "Search failed");
       }
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -69,8 +70,8 @@ export default function GodModePage() {
       } else {
         toast.error(data.error || "Impersonation failed");
       }
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     }
   };
 
@@ -84,8 +85,8 @@ export default function GodModePage() {
       setImpersonating(null);
       toast.success("Returned to admin view");
       router.push(`/${ADMIN_SEGMENT}`);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     }
   };
 

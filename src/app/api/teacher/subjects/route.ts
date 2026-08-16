@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
         .select("id, class_id, teacher_id, subjects(id, name, code)")
         .eq("class_id", classId);
       if (!adminErr && adminSubjects) {
-        const seen = new Set(allSubjects.map((s: any) => s.subjects?.id));
+        const seen = new Set(allSubjects.map((s: Record<string, unknown>) => s.subjects?.id));
         for (const s of adminSubjects) {
           if (s.subjects && !seen.has(s.subjects.id)) {
             allSubjects.push(s);
@@ -46,14 +47,14 @@ export async function GET(req: NextRequest) {
     }
 
     const subjects = allSubjects
-      .map((item: any) => item.subjects)
+      .map((item: Record<string, unknown>) => item.subjects)
       .filter(Boolean)
-      .filter((s: any, i: number, arr: any[]) => arr.findIndex((x) => x.id === s.id) === i);
+      .filter((s: unknown, i: number, arr: unknown[]) => arr.findIndex((x) => x.id === s.id) === i);
 
     return NextResponse.json({ subjects });
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: (error instanceof Error && "statusCode" in error ? (error as Error & { statusCode?: number }).statusCode : undefined) || 401 });
     }
     console.error("[teacher/subjects GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

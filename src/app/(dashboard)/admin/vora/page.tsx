@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Video, Plus, Trash2, Edit3, ExternalLink, Search, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { getErrorMessage } from "@/lib/errors";
 
 interface VoraVideo {
   id: string;
@@ -98,8 +99,8 @@ export default function VoraAdminPage() {
       resetForm();
       setShowForm(false);
       fetchVideos();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     }
   };
 

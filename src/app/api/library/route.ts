@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +20,9 @@ export async function GET(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: "Failed to fetch resources" }, { status: 500 });
     return NextResponse.json({ resources: data || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[library GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -57,13 +58,13 @@ export async function POST(req: NextRequest) {
       .from("library_resources")
       .insert({ ...body, created_by: session.userId } as { title: string; author?: string | null; isbn?: string | null; resource_type: string; total_copies?: number | null; available_copies?: number | null; cover_url?: string | null; file_url?: string | null; grade_levels?: string[] | null; subject_id?: string | null; campus_id?: string | null; created_by: string })
       .select("id, title, author, isbn, resource_type, available_copies, total_copies, cover_url, file_url, grade_levels, subject_id, campus_id, created_at")
-      .maybeSingle() as { data: LibraryResourceRow | null; error: any };
+      .maybeSingle() as { data: LibraryResourceRow | null; error: { message?: string } | null };
 
     if (error) return NextResponse.json({ error: "Failed to add resource" }, { status: 500 });
     return NextResponse.json({ success: true, resource: data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[library POST] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

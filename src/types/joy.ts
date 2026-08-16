@@ -52,14 +52,14 @@ export interface JoyContext {
   gradeLevel?: string;
   designation?: string;
   campusId?: string;
-  timetable?: any[];
-  grades?: any[];
-  assignments?: any[];
-  fees?: any[];
-  attendance?: any[];
-  calendarEvents?: any[];
-  voraResults?: any[];
-  children?: any[];
+  timetable?: Record<string, unknown>[];
+  grades?: Record<string, unknown>[];
+  assignments?: Record<string, unknown>[];
+  fees?: Record<string, unknown>[];
+  attendance?: Record<string, unknown>[];
+  calendarEvents?: Record<string, unknown>[];
+  voraResults?: Record<string, unknown>[];
+  children?: Record<string, unknown>[];
   availableActions?: string[];
 }
 

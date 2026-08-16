@@ -15,7 +15,7 @@ interface BottomSheetProps {
   onScanner: () => void;
   onPoll: () => void;
   onLink: () => void;
-  theme: any;
+  theme: Record<string, unknown>;
 }
 
 export function BottomSheet({

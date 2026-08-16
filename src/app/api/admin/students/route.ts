@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { createStudent } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +26,8 @@ export async function GET(req: NextRequest) {
         user_category: string;
         campus_id: string | null;
         is_active: boolean;
-        students: { admission_number: string | null; grade_level: string | null; [key: string]: any }[] | null;
-        [key: string]: any;
+        students: { admission_number: string | null; grade_level: string | null; [key: string]: unknown }[] | null;
+        [key: string]: unknown;
       }
 
       const { data: studentRaw, error } = await admin
@@ -48,9 +49,9 @@ export async function GET(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 });
     return NextResponse.json({ students: students || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[students GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -63,12 +64,15 @@ export async function POST(req: NextRequest) {
     requirePermission(session, "students.manage");
 
     const body = await req.json();
-    if (!body.email || !body.full_name || !body.admission_number || !body.grade_level) {
-      return NextResponse.json({ error: "Email, full name, admission number, and grade level are required" }, { status: 400 });
+    if (!body.full_name || !body.admission_number || !body.grade_level) {
+      return NextResponse.json({ error: "Full name, admission number, and grade level are required" }, { status: 400 });
     }
 
+    // Generate placeholder email if not provided
+    const email = body.email || `${body.admission_number.toLowerCase().replace(/[^a-z0-9]/g, "")}@bdja.student`;
+
     const result = await createStudent({
-      email: body.email,
+      email,
       fullName: body.full_name,
       phone: body.phone,
       admissionNumber: body.admission_number,
@@ -84,16 +88,101 @@ export async function POST(req: NextRequest) {
       action: "STUDENT_CREATED",
       table_name: "student",
       record_id: result.userId,
-      new_data: { email: body.email, admission_number: body.admission_number },
+      new_data: { email, admission_number: body.admission_number, grade_level: body.grade_level },
       ip_address: getClientIP(req),
     });
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[students POST] Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create student" }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) || "Failed to create student" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await requireAuth(req);
+    requirePermission(session, "students.manage");
+
+    const admin = getSupabaseAdmin();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Student ID required" }, { status: 400 });
+
+    const body = await req.json();
+
+    const { error: profileError } = await admin.from("profiles").update({
+      full_name: body.full_name,
+      email: body.email,
+      phone: body.phone,
+      campus_id: body.campus_id || null,
+      is_active: body.is_active,
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+
+    if (profileError) {
+      return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
+    }
+
+    await admin.from("students").update({
+      admission_number: body.admission_number,
+      grade_level: body.grade_level,
+      class_id: body.class_id || null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+
+    await logAudit({
+      user_id: session.userId,
+      action: "STUDENT_UPDATED",
+      table_name: "student",
+      record_id: id,
+      ip_address: getClientIP(req),
+    });
+
+    return NextResponse.json({ success: true, message: "Student updated" });
+  } catch (error: unknown) {
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
+    }
+    console.error("[students PUT] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) || "Failed to update student" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await requireAuth(req);
+    requirePermission(session, "students.manage");
+
+    const admin = getSupabaseAdmin();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Student ID required" }, { status: 400 });
+
+    const { error } = await admin.from("profiles").update({
+      is_active: false,
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+
+    if (error) return NextResponse.json({ error: "Failed to deactivate student" }, { status: 500 });
+
+    await logAudit({
+      user_id: session.userId,
+      action: "STUDENT_DEACTIVATED",
+      table_name: "student",
+      record_id: id,
+      ip_address: getClientIP(req),
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    if (error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
+    }
+    console.error("[students DELETE] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) || "Failed to deactivate student" }, { status: 500 });
   }
 }

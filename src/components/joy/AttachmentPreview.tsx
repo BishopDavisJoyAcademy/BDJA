@@ -10,7 +10,7 @@ interface AttachmentPreviewProps {
   attachment: AttachmentFile;
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<AttachmentFile>) => void;
-  theme: any;
+  theme: Record<string, unknown>;
 }
 
 export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: AttachmentPreviewProps) {
@@ -103,7 +103,7 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
               <h3 className="font-semibold" style={{ color: theme.text }}>{pollData?.question || "Poll"}</h3>
             </div>
             <div className="space-y-2">
-              {pollData?.options?.map((opt: any) => (
+              {pollData?.options?.map((opt: Record<string, unknown>) => (
                 <div
                   key={opt.id}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl border"

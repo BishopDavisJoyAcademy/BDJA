@@ -9,14 +9,14 @@ export interface AevibronContext {
   gradeLevel?: string;
   designation?: string;
   campusId?: string;
-  timetable?: any[];
-  grades?: any[];
-  assignments?: any[];
-  fees?: any[];
-  attendance?: any[];
-  calendarEvents?: any[];
-  voraResults?: any[];
-  children?: any[];
+  timetable?: Record<string, unknown>[];
+  grades?: Record<string, unknown>[];
+  assignments?: Record<string, unknown>[];
+  fees?: Record<string, unknown>[];
+  attendance?: Record<string, unknown>[];
+  calendarEvents?: Record<string, unknown>[];
+  voraResults?: Record<string, unknown>[];
+  children?: Record<string, unknown>[];
   availableActions?: string[];
   personality?: string;
   language?: string;
@@ -89,32 +89,32 @@ DESIGNATION: ${ctx.designation}`;
     prompt += `
 
 TIMETABLE (next few classes):
-${ctx.timetable.slice(0, 5).map((t: any) => `- ${t.day_of_week}: ${t.subjects?.name || t.subject} (${t.start_time}-${t.end_time})`).join("\n")}`;
+${ctx.timetable.slice(0, 5).map((t: Record<string, unknown>) => `- ${t.day_of_week}: ${t.subjects?.name || t.subject} (${t.start_time}-${t.end_time})`).join("\n")}`;
   }
 
   if (ctx?.grades && ctx.grades.length > 0) {
     prompt += `
 
 RECENT GRADES:
-${ctx.grades.slice(0, 5).map((g: any) => `- ${g.subjects?.name || g.subject}: ${g.score}/${g.max_score || 100}`).join("\n")}`;
+${ctx.grades.slice(0, 5).map((g: Record<string, unknown>) => `- ${g.subjects?.name || g.subject}: ${g.score}/${g.max_score || 100}`).join("\n")}`;
   }
 
   if (ctx?.assignments && ctx.assignments.length > 0) {
     prompt += `
 
 PENDING ASSIGNMENTS:
-${ctx.assignments.slice(0, 5).map((a: any) => `- ${a.subjects?.name || a.subject}: ${a.title} (Due: ${a.due_date})`).join("\n")}`;
+${ctx.assignments.slice(0, 5).map((a: Record<string, unknown>) => `- ${a.subjects?.name || a.subject}: ${a.title} (Due: ${a.due_date})`).join("\n")}`;
   }
 
   if (ctx?.fees && ctx.fees.length > 0) {
     prompt += `
 
 FEE RECORDS:
-${ctx.fees.slice(0, 3).map((f: any) => `- ${f.amount_paid ? `Paid: KES ${f.amount_paid}` : `Balance: KES ${f.balance || 0}`}`).join("\n")}`;
+${ctx.fees.slice(0, 3).map((f: Record<string, unknown>) => `- ${f.amount_paid ? `Paid: KES ${f.amount_paid}` : `Balance: KES ${f.balance || 0}`}`).join("\n")}`;
   }
 
   if (ctx?.attendance && ctx.attendance.length > 0) {
-    const present = ctx.attendance.filter((a: any) => a.status === "present").length;
+    const present = ctx.attendance.filter((a: Record<string, unknown>) => a.status === "present").length;
     const total = ctx.attendance.length;
     prompt += `
 
@@ -125,21 +125,21 @@ ATTENDANCE: ${present}/${total} days present recently.`;
     prompt += `
 
 UPCOMING EVENTS:
-${ctx.calendarEvents.slice(0, 3).map((e: any) => `- ${e.title}: ${e.date}`).join("\n")}`;
+${ctx.calendarEvents.slice(0, 3).map((e: Record<string, unknown>) => `- ${e.title}: ${e.date}`).join("\n")}`;
   }
 
   if (ctx?.voraResults && ctx.voraResults.length > 0) {
     prompt += `
 
 RELEVANT LEARNING VIDEOS:
-${ctx.voraResults.slice(0, 3).map((v: any) => `- ${v.title} (${v.subject}, ${v.grade_level}): ${v.video_url}`).join("\n")}`;
+${ctx.voraResults.slice(0, 3).map((v: Record<string, unknown>) => `- ${v.title} (${v.subject}, ${v.grade_level}): ${v.video_url}`).join("\n")}`;
   }
 
   if (ctx?.children && ctx.children.length > 0) {
     prompt += `
 
 CHILDREN:
-${ctx.children.slice(0, 3).map((c: any) => `- ${c.students?.admission_number || "Student"}: Grade ${c.students?.classes?.name || c.students?.grade_level}`).join("\n")}`;
+${ctx.children.slice(0, 3).map((c: Record<string, unknown>) => `- ${c.students?.admission_number || "Student"}: Grade ${c.students?.classes?.name || c.students?.grade_level}`).join("\n")}`;
   }
 
   // ACTIONS — CRITICAL FIX

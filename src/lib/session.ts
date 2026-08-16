@@ -113,7 +113,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
     }
 
     const { data: permsData } = await admin.rpc("get_user_permissions", { p_user_id: profile.id });
-    const permissions = (permsData || []).map((p: any) => p.permission_key || p);
+    const permissions = (permsData || []).map((p: Record<string, unknown>) => p.permission_key || p);
 
     const session: ValidatedSession = {
       userId: profile.id,
@@ -129,7 +129,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
     };
 
     return { session, error: null };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[validateSession] Validation error:", error);
     return { session: null, error: { code: "INTERNAL_ERROR", message: "Session validation failed. Please try again." } };
   }

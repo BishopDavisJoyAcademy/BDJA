@@ -11,6 +11,7 @@ import { Search, UserPlus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { getErrorMessage } from "@/lib/errors";
 
 interface UserRecord {
   id: string;
@@ -55,12 +56,12 @@ export default function UsersManagement() {
       const studentsData = studentsRes.ok ? await studentsRes.json() : { students: [] };
 
       const allUsers = [
-        ...(staffData.staff || []).map((s: any) => ({ ...s, user_category: "staff" })),
-        ...(studentsData.students || []).map((s: any) => ({ ...s, user_category: "student" })),
+        ...(staffData.staff || []).map((s: Record<string, unknown>) => ({ ...s, user_category: "staff" })),
+        ...(studentsData.students || []).map((s: Record<string, unknown>) => ({ ...s, user_category: "student" })),
       ];
       setUsers(allUsers);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

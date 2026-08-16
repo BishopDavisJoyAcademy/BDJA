@@ -1,8 +1,8 @@
-name: 💬 PR Comment with Detailed CI Results
+name: PR Comment with Detailed CI Results
 
 on:
   workflow_run:
-    workflows: ["🚀 Ultimate CI — Setup, Type, Lint, Test, Build, Audit, Format, Commit"]
+    workflows: ["Ultimate CI — Setup, Type, Lint, Test, Build, Audit, Format"]
     types: [completed]
 
 permissions:
@@ -13,12 +13,12 @@ permissions:
 
 jobs:
   comment:
-    name: 💬 Post PR Comment
+    name: Post PR Comment
     runs-on: ubuntu-latest
     if: github.event.workflow_run.event == 'pull_request'
 
     steps:
-      - name: 🔍 Find associated PR
+      - name: Find associated PR
         id: find-pr
         uses: actions/github-script@v7
         with:
@@ -30,13 +30,11 @@ jobs:
               state: 'open',
               head: `${context.repo.owner}:${run.head_branch}`
             });
-
             if (pullRequests.length === 0) {
               console.log("No open PR found for branch: " + run.head_branch);
               core.setOutput('found', 'false');
               return;
             }
-
             const pr = pullRequests[0];
             core.setOutput('found', 'true');
             core.setOutput('number', pr.number);
@@ -45,14 +43,19 @@ jobs:
             core.setOutput('head_sha', pr.head.sha);
             core.setOutput('base_sha', pr.base.sha);
 
-      - name: 📋 Fetch job details from workflow run
+      - name: Fetch jobs and post comment
         if: steps.find-pr.outputs.found == 'true'
-        id: fetch-jobs
         uses: actions/github-script@v7
         with:
           script: |
             const runId = context.payload.workflow_run.id;
+            const prNumber = parseInt('${{ steps.find-pr.outputs.number }}');
+            const prTitle = '${{ steps.find-pr.outputs.title }}';
+            const prAuthor = '${{ steps.find-pr.outputs.author }}';
+            const headSha = '${{ steps.find-pr.outputs.head_sha }}';
+            const run = context.payload.workflow_run;
 
+            // Fetch all jobs for this workflow run
             const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -60,8 +63,6 @@ jobs:
             });
 
             const jobs = jobsData.jobs;
-            const run = context.payload.workflow_run;
-
             const jobMap = {};
             jobs.forEach(job => {
               jobMap[job.name] = {
@@ -90,15 +91,15 @@ jobs:
             };
 
             const relevantJobs = [
-              { key: '📦 Setup & Cache', label: '📦 Setup' },
-              { key: '📝 Commit Lint', label: '📝 Commit' },
-              { key: '🔍 TypeScript', label: '🔍 TypeScript' },
-              { key: '🧹 ESLint', label: '🧹 ESLint' },
-              { key: '🧪 Tests & Coverage', label: '🧪 Tests' },
-              { key: '🏗️ Build', label: '🏗️ Build' },
-              { key: '🔒 Security Audit', label: '🔒 Audit' },
-              { key: '✨ Prettier', label: '✨ Prettier' },
-              { key: '📊 Final Summary', label: '📊 Summary' }
+              { key: 'Setup & Cache', label: 'Setup', icon: '📦' },
+              { key: 'Commit Lint', label: 'Commit', icon: '📝' },
+              { key: 'TypeScript', label: 'TypeScript', icon: '🔍' },
+              { key: 'ESLint', label: 'ESLint', icon: '🧹' },
+              { key: 'Tests & Coverage', label: 'Tests', icon: '🧪' },
+              { key: 'Build', label: 'Build', icon: '🏗️' },
+              { key: 'Security Audit', label: 'Audit', icon: '🔒' },
+              { key: 'Prettier', label: 'Prettier', icon: '✨' },
+              { key: 'Final Summary', label: 'Summary', icon: '📊' }
             ];
 
             let resultsTable = '| Check | Status | Duration | Link |\n';
@@ -108,19 +109,18 @@ jobs:
             let failCount = 0;
             let skipCount = 0;
 
-            relevantJobs.forEach(({ key, label }) => {
+            relevantJobs.forEach(({ key, label, icon }) => {
               const job = jobMap[key];
               if (job) {
                 const emoji = getEmoji(job.conclusion);
                 const duration = getDuration(job);
                 const link = `[Logs](${job.url})`;
-                resultsTable += `| ${label} | ${emoji} ${job.conclusion} | ${duration} | ${link} |\n`;
-
+                resultsTable += `| ${icon} ${label} | ${emoji} ${job.conclusion} | ${duration} | ${link} |\n`;
                 if (job.conclusion === 'success') passCount++;
                 else if (job.conclusion === 'failure') failCount++;
                 else if (job.conclusion === 'skipped') skipCount++;
               } else {
-                resultsTable += `| ${label} | ⏳ not found | — | — |\n`;
+                resultsTable += `| ${icon} ${label} | ⏳ not found | — | — |\n`;
               }
             });
 
@@ -130,62 +130,55 @@ jobs:
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
             const artifactsUrl = `${runUrl}#artifacts`;
 
-            const artifactLinks = `
-<details>
-<summary>📦 Download Reports</summary>
+            // Build body using array join to avoid multi-line template literal issues
+            const artifactLinks = [
+              '<details>',
+              '<summary>📦 Download Reports</summary>',
+              '',
+              'All detailed reports are available as artifacts in the workflow run:',
+              '',
+              `- [TypeScript Report](${artifactsUrl})`,
+              `- [ESLint Report](${artifactsUrl})`,
+              `- [Test & Coverage Report](${artifactsUrl})`,
+              `- [Build Report](${artifactsUrl})`,
+              `- [Security Audit Report](${artifactsUrl})`,
+              `- [Prettier Report](${artifactsUrl})`,
+              '',
+              '</details>'
+            ].join('\n');
 
-All detailed reports are available as artifacts in the workflow run:
+            const bodyLines = [
+              `## ${overallEmoji} CI Results for PR #${prNumber}`,
+              '',
+              `**PR:** ${prTitle}`,
+              `**Author:** @${prAuthor}`,
+              `**Commit:** \`${headSha}\``,
+              `**Workflow Run:** [View Run](${runUrl})`,
+              '',
+              '---',
+              '',
+              '### 📊 Per-Job Results',
+              '',
+              resultsTable,
+              '',
+              `**Summary:** ${passCount} passed · ${failCount} failed · ${skipCount} skipped`,
+              '',
+              '---',
+              '',
+              '### 🚦 Overall Status',
+              '',
+              `**${overallStatus}**`,
+              '',
+              artifactLinks,
+              '',
+              '---',
+              '',
+              `*Last updated: ${new Date().toISOString()}*`
+            ];
 
-- [TypeScript Report](${artifactsUrl})
-- [ESLint Report](${artifactsUrl})
-- [Test & Coverage Report](${artifactsUrl})
-- [Build Report](${artifactsUrl})
-- [Security Audit Report](${artifactsUrl})
-- [Prettier Report](${artifactsUrl})
+            const body = bodyLines.join('\n');
 
-</details>
-`;
-
-            const body = `## ${overallEmoji} CI Results for PR #${{ steps.find-pr.outputs.number }}
-
-**PR:** ${{ steps.find-pr.outputs.title }}  
-**Author:** @${{ steps.find-pr.outputs.author }}  
-**Commit:** \`${{ steps.find-pr.outputs.head_sha }}\`  
-**Workflow Run:** [View Run](${runUrl})
-
----
-
-### 📊 Per-Job Results
-
-${resultsTable}
-
-**Summary:** ${passCount} passed · ${failCount} failed · ${skipCount} skipped
-
----
-
-### 🚦 Overall Status
-
-**${overallStatus}**
-
-${artifactLinks}
-
----
-
-*Last updated: ${new Date().toISOString()}*
-`;
-
-            core.setOutput('body', body);
-            core.setOutput('conclusion', overallConclusion);
-
-      - name: 💬 Post or Update PR Comment
-        if: steps.find-pr.outputs.found == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = parseInt('${{ steps.find-pr.outputs.number }}');
-            const body = `${{ steps.fetch-jobs.outputs.body }}`;
-            const conclusion = '${{ steps.fetch-jobs.outputs.conclusion }}';
-
+            // Find existing bot comment
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -204,7 +197,7 @@ ${artifactLinks}
                 comment_id: botComment.id,
                 body: body
               });
-              console.log("✅ Updated existing CI comment");
+              console.log("Updated existing CI comment");
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -212,25 +205,17 @@ ${artifactLinks}
                 issue_number: prNumber,
                 body: body
               });
-              console.log("✅ Created new CI comment");
+              console.log("Created new CI comment");
             }
 
-      - name: 🏷️ Update commit status check
-        if: steps.find-pr.outputs.found == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const conclusion = '${{ steps.fetch-jobs.outputs.conclusion }}';
-            const prNumber = parseInt('${{ steps.find-pr.outputs.number }}');
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.payload.workflow_run.id}`;
-
+            // Update commit status check
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: '${{ steps.find-pr.outputs.head_sha }}',
-              state: conclusion === 'success' ? 'success' : 'failure',
+              sha: headSha,
+              state: overallConclusion === 'success' ? 'success' : 'failure',
               context: 'Ultimate CI / Overall',
-              description: conclusion === 'success' ? 'All checks passed' : 'Some checks failed',
+              description: overallConclusion === 'success' ? 'All checks passed' : 'Some checks failed',
               target_url: runUrl
             });
-            console.log("✅ Commit status updated");
+            console.log("Commit status updated");

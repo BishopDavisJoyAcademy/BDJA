@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
-import { User, MessageSquare, Send, Lightbulb, Bug, ThumbsUp, AlertCircle } from "lucide-react";
+import { User, MessageSquare, Send, Lightbulb, Bug, ThumbsUp } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Suggestion {
@@ -35,14 +35,7 @@ export default function ProfilePage() {
   const [submitting, setSubmitting] = useState(false);
   const [related, setRelated] = useState<RelatedData | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      fetchSuggestions();
-      fetchRelatedData();
-    }
-  }, [user, fetchRelatedData]);
-
-  const fetchRelatedData = async () => {
+  const fetchRelatedData = useCallback(async () => {
     if (!user) return;
     try {
       const res = await fetch(`/api/profile/related?id=${user.id}&category=${user.user_category}`);
@@ -53,9 +46,9 @@ export default function ProfilePage() {
     } catch (err) {
       console.error("Failed to fetch related data:", err);
     }
-  };
+  }, [user]);
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async () => {
     try {
       const res = await fetch("/api/suggestions");
       if (res.ok) {
@@ -65,7 +58,14 @@ export default function ProfilePage() {
     } catch (err) {
       console.error("Failed to fetch suggestions:", err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchSuggestions();
+      fetchRelatedData();
+    }
+  }, [user, fetchSuggestions, fetchRelatedData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

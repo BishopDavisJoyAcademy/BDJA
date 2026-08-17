@@ -178,6 +178,18 @@ export function JoyChat() {
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingText, isLoading]);
 
+
+  const handleNewChat = useCallback(async () => {
+    await createConversation();
+    setShowSidebar(false);
+    setMessages([]);
+    setStreamingText("");
+    setSuggestions([]);
+    clearAttachments();
+    setPendingActions([]);
+  }, [createConversation, clearAttachments]);
+
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -294,16 +306,6 @@ export function JoyChat() {
     setPollOptions(["", ""]);
     setShowPollInput(false);
   };
-
-  const handleNewChat = useCallback(async () => {
-    await createConversation();
-    setShowSidebar(false);
-    setMessages([]);
-    setStreamingText("");
-    setSuggestions([]);
-    clearAttachments();
-    setPendingActions([]);
-  }, [createConversation, clearAttachments]);
 
   // Execute actions on frontend
   const executeFrontendActions = useCallback((actions: JoyAction[]) => {

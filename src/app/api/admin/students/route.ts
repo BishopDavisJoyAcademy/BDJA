@@ -55,9 +55,12 @@ export async function POST(req: NextRequest) {
       email: body.email,
       full_name: body.full_name,
       role: "student",
+      user_category: "student",
       phone: body.phone || null,
       campus_id: body.campus_id || null,
       is_active: true,
+      password_changed: false,
+      onboarding_completed: false,
     }]).select().single();
 
     if (profileError || !profile) {
@@ -66,9 +69,11 @@ export async function POST(req: NextRequest) {
 
     const { error: studentError } = await admin.from("students").insert([{
       id: profile.id,
+      profile_id: profile.id,
       admission_number: body.admission_number,
       grade_level: body.grade_level,
       class_id: body.class_id || null,
+      campus_id: body.campus_id || null,
     }]);
 
     if (studentError) {

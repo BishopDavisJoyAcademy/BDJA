@@ -1,54 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { createStaff } from "@/lib/auth";
-import { createHeadteacherSchema } from "@/lib/validation";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const parseResult = createHeadteacherSchema.safeParse(body);
-    if (!parseResult.success) {
-      return NextResponse.json({ error: "Invalid input", details: parseResult.error.flatten() }, { status: 400 });
+    const { email, fullName, phone, department, designation, campusId } = body;
+
+    if (!email || !fullName) {
+      return NextResponse.json({ error: "Email and full name required" }, { status: 400 });
     }
 
-    const { email, full_name, phone, campus_id } = parseResult.data;
-    const admin = getSupabaseAdmin();
-
-    // Check if any admin already exists
-    const { data: existingAdmin } = await admin
-      .from("profiles")
-      .select("id")
-      .eq("user_category", "admin")
-      .limit(1)
-      .maybeSingle();
-
-    if (existingAdmin) {
-      return NextResponse.json({ error: "An admin already exists. Please contact them to create additional accounts." }, { status: 403 });
-    }
-
-    // Create headteacher as admin
+    // For onboarding, we use a placeholder createdBy since no admin exists yet
     const result = await createStaff({
       email,
-      fullName: full_name,
+      fullName,
       phone,
-      campusId: campus_id,
-      department: "Administration",
-      designation: "Headteacher",
-      permissionIds: [], // Admin gets all permissions implicitly
-      createdBy: "system",
+      department: department || "Administration",
+      designation: designation || "Head Teacher",
+      campusId,
+      createdBy: "system-onboarding",
     });
 
-    // Upgrade to admin
-    await admin
-      .from("profiles")
-      .update({ role: "admin", user_category: "admin" })
-      .eq("id", result.staffId);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error || result.message }, { status: 500 });
+    }
 
-    return NextResponse.json(result);
-  } catch (error: any) {
-    console.error("[api/onboarding/create-headteacher] Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create headteacher" }, { status: 500 });
+    return NextResponse.json({ success: true, userId: result.userId });
+  } catch (err: unknown) {
+    console.error("[create-headteacher] Error:", getErrorMessage(err));
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

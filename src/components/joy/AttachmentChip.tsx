@@ -2,6 +2,7 @@
 
 import { X, FileText, Image, Video, Music, Link2, BarChart3, PenTool, RotateCcw } from "lucide-react";
 import { AttachmentFile } from "@/types/attachments";
+import { ThemeConfig } from "@/lib/joy-themes";
 import { cn } from "@/lib/utils";
 
 interface AttachmentChipProps {
@@ -10,7 +11,7 @@ interface AttachmentChipProps {
   onRemove: (id: string) => void;
   onPreview: (attachment: AttachmentFile) => void;
   onUpload?: (id: string) => void;
-  theme: Record<string, unknown>;
+  theme: ThemeConfig;
 }
 
 export function AttachmentChip({ attachment, formatFileSize, onRemove, onPreview, onUpload, theme }: AttachmentChipProps) {

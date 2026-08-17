@@ -1,6 +1,24 @@
 export type UserCategory = "student" | "parent" | "staff" | "admin";
 export type UserRole = "student" | "parent" | "staff" | "admin";
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  user_category: string | null;
+  campus_id: string | null;
+  avatar_url: string | null;
+  is_active: boolean;
+  must_change_password: boolean;
+  permissions?: string[];
+  // Related data (populated when needed)
+  department?: string | null;
+  designation?: string | null;
+  grade_level?: string | null;
+  admission_number?: string | null;
+}
+
 export interface Profile {
   id: string;
   email: string;
@@ -21,23 +39,24 @@ export interface Profile {
 
 export interface StaffRecord {
   id: string;
-  employee_id: string;
-  department: string;
-  designation: string;
-  status: "active" | "inactive" | "on_leave" | "terminated";
-  created_at?: string;
-  updated_at?: string;
+  employee_id: string | null;
+  department: string | null;
+  designation: string | null;
+  status: string | null;
+  join_date: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface StudentRecord {
   id: string;
   admission_number: string;
-  grade_level: string;
+  grade_level: string | null;
   class_id?: string | null;
-  enrollment_date?: string;
-  status: "active" | "inactive" | "graduated" | "transferred";
-  created_at?: string;
-  updated_at?: string;
+  enrollment_date?: string | null;
+  status: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface Permission {
@@ -45,7 +64,7 @@ export interface Permission {
   key: string;
   name: string;
   category: string;
-  description?: string;
+  description?: string | null;
 }
 
 export interface PermissionCategory {
@@ -70,7 +89,7 @@ export interface AuditLog {
   action: string;
   target_type: string;
   target_id?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   impersonated_user_id?: string;
   ip_address?: string;
   user_agent?: string;
@@ -80,14 +99,14 @@ export interface AuditLog {
 export interface ValidatedSession {
   userId: string;
   email: string;
-  role: UserRole;
-  userCategory: UserCategory;
-  fullName: string;
+  role: string;
+  permissions: string[];
   campusId: string | null;
+  userCategory: string | null;
   passwordChanged: boolean;
   onboardingCompleted: boolean;
   isActive: boolean;
-  permissions: string[];
+  fullName: string;
 }
 
 export interface AuthError {
@@ -105,11 +124,11 @@ export interface Suggestion {
   description: string;
   status: "open" | "under_review" | "planned" | "implemented" | "declined" | "closed";
   priority: "low" | "medium" | "high" | "critical";
-  admin_response?: string;
-  responded_by?: string;
-  responded_at?: string;
-  created_at: string;
-  updated_at: string;
+  admin_response?: string | null;
+  responded_by?: string | null;
+  responded_at?: string | null;
+  created_at: string | null;
+  updated_at?: string | null;
 }
 
 export interface CmsPage {
@@ -135,118 +154,75 @@ export interface CalendarEvent {
   target_audience: string;
   target_grade?: string;
   campus_id?: string;
-  created_by: string;
+  created_by?: string;
+  created_at?: string;
 }
 
-export interface TimetableEntry {
-  id: string;
-  class_id: string;
-  subject_id: string;
-  teacher_id?: string;
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
-  room?: string;
-  topic?: string;
-}
-
-export interface Assessment {
-  id: string;
-  student_id: string;
-  class_id: string;
-  subject_id: string;
-  strand: string;
-  sub_strand: string;
-  specific_learning_outcome?: string;
-  performance_level: "beginning" | "developing" | "competent" | "exceeds";
-  score?: number;
-  max_score?: number;
-  term: string;
-  academic_year: string;
-}
-
-export interface Assignment {
-  id: string;
-  class_id: string;
-  subject_id: string;
-  teacher_id: string;
-  title: string;
-  description?: string;
-  due_date?: string;
-  max_score?: number;
-  status: "draft" | "published" | "closed";
-}
-
-export interface FeePayment {
-  id: string;
-  student_id: string;
-  amount: number;
-  balance: number;
-  term: string;
-  academic_year: string;
-  payment_date?: string;
-  payment_method?: string;
-  receipt_number?: string;
-  status: "paid" | "partial" | "unpaid" | "overdue";
-}
-
-export interface LibraryBook {
+export interface LibraryResource {
   id: string;
   title: string;
-  author?: string;
-  isbn?: string;
-  category?: string;
-  status: "available" | "borrowed" | "lost" | "damaged";
-  campus_id?: string;
-}
-
-export interface Admission {
-  id: string;
-  student_name: string;
-  parent_name?: string;
-  parent_email?: string;
-  parent_phone?: string;
-  grade_level: string;
-  campus_id?: string;
-  status: "pending" | "reviewing" | "approved" | "rejected" | "waitlisted";
-  submitted_at: string;
-}
-
-export interface Message {
-  id: string;
-  sender_id: string;
-  recipient_id: string;
-  subject?: string;
-  content: string;
-  read: boolean;
-  created_at: string;
+  author?: string | null;
+  isbn?: string | null;
+  resource_type: string;
+  subject_id?: string | null;
+  grade_levels?: string[] | null;
+  total_copies?: number | null;
+  available_copies?: number | null;
+  cover_url?: string | null;
+  file_url?: string | null;
+  campus_id?: string | null;
+  created_by?: string | null;
+  created_at?: string | null;
+  borrowed_by?: unknown;
 }
 
 export interface VoraContent {
   id: string;
   title: string;
-  summary?: string;
-  subject?: string;
-  grade_level?: string;
-  category?: string;
-  topic?: string;
-  tags?: string[];
-  channel?: string;
-  duration_seconds?: number;
-  thumbnail_url?: string;
-  video_url?: string;
+  description?: string | null;
+  video_url: string;
+  thumbnail_url?: string | null;
+  subject: string;
+  subject_id?: string | null;
+  grade_level: string;
+  class_id?: string | null;
+  campus_id: string;
+  uploaded_by: string;
+  created_by?: string | null;
+  approved?: boolean | null;
+  approved_by?: string | null;
+  is_public?: boolean | null;
+  visibility?: string | null;
+  duration?: string | null;
+  transcript?: string | null;
+  captions?: unknown;
+  summary?: string | null;
+  topic?: string | null;
+  strand?: string | null;
+  sub_strand?: string | null;
+  specific_learning_outcome?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
-export interface NotificationItem {
+export interface ThemeConfig {
   id: string;
-  title: string;
-  message: string;
-  type: string;
-  read: boolean;
-  created_at: string;
-}
-
-export interface JoyMessage {
-  role: "user" | "assistant" | "system";
-  content: string;
+  name: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  surfaceColor: string;
+  textColor: string;
+  mutedTextColor: string;
+  borderColor: string;
+  successColor: string;
+  warningColor: string;
+  errorColor: string;
+  infoColor: string;
+  fontFamily: string;
+  borderRadius: string;
+  spacing: string;
+  isDefault: boolean;
+  isDark: boolean;
 }

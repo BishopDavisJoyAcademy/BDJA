@@ -20,16 +20,40 @@ interface Suggestion {
   created_at: string;
 }
 
+interface RelatedData {
+  department: string | null;
+  designation: string | null;
+  grade_level: string | null;
+  admission_number: string | null;
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ type: "feedback", title: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [related, setRelated] = useState<RelatedData | null>(null);
 
   useEffect(() => {
-    if (user) fetchSuggestions();
+    if (user) {
+      fetchSuggestions();
+      fetchRelatedData();
+    }
   }, [user]);
+
+  const fetchRelatedData = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`/api/profile/related?id=${user.id}&category=${user.user_category}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRelated(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch related data:", err);
+    }
+  };
 
   const fetchSuggestions = async () => {
     try {
@@ -65,8 +89,8 @@ export default function ProfilePage() {
       } else {
         toast.error(data.error || "Failed to submit");
       }
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to submit");
     } finally {
       setSubmitting(false);
     }
@@ -93,6 +117,11 @@ export default function ProfilePage() {
     return colors[status] || colors.open;
   };
 
+  const dept = related?.department || user?.department;
+  const desig = related?.designation || user?.designation;
+  const grade = related?.grade_level || user?.grade_level;
+  const admNo = related?.admission_number || user?.admission_number;
+
   return (
     <div className="space-y-6">
       <div>
@@ -117,19 +146,19 @@ export default function ProfilePage() {
         <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-gray-500">Department:</span>
-            <span className="ml-2 font-medium">{user?.department || "—"}</span>
+            <span className="ml-2 font-medium">{dept || "—"}</span>
           </div>
           <div>
             <span className="text-gray-500">Designation:</span>
-            <span className="ml-2 font-medium">{user?.designation || "—"}</span>
+            <span className="ml-2 font-medium">{desig || "—"}</span>
           </div>
           <div>
             <span className="text-gray-500">Grade Level:</span>
-            <span className="ml-2 font-medium capitalize">{user?.grade_level || "—"}</span>
+            <span className="ml-2 font-medium capitalize">{grade || "—"}</span>
           </div>
           <div>
             <span className="text-gray-500">Admission No:</span>
-            <span className="ml-2 font-medium">{user?.admission_number || "—"}</span>
+            <span className="ml-2 font-medium">{admNo || "—"}</span>
           </div>
         </div>
       </Card>

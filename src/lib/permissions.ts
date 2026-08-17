@@ -1,25 +1,46 @@
 import { getSupabaseAdmin } from "./supabase-server";
-
-export interface Permission {
-  id: string;
-  permission_key: string;
-  name: string;
-  category: string;
-  description: string | null;
-}
+import { Permission, PermissionCategory } from "@/types";
 
 export async function getUserPermissions(userId: string): Promise<string[]> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from("staff_permissions")
-    .select("permissions(permission_key)")
-    .eq("staff_id", userId);
+    .select("permissions(key)")
+    .eq("profile_id", userId);
 
   if (error || !data) return [];
 
-  return (data as Array<{ permissions: { permission_key: string } | null }>)
-    .map((p) => p.permissions?.permission_key)
+  return (data as Array<{ permissions: { key: string } | null }>)
+    .map((p) => p.permissions?.key)
     .filter((k): k is string => Boolean(k));
+}
+
+export async function hasPermission(userId: string, permissionKey: string): Promise<boolean> {
+  const perms = await getUserPermissions(userId);
+  return perms.includes(permissionKey);
+}
+
+export async function getAllPermissions(): Promise<Permission[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("permissions")
+    .select("id, key, name, category, description")
+    .order("category", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error || !data) return [];
+  return data as Permission[];
+}
+
+export async function getPermissionCategories(): Promise<PermissionCategory[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("permission_categories")
+    .select("id, key, name, icon, sort_order")
+    .order("sort_order", { ascending: true });
+
+  if (error || !data) return [];
+  return data as PermissionCategory[];
 }
 
 export async function grantPermissions(
@@ -32,7 +53,7 @@ export async function grantPermissions(
   const { data: current } = await admin
     .from("staff_permissions")
     .select("permission_id")
-    .eq("staff_id", profileId);
+    .eq("profile_id", profileId);
 
   const currentIds = new Set((current || []).map((c) => c.permission_id));
   const newIds = new Set(permissionIds);
@@ -45,10 +66,10 @@ export async function grantPermissions(
   if (added.length > 0) {
     await admin.from("staff_permissions").insert(
       added.map((id) => ({
-        staff_id: profileId,
+        profile_id: profileId,
         permission_id: id,
         granted_by: grantedBy,
-        granted_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       }))
     );
   }
@@ -57,17 +78,17 @@ export async function grantPermissions(
     await admin
       .from("staff_permissions")
       .delete()
-      .eq("staff_id", profileId)
+      .eq("profile_id", profileId)
       .in("permission_id", removed);
   }
 
   const { data: permData } = await admin
     .from("permissions")
-    .select("id, permission_key")
+    .select("id, key")
     .in("id", [...added, ...removed]);
 
   const keyMap = new Map<string, string>(
-    (permData || []).map((p: { id: string; permission_key: string }) => [p.id, p.permission_key])
+    (permData || []).map((p: { id: string; key: string }) => [p.id, p.key])
   );
 
   return {

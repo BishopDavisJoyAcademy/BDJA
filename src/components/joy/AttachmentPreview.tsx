@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, FileText, Image, Video, Music, Link2, BarChart3, PenTool, ExternalLink } from "lucide-react";
 import { AttachmentFile } from "@/types/attachments";
+import { ThemeConfig } from "@/lib/joy-themes";
 import { ImageEditor } from "./ImageEditor";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +11,7 @@ interface AttachmentPreviewProps {
   attachment: AttachmentFile;
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<AttachmentFile>) => void;
-  theme: Record<string, unknown>;
+  theme: ThemeConfig;
 }
 
 export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: AttachmentPreviewProps) {

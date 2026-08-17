@@ -1,56 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { searchYouTubeAsVora } from "@/lib/youtube";
-import { getErrorMessage } from "@/lib/errors";
+import { getErrorMessage, AuthRequiredError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
-interface VoraContent {
-  id: string;
-  title: string;
-  description: string | null;
-  video_url: string | null;
-  thumbnail_url: string | null;
-  grade_level: string | null;
-  subject: string | null;
-  category: string;
-  duration_seconds: number | null;
-  is_published: boolean;
-  created_at: string | null;
-}
-
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const query = searchParams.get("q");
-    const grade_level = searchParams.get("grade_level");
-    const limit = Math.min(parseInt(searchParams.get("limit") || "10", 10), 20);
-
-    if (!query) {
-      return NextResponse.json({ error: "Query parameter 'q' is required" }, { status: 400 });
-    }
-
+    const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
-    let dbQuery = admin.from("vora_content").select("*").eq("is_published", true);
-    if (grade_level) dbQuery = dbQuery.eq("grade_level", grade_level);
+    const { searchParams } = new URL(req.url);
+    const q = searchParams.get("q");
+    const grade = searchParams.get("grade");
+    const subject = searchParams.get("subject");
+    const campusId = searchParams.get("campus_id");
 
-    const { data: dbResults, error } = await dbQuery
-      .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
-      .limit(limit);
+    let query = admin.from("vora_content").select("*");
 
+    // Only show approved/public content, or content uploaded by the user
+    query = query.or(`approved.eq.true,is_public.eq.true,uploaded_by.eq.${session.userId}`);
+
+    if (q) query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
+    if (grade) query = query.eq("grade_level", grade);
+    if (subject) query = query.eq("subject", subject);
+    if (campusId) query = query.eq("campus_id", campusId);
+
+    const { data, error } = await query.order("created_at", { ascending: false });
     if (error) return NextResponse.json({ error: "Search failed" }, { status: 500 });
-
-    let youtubeResults: VoraContent[] = [];
-    try {
-      youtubeResults = (await searchYouTubeAsVora(query, grade_level, Math.min(limit, 5))) as VoraContent[];
-    } catch {
-      // YouTube search is optional
-    }
-
-    const combined = [...(dbResults || []), ...youtubeResults];
-    return NextResponse.json({ results: combined });
+    return NextResponse.json({ results: data || [] });
   } catch (error: unknown) {
-    console.error("[vora/search] Error:", error);
+    if (error instanceof AuthRequiredError) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
+    }
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

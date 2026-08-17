@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     if (!body.id) return NextResponse.json({ error: "Suggestion ID required" }, { status: 400 });
 
-    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const updateData: { status?: string; admin_response?: string; responded_by?: string; responded_at?: string; updated_at: string } = { updated_at: new Date().toISOString() };
     if (body.status !== undefined) updateData.status = body.status;
     if (body.admin_response !== undefined) {
       updateData.admin_response = body.admin_response;

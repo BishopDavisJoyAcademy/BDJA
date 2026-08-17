@@ -2,18 +2,10 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { AuthRequiredError, PermissionDeniedError } from "./errors";
-
-export interface ValidatedSession {
-  userId: string;
-  email: string;
-  role: string;
-  permissions: string[];
-  campusId: string | null;
-  userCategory: string | null;
-}
+import { ValidatedSession } from "@/types";
 
 export async function requireAuth(req: NextRequest): Promise<ValidatedSession> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -39,7 +31,7 @@ export async function requireAuth(req: NextRequest): Promise<ValidatedSession> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, email, role, campus_id, user_category, is_active")
+    .select("id, email, role, campus_id, user_category, is_active, full_name, password_changed, onboarding_completed")
     .eq("id", session.user.id)
     .single();
 
@@ -49,11 +41,11 @@ export async function requireAuth(req: NextRequest): Promise<ValidatedSession> {
 
   const { data: permData } = await supabase
     .from("staff_permissions")
-    .select("permissions(permission_key)")
-    .eq("staff_id", profile.id);
+    .select("permissions(key)")
+    .eq("profile_id", profile.id);
 
   const permissions = (permData || [])
-    .map((p: { permissions: { permission_key: string } | null }) => p.permissions?.permission_key)
+    .map((p: { permissions: { key: string } | null }) => p.permissions?.key)
     .filter((k): k is string => Boolean(k));
 
   return {
@@ -63,6 +55,10 @@ export async function requireAuth(req: NextRequest): Promise<ValidatedSession> {
     permissions,
     campusId: profile.campus_id,
     userCategory: profile.user_category,
+    passwordChanged: profile.password_changed,
+    onboardingCompleted: profile.onboarding_completed,
+    isActive: profile.is_active,
+    fullName: profile.full_name,
   };
 }
 

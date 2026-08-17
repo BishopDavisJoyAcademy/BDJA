@@ -21,12 +21,54 @@ import { useJoyConversations } from "@/hooks/useJoyConversations";
 import { useJoyPreferences } from "@/hooks/useJoyPreferences";
 import { useAttachments } from "@/hooks/useAttachments";
 import { getThemeConfig, THEME_LIST } from "@/lib/joy-themes";
-import { JoyMessage, JoyConversation, JoyTheme } from "@/types/joy";
+import { JoyMessage, JoyConversation, JoyTheme, JoyAction } from "@/types/joy";
 import { AttachmentFile } from "@/types/attachments";
 import { AttachmentChip } from "./AttachmentChip";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+
+// SpeechRecognition types
+declare global {
+  interface Window {
+    webkitSpeechRecognition?: new () => SpeechRecognition;
+  }
+  interface SpeechRecognition extends EventTarget {
+    lang: string;
+    interimResults: boolean;
+    maxAlternatives?: number;
+    onresult: ((event: SpeechRecognitionEvent) => void) | null;
+    onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+    onend: (() => void) | null;
+    start(): void;
+    stop(): void;
+    abort(): void;
+  }
+  interface SpeechRecognitionEvent extends Event {
+    readonly resultIndex: number;
+    readonly results: SpeechRecognitionResultList;
+  }
+  interface SpeechRecognitionResultList {
+    readonly length: number;
+    item(index: number): SpeechRecognitionResult;
+    [index: number]: SpeechRecognitionResult;
+  }
+  interface SpeechRecognitionResult {
+    readonly length: number;
+    item(index: number): SpeechRecognitionAlternative;
+    [index: number]: SpeechRecognitionAlternative;
+    readonly isFinal: boolean;
+  }
+  interface SpeechRecognitionAlternative {
+    readonly transcript: string;
+    readonly confidence: number;
+  }
+  interface SpeechRecognitionErrorEvent extends Event {
+    readonly error: string;
+    readonly message: string;
+  }
+}
+
 
 interface GreetingPrompt {
   icon: React.ReactNode;
@@ -264,11 +306,11 @@ export function JoyChat() {
   };
 
   // Execute actions on frontend
-  const executeFrontendActions = useCallback((actions: Record<string, unknown>[]) => {
+  const executeFrontendActions = useCallback((actions: JoyAction[]) => {
     if (!actions || actions.length === 0) return;
     for (const action of actions) {
       if (action.type === "navigate" && action.target) {
-        const target = action.target;
+        const target = action.target as string;
         let path = target;
         if (target === "fees_management") path = "/fees";
         else if (target === "vora") path = "/vora";

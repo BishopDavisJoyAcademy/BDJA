@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { apiGet } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Loader2, AlertCircle } from "lucide-react";
 
-interface CmsPage {
+interface CmsPageData {
   id: string;
   slug: string;
   title: string;
@@ -19,14 +19,19 @@ interface CmsPage {
 }
 
 interface PagesResponse {
-  pages?: CmsPage[];
-  page?: CmsPage | null;
+  pages?: CmsPageData[];
+  page?: CmsPageData | null;
 }
 
-export function CmsPageContent() {
+interface CmsPageContentProps {
+  slug?: string;
+  fallback?: ReactNode;
+}
+
+export function CmsPageContent({ slug: propSlug, fallback }: CmsPageContentProps) {
   const pathname = usePathname();
-  const slug = pathname.replace(/^\//, "") || "home";
-  const [page, setPage] = useState<CmsPage | null>(null);
+  const slug = propSlug || pathname.replace(/^\//, "") || "home";
+  const [page, setPage] = useState<CmsPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -58,12 +63,14 @@ export function CmsPageContent() {
       </div>
     );
 
-  if (!page)
+  if (!page) {
+    if (fallback) return <>{fallback}</>;
     return (
       <div className="text-gray-400 text-center py-12">
         Page content coming soon.
       </div>
     );
+  }
 
   return (
     <div className="prose prose-invert max-w-none">

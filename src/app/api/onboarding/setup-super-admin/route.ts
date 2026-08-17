@@ -1,51 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { createStaff } from "@/lib/auth";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, full_name, password } = body;
+    const { email, fullName, phone, campusId } = body;
 
-    if (!email || !full_name || !password) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    const admin = getSupabaseAdmin();
-
-    const { data: existingAdmin } = await admin
-      .from("profiles")
-      .select("id")
-      .eq("user_category", "admin")
-      .limit(1)
-      .maybeSingle();
-
-    if (existingAdmin) {
-      return NextResponse.json({ error: "An admin already exists" }, { status: 403 });
+    if (!email || !fullName) {
+      return NextResponse.json({ error: "Email and full name required" }, { status: 400 });
     }
 
     const result = await createStaff({
       email,
-      fullName: full_name,
+      fullName,
+      phone,
       department: "Administration",
-      designation: "Super Administrator",
-      permissionIds: [],
-      createdBy: "system",
+      designation: "Super Admin",
+      campusId,
+      createdBy: "system-onboarding",
     });
 
-    // Upgrade to admin and set password
-    await admin
-      .from("profiles")
-      .update({ role: "admin", user_category: "admin", password_changed: true, onboarding_completed: true })
-      .eq("id", result.staffId);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error || result.message }, { status: 500 });
+    }
 
-    await admin.auth.admin.updateUserById(result.staffId, { password });
+    // Promote to super admin role
+    const admin = getSupabaseAdmin();
+    await admin.from("profiles").update({
+      role: "admin",
+      user_category: "admin",
+    }).eq("id", result.userId);
 
-    return NextResponse.json(result);
-  } catch (error: any) {
-    console.error("[api/onboarding/setup-super-admin] Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to setup super admin" }, { status: 500 });
+    return NextResponse.json({ success: true, userId: result.userId });
+  } catch (err: unknown) {
+    console.error("[setup-super-admin] Error:", getErrorMessage(err));
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

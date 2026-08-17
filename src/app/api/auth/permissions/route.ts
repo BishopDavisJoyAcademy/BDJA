@@ -1,24 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
-import { getUserPermissions, getAllPermissions, getPermissionCategories } from "@/lib/permissions";
+import { getAllPermissions, getPermissionCategories } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    const [permissions, allPermissions, categories] = await Promise.all([
-      getUserPermissions(session.userId),
+
+    const [allPermissions, categories] = await Promise.all([
       getAllPermissions(),
       getPermissionCategories(),
     ]);
 
-    return NextResponse.json({ permissions, allPermissions, categories });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+    return NextResponse.json({
+      permissions: allPermissions,
+      categories,
+      userPermissions: session.permissions,
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    console.error("[api/auth/permissions] Error:", error);
+    console.error("[permissions] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

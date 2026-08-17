@@ -1,47 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/session";
 import { executeJoyAction } from "@/lib/joy-actions";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.slice(7);
-    const admin = getSupabaseAdmin();
-    const { data: { user }, error } = await admin.auth.getUser(token);
-    if (error || !user) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-
-    interface JoyActionProfile {
-      user_category: string;
-    }
-
-    const { data: profileRaw } = await admin
-      .from("profiles")
-      .select("user_category")
-      .eq("id", user.id)
-      .maybeSingle();
-    const profile = profileRaw as JoyActionProfile | null;
-
+    const session = await requireAuth(req);
     const body = await req.json();
-    const { action } = body;
+    const { actionType, actionPayload } = body;
 
-    const result = await executeJoyAction(user.id, profile?.user_category || "student", action);
+    if (!actionType || !actionPayload) {
+      return NextResponse.json({ error: "actionType and actionPayload required" }, { status: 400 });
+    }
 
-    // Log action
-    await admin.from("joy_actions").insert({
-      user_id: user.id,
-      action_type: action.type,
-      action_data: action,
-      success: result.success,
-      error_message: result.error || null,
-    });
-
+    const result = await executeJoyAction(actionType, actionPayload);
     return NextResponse.json(result);
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    console.error("[joy/actions] Error:", getErrorMessage(error));
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -1,20 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase-client";
-
-export interface AuthUser {
-  id: string;
-  email: string;
-  full_name: string | null;
-  role: string;
-  user_category: string | null;
-  campus_id: string | null;
-  avatar_url: string | null;
-  is_active: boolean;
-  must_change_password: boolean;
-  permissions?: string[];
-}
+import { supabase } from "@/lib/supabase";
+import { AuthUser } from "@/types";
 
 interface AuthState {
   user: AuthUser | null;
@@ -45,7 +33,7 @@ export function useAuth() {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("id, email, full_name, role, user_category, campus_id, avatar_url, is_active, must_change_password")
+        .select("id, email, full_name, role, user_category, campus_id, avatar_url, is_active, password_changed")
         .eq("id", session.user.id)
         .single();
 
@@ -60,15 +48,15 @@ export function useAuth() {
 
       const { data: permData } = await supabase
         .from("staff_permissions")
-        .select("permissions(permission_key)")
-        .eq("staff_id", profile.id);
+        .select("permissions(key)")
+        .eq("profile_id", profile.id);
 
       const permissions = (permData || [])
-        .map((p: { permissions: { permission_key: string } | null }) => p.permissions?.permission_key)
+        .map((p: { permissions: { key: string } | null }) => p.permissions?.key)
         .filter((k): k is string => Boolean(k));
 
       setState({
-        user: { ...profile, permissions },
+        user: { ...profile, must_change_password: profile.password_changed, permissions },
         loading: false,
         error: null,
       });
@@ -85,14 +73,13 @@ export function useAuth() {
     fetchUser();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (session) fetchUser();
-        else setState({ user: null, loading: false, error: null });
+      (_event: string, _session: unknown) => {
+        fetchUser();
       }
     );
 
     return () => {
-      listener?.subscription?.unsubscribe();
+      listener.subscription.unsubscribe();
     };
   }, [fetchUser]);
 
@@ -104,14 +91,21 @@ export function useAuth() {
           email,
           password,
         });
-        if (error) throw error;
+
+        if (error) {
+          setState((s) => ({
+            ...s,
+            loading: false,
+            error: { type: "auth", message: error.message },
+          }));
+          return { success: false, error: error.message };
+        }
 
         await fetchUser();
-
         return {
           success: true,
           error: null,
-          mustChangePassword: data.user?.user_metadata?.must_change_password,
+          mustChangePassword: data.user?.user_metadata?.must_change_password === true,
         };
       } catch (err: unknown) {
         const message =

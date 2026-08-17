@@ -10,17 +10,17 @@ export async function POST(req: NextRequest) {
     requirePermission(session, "admin.access");
 
     const body = await req.json();
-    const { userId } = body;
+    const { userId, email } = body;
 
-    if (!userId) {
-      return NextResponse.json({ error: "userId required" }, { status: 400 });
+    if (!userId || !email) {
+      return NextResponse.json({ error: "userId and email required" }, { status: 400 });
     }
 
-    const restored = await restoreMissingProfile(userId);
+    const restored = await restoreMissingProfile(userId, email);
     return NextResponse.json({ success: restored });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
     console.error("[recover] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

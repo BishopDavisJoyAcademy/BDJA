@@ -7,12 +7,13 @@ import {
   Minus, Plus, ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeConfig } from "@/lib/joy-themes";
 
 interface ImageEditorProps {
   src: string;
   onSave: (dataUrl: string) => void;
   onClose: () => void;
-  theme: Record<string, unknown>;
+  theme: ThemeConfig;
 }
 
 export function ImageEditor({ src, onSave, onClose, theme }: ImageEditorProps) {
@@ -257,7 +258,7 @@ export function ImageEditor({ src, onSave, onClose, theme }: ImageEditorProps) {
             ].map((tool) => (
               <button
                 key={tool.id}
-                onClick={() => setActiveTool(tool.id as string)}
+                onClick={() => setActiveTool(tool.id as "adjust" | "crop" | "draw" | "text")}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                   activeTool === tool.id ? "" : "hover:bg-black/5"

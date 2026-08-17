@@ -3,6 +3,7 @@
 import { useRef, useEffect } from "react";
 import { Camera, Image, FileText, Mic, PenTool, ScanLine, BarChart3, Link2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeConfig } from "@/lib/joy-themes";
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ interface BottomSheetProps {
   onScanner: () => void;
   onPoll: () => void;
   onLink: () => void;
-  theme: Record<string, unknown>;
+  theme: ThemeConfig;
 }
 
 export function BottomSheet({

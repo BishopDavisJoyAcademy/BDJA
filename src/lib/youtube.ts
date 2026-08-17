@@ -31,14 +31,21 @@ export async function searchYouTube(query: string, maxResults = 5): Promise<YouT
     if (!res.ok) throw new Error(`YouTube API error: ${res.status}`);
 
     const data = await res.json();
-    return (data.items || []).map((item: any) => ({
-      id: item.id?.videoId,
-      title: item.snippet?.title || "Untitled",
-      description: item.snippet?.description || "",
-      thumbnail: item.snippet?.thumbnails?.medium?.url || "",
-      channelTitle: item.snippet?.channelTitle || "Unknown",
-      publishedAt: item.snippet?.publishedAt || "",
-    })).filter((r: YouTubeSearchResult) => r.id);
+    return (data.items || []).map((item: unknown) => {
+      const it = item as Record<string, unknown>;
+      const snippet = it.snippet as Record<string, unknown>;
+      const id = it.id as Record<string, unknown>;
+      const thumbnails = snippet.thumbnails as Record<string, unknown>;
+      const medium = thumbnails?.medium as Record<string, unknown>;
+      return {
+        id: id?.videoId as string,
+        title: (snippet?.title as string) || "Untitled",
+        description: (snippet?.description as string) || "",
+        thumbnail: (medium?.url as string) || "",
+        channelTitle: (snippet?.channelTitle as string) || "Unknown",
+        publishedAt: (snippet?.publishedAt as string) || "",
+      };
+    }).filter((r: YouTubeSearchResult) => r.id);
   } catch (err) {
     console.error("YouTube search failed:", err);
     return [];
@@ -58,11 +65,14 @@ export async function getYouTubeVideoDetails(videoIds: string[]): Promise<Record
     if (!res.ok) throw new Error(`YouTube API error: ${res.status}`);
 
     const data = await res.json();
-    const result: Record<string, any> = {};
-    (data.items || []).forEach((item: any) => {
-      result[item.id] = {
-        duration: item.contentDetails?.duration,
-        viewCount: item.statistics?.viewCount,
+    const result: Record<string, { duration?: string; viewCount?: string }> = {};
+    (data.items || []).forEach((item: unknown) => {
+      const it = item as Record<string, unknown>;
+      const contentDetails = it.contentDetails as Record<string, unknown>;
+      const statistics = it.statistics as Record<string, unknown>;
+      result[it.id as string] = {
+        duration: contentDetails?.duration as string,
+        viewCount: statistics?.viewCount as string,
       };
     });
     return result;
@@ -83,25 +93,20 @@ export function parseISODuration(iso: string): number {
 
 export async function searchYouTubeAsVora(query: string, grade_level?: string, limit = 5): Promise<VoraContent[]> {
   const results = await searchYouTube(query, limit);
-  const details = await getYouTubeVideoDetails(results.map(r => r.id));
+  const details = await getYouTubeVideoDetails(results.map((r) => r.id));
 
-  return results.map(r => {
+  return results.map((r) => {
     const duration = details[r.id]?.duration;
     return {
       id: `yt-${r.id}`,
       title: r.title,
       subject: "General",
-      category: "YouTube",
-      topic: query,
-      video_url: `https://youtube.com/watch?v=${r.id}`,
-      summary: r.description?.substring(0, 200) || "No summary available.",
-      tags: [query.toLowerCase(), "youtube", "recommended"],
       grade_level: grade_level || "all",
-      duration_seconds: duration ? parseISODuration(duration) : undefined,
-      difficulty: "beginner",
+      video_url: `https://youtube.com/watch?v=${r.id}`,
       thumbnail_url: r.thumbnail || getYouTubeThumbnail(r.id),
-      channel: r.channelTitle,
-      source: "youtube",
+      description: r.description?.substring(0, 200) || "No summary available.",
+      campus_id: "",
+      uploaded_by: "",
     } as VoraContent;
   });
 }

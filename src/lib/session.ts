@@ -45,7 +45,7 @@ export async function requireAuth(req: NextRequest): Promise<ValidatedSession> {
     .eq("profile_id", profile.id);
 
   const permissions = (permData || [])
-    .map((p: { permissions: { key: string } | null }) => p.permissions?.key)
+    .map((row: { permissions: { key: string }[] }) => row.permissions?.[0]?.key)
     .filter((k): k is string => Boolean(k));
 
   return {

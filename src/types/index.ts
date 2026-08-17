@@ -226,3 +226,16 @@ export interface ThemeConfig {
   isDefault: boolean;
   isDark: boolean;
 }
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type: "info" | "success" | "warning" | "error";
+  read: boolean;
+  created_at: string;
+  link?: string | null;
+}
+
+// Re-export from joy types for convenience
+export type { JoyMessage } from "./joy";

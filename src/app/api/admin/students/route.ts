@@ -51,7 +51,20 @@ export async function POST(req: NextRequest) {
     const admin = getSupabaseAdmin();
     const body = await req.json();
 
+    // Create auth user first so we have an ID for the profile
+    const { data: authData, error: authError } = await admin.auth.admin.createUser({
+      email: body.email,
+      password: Math.random().toString(36).slice(2, 10) + "A1!",
+      email_confirm: true,
+    });
+    if (authError || !authData.user) {
+      return NextResponse.json({ error: authError?.message || "Failed to create auth user" }, { status: 500 });
+    }
+
+    const userId = authData.user.id;
+
     const { data: profile, error: profileError } = await admin.from("profiles").insert([{
+      id: userId,
       email: body.email,
       full_name: body.full_name,
       role: "student",
@@ -64,12 +77,13 @@ export async function POST(req: NextRequest) {
     }]).select().single();
 
     if (profileError || !profile) {
+      await admin.auth.admin.deleteUser(userId);
       return NextResponse.json({ error: "Failed to create profile" }, { status: 500 });
     }
 
     const { error: studentError } = await admin.from("students").insert([{
-      id: profile.id,
-      profile_id: profile.id,
+      id: userId,
+      profile_id: userId,
       admission_number: body.admission_number,
       grade_level: body.grade_level,
       class_id: body.class_id || null,
@@ -77,7 +91,8 @@ export async function POST(req: NextRequest) {
     }]);
 
     if (studentError) {
-      await admin.from("profiles").delete().eq("id", profile.id);
+      await admin.from("profiles").delete().eq("id", userId);
+      await admin.auth.admin.deleteUser(userId);
       return NextResponse.json({ error: "Failed to create student record" }, { status: 500 });
     }
 
@@ -85,7 +100,7 @@ export async function POST(req: NextRequest) {
       user_id: session.userId,
       action: "STUDENT_CREATED",
       table_name: "students",
-      record_id: profile.id,
+      record_id: userId,
       new_data: body,
       ip_address: getClientIP(req),
     });

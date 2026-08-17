@@ -1,5 +1,3 @@
-"use server";
-
 export class RuntimeError extends Error {
   constructor(
     message: string,

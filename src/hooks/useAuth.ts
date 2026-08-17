@@ -16,6 +16,18 @@ interface SignInResult {
   mustChangePassword?: boolean;
 }
 
+interface ProfileRow {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  user_category: string | null;
+  campus_id: string | null;
+  avatar_url: string | null;
+  is_active: boolean;
+  password_changed: boolean;
+}
+
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -33,11 +45,13 @@ export function useAuth() {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("id, email, full_name, role, user_category, campus_id, avatar_url, is_active, password_changed")
+        .select("*")
         .eq("id", session.user.id)
         .single();
 
-      if (profileError || !profile || !profile.is_active) {
+      const p = profile as ProfileRow | null;
+
+      if (profileError || !p || !p.is_active) {
         setState({
           user: null,
           loading: false,
@@ -49,14 +63,25 @@ export function useAuth() {
       const { data: permData } = await supabase
         .from("staff_permissions")
         .select("permissions(key)")
-        .eq("profile_id", profile.id);
+        .eq("profile_id", p.id);
 
       const permissions = (permData || [])
-        .map((p: { permissions: { key: string } | null }) => p.permissions?.key)
+        .map((row: { permissions: { key: string }[] }) => row.permissions?.[0]?.key)
         .filter((k): k is string => Boolean(k));
 
       setState({
-        user: { ...profile, must_change_password: profile.password_changed, permissions },
+        user: {
+          id: p.id,
+          email: p.email,
+          full_name: p.full_name,
+          role: p.role,
+          user_category: p.user_category,
+          campus_id: p.campus_id,
+          avatar_url: p.avatar_url,
+          is_active: p.is_active,
+          must_change_password: p.password_changed,
+          permissions,
+        },
         loading: false,
         error: null,
       });

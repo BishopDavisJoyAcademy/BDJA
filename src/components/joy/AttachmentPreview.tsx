@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X, FileText, Image, Video, Music, Link2, BarChart3, PenTool, ExternalLink } from "lucide-react";
-import { AttachmentFile } from "@/types/attachments";
+import { AttachmentFile, PollOption } from "@/types/attachments";
 import { ThemeConfig } from "@/lib/joy-themes";
 import { ImageEditor } from "./ImageEditor";
 import { cn } from "@/lib/utils";
@@ -104,7 +104,7 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
               <h3 className="font-semibold" style={{ color: theme.text }}>{pollData?.question || "Poll"}</h3>
             </div>
             <div className="space-y-2">
-              {pollData?.options?.map((opt: Record<string, unknown>) => (
+              {pollData?.options?.map((opt: PollOption) => (
                 <div
                   key={opt.id}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl border"

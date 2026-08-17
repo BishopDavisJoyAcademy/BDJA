@@ -4,7 +4,6 @@ import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { ADMIN_SEGMENT } from "@/lib/constants";
 
-// Public paths that do not require authentication
 const PUBLIC_PATHS = [
   "/",
   "/login",
@@ -55,28 +54,11 @@ const ONBOARDING_APIS = [
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow public paths and API prefixes without auth
+  // Public paths always pass through — no auth checks, no redirects
   if (
     PUBLIC_PATHS.includes(pathname) ||
     PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   ) {
-    // If authenticated user visits login, redirect to dashboard
-    if (pathname === "/login") {
-      const previewClient = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() { return req.cookies.getAll(); },
-            setAll() {},
-          },
-        }
-      );
-      const { data: { user: previewUser } } = await previewClient.auth.getUser();
-      if (previewUser) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
-      }
-    }
     return NextResponse.next();
   }
 
@@ -98,11 +80,8 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // No session — redirect or 401
   if (!user) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -112,7 +91,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Use admin client to bypass RLS for profile lookup in middleware
   const admin = getSupabaseAdmin();
   const { data: profileRows, error: profileError } = await admin
     .from("profiles")
@@ -127,7 +105,7 @@ export async function middleware(req: NextRequest) {
   } | null;
 
   if (profileError || !profile) {
-    console.error("[middleware] Profile missing for user:", user.id, "error:", profileError?.message);
+    console.error("[middleware] Profile missing:", user.id, profileError?.message);
     await supabase.auth.signOut();
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Profile missing" }, { status: 401 });
@@ -135,7 +113,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // Account suspended
   if (profile.is_active === false) {
     await supabase.auth.signOut();
     if (pathname.startsWith("/api/")) {
@@ -144,7 +121,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login?error=account_suspended", req.url));
   }
 
-  // First login — must set password/PIN
   if (profile.password_changed === false) {
     if (
       pathname === "/reset-password" ||
@@ -163,7 +139,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(resetUrl);
   }
 
-  // Onboarding not completed
   if (profile.onboarding_completed === false) {
     if (
       pathname === "/onboarding" ||
@@ -179,9 +154,8 @@ export async function middleware(req: NextRequest) {
   }
 
   const category = profile.user_category;
-
-  // Admin routes
   const internalPathname = req.nextUrl.pathname;
+
   if (internalPathname.startsWith(`/${ADMIN_SEGMENT}/`) || internalPathname === `/${ADMIN_SEGMENT}`) {
     if (category !== "admin") {
       if (pathname.startsWith("/api/")) {
@@ -191,7 +165,6 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Student routes
   if (pathname.startsWith("/student/")) {
     if (category !== "student") {
       if (pathname.startsWith("/api/")) {
@@ -201,7 +174,6 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Parent routes
   if (pathname.startsWith("/parent/")) {
     if (category !== "parent") {
       if (pathname.startsWith("/api/")) {
@@ -211,7 +183,6 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Teacher/Staff routes
   if (pathname.startsWith("/teacher/") || pathname.startsWith("/staff/")) {
     if (category !== "staff" && category !== "admin") {
       if (pathname.startsWith("/api/")) {

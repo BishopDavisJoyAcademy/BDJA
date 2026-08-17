@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
   GraduationCap, Users, Eye, EyeOff, Loader2,
-  ShieldCheck, Sparkles, ArrowRight, Lock, Mail, Hash
+  ShieldCheck, Sparkles, ArrowRight, Lock, Mail, Hash,
+  ArrowUpRight
 } from "lucide-react";
 
 type LoginRole = "student" | "staff";
@@ -79,13 +80,6 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // If already authenticated, redirect to dashboard
-  useEffect(() => {
-    if (user && !authLoading) {
-      router.replace("/dashboard");
-    }
-  }, [user, authLoading, router]);
 
   const activeRole = ROLES.find((r) => r.key === role)!;
   const RoleIcon = activeRole.icon;
@@ -177,6 +171,31 @@ export default function LoginPage() {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="w-full max-w-md relative z-10"
       >
+        {/* Already signed in banner */}
+        <AnimatePresence>
+          {user && !authLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <p className="text-sm text-emerald-300">
+                  Signed in as <span className="font-medium">{user.full_name || user.email}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => router.replace("/dashboard")}
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 transition-colors"
+              >
+                Dashboard <ArrowUpRight className="w-3 h-3" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Logo & Branding */}
         <motion.div
           className="text-center mb-8"
@@ -409,15 +428,13 @@ export default function LoginPage() {
           </div>
         </motion.div>
 
-        {/* Bottom branding */}
         <motion.p
           className="text-center text-slate-600 text-xs mt-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          &copy; {new Date().getFullYear()} Bishop Davis Joy Academy. All rights
-          reserved.
+          &copy; {new Date().getFullYear()} Bishop Davis Joy Academy. All rights reserved.
         </motion.p>
       </motion.div>
     </div>

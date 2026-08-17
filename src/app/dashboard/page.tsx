@@ -4,10 +4,11 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { ADMIN_SEGMENT } from "@/lib/constants";
+import WorldClassLoader from "@/components/loading/WorldClassLoader";
 
 export default function DashboardRedirector() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, error } = useAuth();
 
   useEffect(() => {
     if (loading) return;
@@ -24,12 +25,30 @@ export default function DashboardRedirector() {
     else router.replace("/student");
   }, [user, loading, router]);
 
+  // Show world-class loader while loading OR if there's an auth error
+  if (loading || (!user && !error)) {
+    return (
+      <WorldClassLoader
+        timeoutSeconds={10}
+        onTimeout={() => {
+          // If timeout fires, the loader shows an error state with reload button
+        }}
+      />
+    );
+  }
+
+  // If auth errored out, still show the loader (it handles error display)
+  if (error) {
+    return (
+      <WorldClassLoader
+        timeoutSeconds={1}
+        error={error.message}
+      />
+    );
+  }
+
+  // Fallback — should never reach here, but just in case
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950">
-      <div className="text-center space-y-4">
-        <div className="w-12 h-12 border-2 border-amber-500/30 border-t-amber-400 rounded-full animate-spin mx-auto" />
-        <p className="text-slate-400 text-sm">Preparing your workspace...</p>
-      </div>
-    </div>
+    <WorldClassLoader timeoutSeconds={5} />
   );
 }

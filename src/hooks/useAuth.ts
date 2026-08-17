@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { getSupabaseClient } from "@/lib/supabase";
 import { AuthUser } from "@/types";
 
 interface AuthState {
@@ -29,12 +29,15 @@ interface ProfileRow {
   password_changed: boolean;
 }
 
+const AUTH_TIMEOUT_MS = 8000;
+
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
     user: null,
     loading: true,
     error: null,
   });
+  const initRef = useRef(false);
 
   const buildUser = useCallback((p: ProfileRow, perms: string[]): AuthUser => ({
     id: p.id,
@@ -51,6 +54,7 @@ export function useAuth() {
 
   const fetchUser = useCallback(async () => {
     try {
+      const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setState({ user: null, loading: false, error: null });
@@ -82,35 +86,50 @@ export function useAuth() {
       const user = buildUser(p, permissions);
       setState({ user, loading: false, error: null });
       return user;
-    } catch {
-      setState({ user: null, loading: false, error: null });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Auth initialization failed";
+      setState({ user: null, loading: false, error: { type: "auth", message: msg } });
       return null;
     }
   }, [buildUser]);
 
   useEffect(() => {
-    let mounted = true;
+    if (initRef.current) return;
+    initRef.current = true;
 
-    const init = async () => {
-      const user = await fetchUser();
-      if (!mounted) return;
-      // If fetchUser didn't set state (e.g., no session), ensure loading is false
-      setState((s) => (s.loading ? { ...s, loading: false } : s));
-    };
-
-    init();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (event: string, _session: unknown) => {
-        if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
-          fetchUser();
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      setState((s) => {
+        if (s.loading) {
+          return { user: null, loading: false, error: { type: "timeout", message: "Authentication timed out. Please reload." } };
         }
-      }
-    );
+        return s;
+      });
+    }, AUTH_TIMEOUT_MS);
+
+    fetchUser().finally(() => {
+      if (!timedOut) clearTimeout(timeoutId);
+    });
+
+    let listener: { subscription: { unsubscribe: () => void } } | null = null;
+    try {
+      const supabase = getSupabaseClient();
+      const { data: l } = supabase.auth.onAuthStateChange(
+        (event: string) => {
+          if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+            fetchUser();
+          }
+        }
+      );
+      listener = l;
+    } catch {
+      // Supabase not initialized — listener not needed
+    }
 
     return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
+      clearTimeout(timeoutId);
+      listener?.subscription.unsubscribe();
     };
   }, [fetchUser]);
 
@@ -118,12 +137,12 @@ export function useAuth() {
     async (email: string, password: string): Promise<SignInResult> => {
       setState((s) => ({ ...s, loading: true, error: null }));
       try {
+        const supabase = getSupabaseClient();
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error || !data.user) {
           setState((s) => ({ ...s, loading: false, error: { type: "auth", message: error?.message || "Invalid credentials" } }));
           return { success: false, error: error?.message || "Invalid credentials" };
         }
-
         const user = await fetchUser();
         return {
           success: true,
@@ -156,8 +175,8 @@ export function useAuth() {
           return { success: false, error: data.error || "Invalid admission number or PIN" };
         }
 
-        // Set session in browser client
         if (data.session?.access_token && data.session?.refresh_token) {
+          const supabase = getSupabaseClient();
           await supabase.auth.setSession({
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
@@ -181,7 +200,12 @@ export function useAuth() {
   );
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    try {
+      const supabase = getSupabaseClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Ignore sign-out errors
+    }
     setState({ user: null, loading: false, error: null });
   }, []);
 

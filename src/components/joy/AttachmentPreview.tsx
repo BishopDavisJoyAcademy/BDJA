@@ -23,6 +23,7 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
       case "whiteboard":
         return (
           <div className="flex flex-col items-center gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={attachment.dataUrl || attachment.thumbnail || attachment.url}
               alt={attachment.name}
@@ -135,7 +136,7 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
         <div className="w-full max-w-3xl rounded-2xl overflow-hidden flex flex-col max-h-[90vh]" style={{ background: theme.surface }}>
           <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: theme.border }}>
             <div className="flex items-center gap-2">
-              {attachment.type === "image" && <Image className="w-4 h-4" style={{ color: theme.primary }} />}
+              {attachment.type === "image" && <Image className="w-4 h-4" style={{ color: theme.primary }} aria-label="Image" />}
               {attachment.type === "video" && <Video className="w-4 h-4" style={{ color: theme.primary }} />}
               {attachment.type === "audio" && <Music className="w-4 h-4" style={{ color: theme.primary }} />}
               {attachment.type === "document" && <FileText className="w-4 h-4" style={{ color: theme.primary }} />}

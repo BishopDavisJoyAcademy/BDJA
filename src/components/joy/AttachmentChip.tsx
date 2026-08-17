@@ -17,7 +17,7 @@ interface AttachmentChipProps {
 export function AttachmentChip({ attachment, formatFileSize, onRemove, onPreview, onUpload, theme }: AttachmentChipProps) {
   const getIcon = () => {
     switch (attachment.type) {
-      case "image": return <Image className="w-3.5 h-3.5" />;
+      case "image": return <Image className="w-3.5 h-3.5" aria-label="Image attachment" />;
       case "video": return <Video className="w-3.5 h-3.5" />;
       case "audio": return <Music className="w-3.5 h-3.5" />;
       case "link": return <Link2 className="w-3.5 h-3.5" />;
@@ -70,7 +70,7 @@ export function AttachmentChip({ attachment, formatFileSize, onRemove, onPreview
       onClick={handleClick}
     >
       {attachment.thumbnail ? (
-        <img src={attachment.thumbnail} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+        <img src={attachment.thumbnail} alt={attachment.name || "Attachment thumbnail"} className="w-6 h-6 rounded object-cover shrink-0" />
       ) : (
         <span style={{ color: theme.primary }}>{getIcon()}</span>
       )}

@@ -198,7 +198,7 @@ export function JoyChat() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFullScreen, isOpen, showSettings, showSidebar, previewAttachment, showLinkInput, showPollInput, showWhiteboard]);
+  }, [isFullScreen, isOpen, showSettings, showSidebar, previewAttachment, showLinkInput, showPollInput, showWhiteboard, handleNewChat, setPreviewAttachment]);
 
   // Click outside attachment menu
   useEffect(() => {
@@ -295,7 +295,7 @@ export function JoyChat() {
     setShowPollInput(false);
   };
 
-  const handleNewChat = async () => {
+  const handleNewChat = useCallback(async () => {
     await createConversation();
     setShowSidebar(false);
     setMessages([]);
@@ -303,7 +303,7 @@ export function JoyChat() {
     setSuggestions([]);
     clearAttachments();
     setPendingActions([]);
-  };
+  }, [createConversation, clearAttachments]);
 
   // Execute actions on frontend
   const executeFrontendActions = useCallback((actions: JoyAction[]) => {

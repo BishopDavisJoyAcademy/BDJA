@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { restoreMissingProfile } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/errors";
 
@@ -29,20 +30,29 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { newPassword } = body;
-    if (!newPassword || newPassword.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    const { newPassword, newPin } = body;
+    const credential = newPassword || newPin;
+    if (!credential || credential.length < (newPin ? 4 : 8)) {
+      return NextResponse.json({ error: newPin ? "PIN must be at least 4 digits" : "Password must be at least 8 characters" }, { status: 400 });
     }
 
-    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    // Update auth password
+    const { error: updateError } = await supabase.auth.updateUser({ password: credential });
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
 
-    await supabase.from("profiles").update({
+    // Use admin client to bypass RLS for profile update
+    const admin = getSupabaseAdmin();
+    const { error: profileError } = await admin.from("profiles").update({
       password_changed: true,
       updated_at: new Date().toISOString(),
     }).eq("id", session.user.id);
+
+    if (profileError) {
+      console.error("[first-login] Profile update error:", profileError);
+      // Non-fatal: auth password is changed, profile might need manual fix
+    }
 
     const restored = await restoreMissingProfile(session.user.id, session.user.email || "");
 

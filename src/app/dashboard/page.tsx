@@ -11,23 +11,24 @@ export default function DashboardRedirector() {
 
   useEffect(() => {
     if (loading) return;
+
     if (!user) {
-      router.push("/login");
+      router.replace("/login");
       return;
     }
 
     const cat = user.user_category;
-    if (cat === "admin") router.push(`/${ADMIN_SEGMENT}`);
-    else if (cat === "staff") router.push("/teacher");
-    else if (cat === "parent") router.push("/parent");
-    else router.push("/student");
+    if (cat === "admin") router.replace(`/${ADMIN_SEGMENT}`);
+    else if (cat === "staff") router.replace("/teacher");
+    else if (cat === "parent") router.replace("/parent");
+    else router.replace("/student");
   }, [user, loading, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Redirecting to your dashboard...</p>
+    <div className="min-h-screen flex items-center justify-center bg-slate-950">
+      <div className="text-center space-y-4">
+        <div className="w-12 h-12 border-2 border-amber-500/30 border-t-amber-400 rounded-full animate-spin mx-auto" />
+        <p className="text-slate-400 text-sm">Preparing your workspace...</p>
       </div>
     </div>
   );

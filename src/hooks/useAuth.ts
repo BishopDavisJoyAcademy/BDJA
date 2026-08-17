@@ -14,6 +14,7 @@ interface SignInResult {
   success: boolean;
   error: string | null;
   mustChangePassword?: boolean;
+  userCategory?: string | null;
 }
 
 interface ProfileRow {
@@ -35,12 +36,25 @@ export function useAuth() {
     error: null,
   });
 
+  const buildUser = useCallback((p: ProfileRow, perms: string[]): AuthUser => ({
+    id: p.id,
+    email: p.email,
+    full_name: p.full_name,
+    role: p.role,
+    user_category: p.user_category,
+    campus_id: p.campus_id,
+    avatar_url: p.avatar_url,
+    is_active: p.is_active,
+    must_change_password: !p.password_changed,
+    permissions: perms,
+  }), []);
+
   const fetchUser = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setState({ user: null, loading: false, error: null });
-        return;
+        return null;
       }
 
       const { data: profile, error: profileError } = await supabase
@@ -52,12 +66,8 @@ export function useAuth() {
       const p = profile as ProfileRow | null;
 
       if (profileError || !p || !p.is_active) {
-        setState({
-          user: null,
-          loading: false,
-          error: { type: "auth", message: "Account inactive or not found" },
-        });
-        return;
+        setState({ user: null, loading: false, error: null });
+        return null;
       }
 
       const { data: permData } = await supabase
@@ -69,41 +79,37 @@ export function useAuth() {
         .map((row: { permissions: { key: string }[] }) => row.permissions?.[0]?.key)
         .filter((k): k is string => Boolean(k));
 
-      setState({
-        user: {
-          id: p.id,
-          email: p.email,
-          full_name: p.full_name,
-          role: p.role,
-          user_category: p.user_category,
-          campus_id: p.campus_id,
-          avatar_url: p.avatar_url,
-          is_active: p.is_active,
-          must_change_password: p.password_changed,
-          permissions,
-        },
-        loading: false,
-        error: null,
-      });
+      const user = buildUser(p, permissions);
+      setState({ user, loading: false, error: null });
+      return user;
     } catch {
-      setState({
-        user: null,
-        loading: false,
-        error: { type: "unknown", message: "Failed to load user" },
-      });
+      setState({ user: null, loading: false, error: null });
+      return null;
     }
-  }, []);
+  }, [buildUser]);
 
   useEffect(() => {
-    fetchUser();
+    let mounted = true;
+
+    const init = async () => {
+      const user = await fetchUser();
+      if (!mounted) return;
+      // If fetchUser didn't set state (e.g., no session), ensure loading is false
+      setState((s) => (s.loading ? { ...s, loading: false } : s));
+    };
+
+    init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event: string, _session: unknown) => {
-        fetchUser();
+      (event: string, _session: unknown) => {
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
+          fetchUser();
+        }
       }
     );
 
     return () => {
+      mounted = false;
       listener.subscription.unsubscribe();
     };
   }, [fetchUser]);
@@ -112,34 +118,62 @@ export function useAuth() {
     async (email: string, password: string): Promise<SignInResult> => {
       setState((s) => ({ ...s, loading: true, error: null }));
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          setState((s) => ({
-            ...s,
-            loading: false,
-            error: { type: "auth", message: error.message },
-          }));
-          return { success: false, error: error.message };
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error || !data.user) {
+          setState((s) => ({ ...s, loading: false, error: { type: "auth", message: error?.message || "Invalid credentials" } }));
+          return { success: false, error: error?.message || "Invalid credentials" };
         }
 
-        await fetchUser();
+        const user = await fetchUser();
         return {
           success: true,
           error: null,
-          mustChangePassword: data.user?.user_metadata?.must_change_password === true,
+          mustChangePassword: user?.must_change_password,
+          userCategory: user?.user_category,
         };
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : "Invalid credentials";
-        setState((s) => ({
-          ...s,
-          loading: false,
-          error: { type: "auth", message },
-        }));
+        const message = err instanceof Error ? err.message : "Invalid credentials";
+        setState((s) => ({ ...s, loading: false, error: { type: "auth", message } }));
+        return { success: false, error: message };
+      }
+    },
+    [fetchUser]
+  );
+
+  const signInStudent = useCallback(
+    async (admissionNumber: string, pin: string): Promise<SignInResult> => {
+      setState((s) => ({ ...s, loading: true, error: null }));
+      try {
+        const res = await fetch("/api/auth/student-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ admission_number: admissionNumber, pin }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setState((s) => ({ ...s, loading: false, error: { type: "auth", message: data.error || "Invalid admission number or PIN" } }));
+          return { success: false, error: data.error || "Invalid admission number or PIN" };
+        }
+
+        // Set session in browser client
+        if (data.session?.access_token && data.session?.refresh_token) {
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+        }
+
+        const user = await fetchUser();
+        return {
+          success: true,
+          error: null,
+          mustChangePassword: user?.must_change_password,
+          userCategory: user?.user_category,
+        };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Login failed";
+        setState((s) => ({ ...s, loading: false, error: { type: "auth", message } }));
         return { success: false, error: message };
       }
     },
@@ -160,6 +194,7 @@ export function useAuth() {
     loading: state.loading,
     error: state.error,
     signIn,
+    signInStudent,
     signOut,
     refresh,
   };

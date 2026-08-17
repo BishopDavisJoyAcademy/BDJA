@@ -40,7 +40,7 @@ export default function ProfilePage() {
       fetchSuggestions();
       fetchRelatedData();
     }
-  }, [user]);
+  }, [user, fetchRelatedData]);
 
   const fetchRelatedData = async () => {
     if (!user) return;

@@ -4,12 +4,6 @@ import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { ADMIN_SEGMENT } from "@/lib/constants";
 
-// ============================================================
-// BDJA Platform — Next.js Middleware
-// Enforces authentication, first-login password/PIN setup,
-// onboarding completion, account status, and role-based access.
-// ============================================================
-
 // Public paths that do not require authentication
 const PUBLIC_PATHS = [
   "/",
@@ -36,7 +30,6 @@ const PUBLIC_PATHS = [
   "/api/onboarding",
 ];
 
-// Public API prefixes (checked before auth)
 const PUBLIC_API_PREFIXES = [
   "/api/health",
   "/api/auth/student-login",
@@ -46,8 +39,6 @@ const PUBLIC_API_PREFIXES = [
   "/api/onboarding",
 ];
 
-// API endpoints allowed when password change is required
-// These are the APIs needed to complete the password/PIN change flow
 const PASSWORD_CHANGE_APIS = [
   "/api/auth/first-login",
   "/api/auth/change-password",
@@ -55,8 +46,6 @@ const PASSWORD_CHANGE_APIS = [
   "/api/auth/me",
 ];
 
-// API endpoints allowed when onboarding is required
-// These are the APIs needed to complete the onboarding flow
 const ONBOARDING_APIS = [
   "/api/auth/onboarding",
   "/api/auth/logout",
@@ -71,6 +60,23 @@ export async function middleware(req: NextRequest) {
     PUBLIC_PATHS.includes(pathname) ||
     PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   ) {
+    // If authenticated user visits login, redirect to dashboard
+    if (pathname === "/login") {
+      const previewClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() { return req.cookies.getAll(); },
+            setAll() {},
+          },
+        }
+      );
+      const { data: { user: previewUser } } = await previewClient.auth.getUser();
+      if (previewUser) {
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      }
+    }
     return NextResponse.next();
   }
 
@@ -174,7 +180,7 @@ export async function middleware(req: NextRequest) {
 
   const category = profile.user_category;
 
-  // Admin routes (internal path after rewrite is /admin/*)
+  // Admin routes
   const internalPathname = req.nextUrl.pathname;
   if (internalPathname.startsWith(`/${ADMIN_SEGMENT}/`) || internalPathname === `/${ADMIN_SEGMENT}`) {
     if (category !== "admin") {

@@ -13,6 +13,7 @@ const events = [
 
 export default function CalendarPage() {
   return (
+    <>
     <div className="max-w-4xl mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold text-[#1e3a5f] mb-6">School Calendar</h1>
         <p className="text-gray-600 mb-8">Important dates for the academic year.</p>
@@ -32,5 +33,6 @@ export default function CalendarPage() {
           ))}
         </div>
       </div>
+    </>
   );
 }

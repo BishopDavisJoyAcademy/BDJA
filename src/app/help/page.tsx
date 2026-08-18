@@ -4,6 +4,7 @@ import { HelpCircle, Mail, Phone } from "lucide-react";
 
 export default function HelpPage() {
   return (
+    <>
     <div className="max-w-4xl mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold text-[#1e3a5f] mb-6">Help Desk</h1>
         <p className="text-gray-600 mb-10">Need assistance? We are here to help.</p>
@@ -30,5 +31,6 @@ export default function HelpPage() {
           </a>
         </div>
       </div>
+    </>
   );
 }

@@ -196,6 +196,7 @@ export default function VoraPublicPage() {
   }
 
   return (
+    <>
     {/* ===== HERO ===== */}
       <section className="relative overflow-hidden py-16" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #1e3a5f 50%, #0f1f33 100%)' }}>
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -483,5 +484,6 @@ export default function VoraPublicPage() {
       {/* Modals */}
       <AuthGateModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} videoTitle={authModalTitle} />
       <VideoPlayerModal isOpen={playerOpen} onClose={() => { setPlayerOpen(false); setSelectedVideo(null); fetchContinueWatching(); }} video={selectedVideo} />
+    </>
   );
 }

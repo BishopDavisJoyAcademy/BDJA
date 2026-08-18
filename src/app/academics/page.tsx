@@ -16,6 +16,7 @@ const grades = [
 
 export default function AcademicsPage() {
   return (
+    <>
     <div className="max-w-5xl mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold text-[#1e3a5f] mb-4">Academics</h1>
         <p className="text-gray-600 mb-10">We follow the Competency Based Curriculum (CBC) designed to develop skills, knowledge, and attitudes for holistic growth.</p>
@@ -30,5 +31,6 @@ export default function AcademicsPage() {
           ))}
         </div>
       </div>
+    </>
   );
 }

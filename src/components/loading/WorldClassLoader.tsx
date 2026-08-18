@@ -48,7 +48,33 @@ function useScrambleText(finalText: string, trigger: boolean, speed = 28) {
   return { display, done };
 }
 
+// Golden hue shift: cycles through warm gold tones
+function getGoldenHue(phase: number): string {
+  const hues = [43, 47, 51, 45, 40, 48]; // golden hue range
+  const idx = Math.floor(phase * hues.length) % hues.length;
+  const nextIdx = (idx + 1) % hues.length;
+  const t = (phase * hues.length) % 1;
+  const h = hues[idx] + (hues[nextIdx] - hues[idx]) * t;
+  return `hsl(${h}, 75%, 55%)`;
+}
+
 function MonitorSVG({ phase }: { phase: "hidden" | "building" | "ready" | "done" }) {
+  const [huePhase, setHuePhase] = useState(0);
+
+  useEffect(() => {
+    if (phase === "hidden") return;
+    let frame = 0;
+    const anim = setInterval(() => {
+      frame += 0.008;
+      setHuePhase(frame);
+    }, 16);
+    return () => clearInterval(anim);
+  }, [phase]);
+
+  const gold1 = getGoldenHue(huePhase);
+  const gold2 = getGoldenHue(huePhase + 0.3);
+  const gold3 = getGoldenHue(huePhase + 0.6);
+
   return (
     <motion.svg
       width="200"
@@ -102,15 +128,16 @@ function MonitorSVG({ phase }: { phase: "hidden" | "building" | "ready" | "done"
       />
       <defs>
         <linearGradient id="screenGlow" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+          <stop offset="0%" stopColor={gold1} stopOpacity="0.15" />
+          <stop offset="100%" stopColor={gold2} stopOpacity="0" />
         </linearGradient>
       </defs>
     </motion.svg>
   );
 }
 
-function GraduationCapSVG() {
+function GraduationCapSVG({ huePhase }: { huePhase: number }) {
+  const gold = getGoldenHue(huePhase);
   return (
     <motion.svg
       width="56"
@@ -124,10 +151,10 @@ function GraduationCapSVG() {
       <path d="M4 18L28 8L52 18L28 28L4 18Z" fill="#1e293b" stroke="#475569" strokeWidth="1.2" />
       <path d="M4 18L28 12L52 18" fill="#0f172a" />
       <rect x="20" y="26" width="16" height="10" rx="2" fill="#1e293b" stroke="#475569" strokeWidth="1" />
-      <circle cx="28" cy="18" r="3" fill="#d4a843" />
+      <circle cx="28" cy="18" r="3" fill={gold} />
       <motion.path
         d="M48 18C48 18 50 24 50 28C50 32 48 36 46 38"
-        stroke="#d4a843"
+        stroke={gold}
         strokeWidth="1.5"
         fill="none"
         initial={{ pathLength: 0 }}
@@ -135,16 +162,17 @@ function GraduationCapSVG() {
         transition={{ delay: 1.8, duration: 0.6 }}
       />
       <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2 }}>
-        <line x1="44" y1="38" x2="42" y2="42" stroke="#d4a843" strokeWidth="1" />
-        <line x1="46" y1="38" x2="45" y2="42" stroke="#d4a843" strokeWidth="1" />
-        <line x1="48" y1="38" x2="48" y2="42" stroke="#d4a843" strokeWidth="1" />
-        <line x1="45" y1="38" x2="43" y2="42" stroke="#d4a843" strokeWidth="1" />
+        <line x1="44" y1="38" x2="42" y2="42" stroke={gold} strokeWidth="1" />
+        <line x1="46" y1="38" x2="45" y2="42" stroke={gold} strokeWidth="1" />
+        <line x1="48" y1="38" x2="48" y2="42" stroke={gold} strokeWidth="1" />
+        <line x1="45" y1="38" x2="43" y2="42" stroke={gold} strokeWidth="1" />
       </motion.g>
     </motion.svg>
   );
 }
 
-function WifiRadar() {
+function WifiRadar({ huePhase }: { huePhase: number }) {
+  const gold = getGoldenHue(huePhase);
   return (
     <motion.div
       className="absolute -top-2 -left-2"
@@ -154,13 +182,18 @@ function WifiRadar() {
     >
       <div className="relative w-12 h-12">
         <div className="absolute inset-0 flex items-end justify-start pb-1 pl-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/80" />
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: gold, opacity: 0.8 }} />
         </div>
         {[1, 2, 3].map((i) => (
           <motion.div
             key={i}
-            className="absolute bottom-1 left-1 rounded-full border border-emerald-400/40"
-            style={{ width: i * 10, height: i * 10, transformOrigin: "bottom left" }}
+            className="absolute bottom-1 left-1 rounded-full border"
+            style={{
+              width: i * 10,
+              height: i * 10,
+              transformOrigin: "bottom left",
+              borderColor: gold,
+            }}
             initial={{ opacity: 0, scale: 0.3 }}
             animate={{ opacity: [0, 0.6, 0], scale: [0.3, 1.2, 1.5] }}
             transition={{
@@ -190,7 +223,8 @@ function SkeletonBars({ visible }: { visible: boolean }) {
           {[0.7, 0.5, 0.4].map((w, i) => (
             <div key={i} className="h-2 rounded-full bg-slate-700/40 overflow-hidden relative" style={{ width: `${w * 100}%` }}>
               <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-500/20 to-transparent"
+                className="absolute inset-0"
+                style={{ background: "linear-gradient(90deg, transparent, rgba(212,175,55,0.15), transparent)" }}
                 animate={{ x: ["-100%", "200%"] }}
                 transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: i * 0.2 }}
               />
@@ -242,10 +276,21 @@ export default function WorldClassLoader({
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [loopKey, setLoopKey] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
+  const [huePhase, setHuePhase] = useState(0);
   const { display: scrambledText, done: textDone } = useScrambleText(SCHOOL_NAME, phase === "ready", 24);
 
   const handleReload = useCallback(() => {
     window.location.reload();
+  }, []);
+
+  // Golden hue animation loop
+  useEffect(() => {
+    let frame = 0;
+    const anim = setInterval(() => {
+      frame += 0.005;
+      setHuePhase(frame);
+    }, 16);
+    return () => clearInterval(anim);
   }, []);
 
   useEffect(() => {
@@ -279,11 +324,10 @@ export default function WorldClassLoader({
     };
   }, [loopKey, timeoutSeconds, onTimeout, propError]);
 
-  // Error state
   if (timedOut || propError) {
     return (
       <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950 px-6">
-        <div className="w-14 h-14 rounded-xl bg-red-500/8 border border-red-500/15 flex items-center justify-center mb-5">
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-5" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
           <AlertTriangle className="w-6 h-6 text-red-400" />
         </div>
         <h2 className="text-lg font-semibold text-white mb-2">Unable to load</h2>
@@ -292,7 +336,8 @@ export default function WorldClassLoader({
         </p>
         <button
           onClick={handleReload}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded-xl text-sm transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 text-slate-950 font-medium rounded-xl text-sm transition-colors hover:opacity-90"
+          style={{ background: "#D4AF37" }}
         >
           <RefreshCw className="w-4 h-4" /> Reload Page
         </button>
@@ -303,33 +348,37 @@ export default function WorldClassLoader({
   return (
     <div key={loopKey} className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-amber-500/[0.03] blur-3xl rounded-full" />
-        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-emerald-500/[0.02] blur-3xl rounded-full" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full pointer-events-none"
+          style={{ background: `radial-gradient(circle, ${getGoldenHue(huePhase)}08 0%, transparent 70%)`, filter: "blur(80px)" }} />
+        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] rounded-full pointer-events-none"
+          style={{ background: `radial-gradient(circle, ${getGoldenHue(huePhase + 0.5)}05 0%, transparent 70%)`, filter: "blur(80px)" }} />
       </div>
 
       <FloatingShapes />
 
       <div className="relative flex flex-col items-center">
-        <WifiRadar />
+        <WifiRadar huePhase={huePhase} />
         <MonitorSVG phase={phase} />
 
         <div className="absolute top-[42px] left-1/2 -translate-x-1/2 text-center w-[140px]">
           <AnimatePresence>
             {phase === "ready" && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <p className="text-[8px] font-mono text-amber-400/90 tracking-[0.15em] leading-tight">
+                <p className="text-[8px] font-mono tracking-[0.15em] leading-tight" style={{ color: getGoldenHue(huePhase) }}>
                   {scrambledText}
                 </p>
                 {textDone && (
                   <motion.div
-                    className="mx-auto mt-1 h-[1px] bg-amber-400/40 rounded-full"
+                    className="mx-auto mt-1 h-[1px] rounded-full"
+                    style={{ background: getGoldenHue(huePhase) }}
                     initial={{ width: 0 }}
                     animate={{ width: "100%" }}
                     transition={{ duration: 0.5 }}
                   />
                 )}
                 <motion.span
-                  className="inline-block w-[3px] h-[6px] bg-amber-400/60 mt-0.5"
+                  className="inline-block w-[3px] h-[6px] mt-0.5"
+                  style={{ background: getGoldenHue(huePhase) }}
                   animate={{ opacity: [1, 0] }}
                   transition={{ duration: 0.6, repeat: Infinity }}
                 />
@@ -339,7 +388,7 @@ export default function WorldClassLoader({
         </div>
 
         <div className="absolute top-[58px] left-1/2 -translate-x-1/2">
-          <GraduationCapSVG />
+          <GraduationCapSVG huePhase={huePhase} />
         </div>
 
         <SkeletonBars visible={showSkeleton} />
@@ -351,8 +400,8 @@ export default function WorldClassLoader({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.2 }}
       >
-        <p className="text-sm font-medium text-slate-300 tracking-wide">{message}</p>
-        <p className="text-xs text-slate-600 mt-1">{subMessage}</p>
+        <p className="text-sm font-medium tracking-wide" style={{ color: "#9CA3AF" }}>{message}</p>
+        <p className="text-xs mt-1" style={{ color: "#374151" }}>{subMessage}</p>
       </motion.div>
     </div>
   );

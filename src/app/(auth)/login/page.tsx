@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { getErrorMessage } from "@/lib/errors";
+import { getRandomQuote, EducationQuote } from "@/lib/education-quotes";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
   GraduationCap, Users, Eye, EyeOff, Loader2,
-  ShieldCheck, Sparkles, ArrowRight, Lock, Mail, Hash,
-  ArrowUpRight, BookOpen
+  ShieldCheck, ArrowRight, Lock, Mail, Hash,
+  ArrowUpRight, BookOpen, Quote
 } from "lucide-react";
 
 type LoginRole = "student" | "staff";
@@ -21,13 +22,16 @@ interface RoleConfig {
   color: string;
   borderColor: string;
   bgTint: string;
-  description: string;
   idLabel: string;
   idPlaceholder: string;
   idType: "email" | "text";
   credentialLabel: string;
   credentialPlaceholder: string;
 }
+
+const GOLD = "#D4AF37";
+const GOLD_LIGHT = "#E8C84A";
+const GOLD_DARK = "#B8960C";
 
 const ROLES: RoleConfig[] = [
   {
@@ -37,7 +41,6 @@ const ROLES: RoleConfig[] = [
     color: "text-emerald-400",
     borderColor: "border-emerald-500/30",
     bgTint: "bg-emerald-500/10",
-    description: "Access your grades, timetable & assignments",
     idLabel: "Admission Number",
     idPlaceholder: "BDJA/0001/2025",
     idType: "text",
@@ -51,7 +54,6 @@ const ROLES: RoleConfig[] = [
     color: "text-amber-400",
     borderColor: "border-amber-500/30",
     bgTint: "bg-amber-500/10",
-    description: "Manage classes, grades, attendance & admin",
     idLabel: "Official Email",
     idPlaceholder: "you@bdja.ac.ke",
     idType: "email",
@@ -59,6 +61,59 @@ const ROLES: RoleConfig[] = [
     credentialPlaceholder: "Enter your password",
   },
 ];
+
+function RippleButton({
+  children,
+  onClick,
+  disabled,
+  className,
+  type = "button",
+}: {
+  children: React.ReactNode;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  className?: string;
+  type?: "button" | "submit";
+}) {
+  const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const id = Date.now();
+    setRipples((prev) => [...prev, { x, y, id }]);
+    setTimeout(() => {
+      setRipples((prev) => prev.filter((r) => r.id !== id));
+    }, 600);
+    onClick?.(e);
+  };
+
+  return (
+    <button
+      type={type}
+      onClick={handleClick}
+      disabled={disabled}
+      className={`relative overflow-hidden ${className}`}
+    >
+      {ripples.map((r) => (
+        <span
+          key={r.id}
+          className="absolute rounded-full bg-white/20 animate-ripple pointer-events-none"
+          style={{
+            left: r.x,
+            top: r.y,
+            width: 4,
+            height: 4,
+            marginLeft: -2,
+            marginTop: -2,
+          }}
+        />
+      ))}
+      {children}
+    </button>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -73,12 +128,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [quote, setQuote] = useState<EducationQuote | null>(null);
 
   useEffect(() => {
     setMounted(true);
+    setQuote(getRandomQuote());
   }, []);
 
-  // If already authenticated, redirect immediately
   useEffect(() => {
     if (user && !authLoading) {
       const dest = redirectParam || "/dashboard";
@@ -115,7 +171,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Use the redirect from auth result or param
       const dest = redirectParam || result.redirectTo || "/dashboard";
       router.replace(dest);
     } catch (err: unknown) {
@@ -124,10 +179,14 @@ export default function LoginPage() {
     }
   };
 
+  const refreshQuote = useCallback(() => {
+    setQuote(getRandomQuote());
+  }, []);
+
   if (!mounted) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: GOLD }} />
       </div>
     );
   }
@@ -135,8 +194,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-950 relative overflow-hidden flex items-center justify-center px-4 py-8">
       {/* Subtle ambient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-amber-500/5 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{ background: `radial-gradient(circle, ${GOLD}08 0%, transparent 70%)`, filter: "blur(80px)" }} />
+      <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] rounded-full pointer-events-none"
+        style={{ background: `radial-gradient(circle, ${GOLD}05 0%, transparent 70%)`, filter: "blur(80px)" }} />
 
       <motion.div
         initial={{ opacity: 0, y: 24 }}
@@ -151,17 +212,19 @@ export default function LoginPage() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between"
+              className="mb-4 p-3 rounded-xl flex items-center justify-between"
+              style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}20` }}
             >
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <p className="text-sm text-emerald-300">
+                <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: GOLD }} />
+                <p className="text-sm" style={{ color: GOLD_LIGHT }}>
                   Signed in as <span className="font-medium">{user.full_name || user.email}</span>
                 </p>
               </div>
               <button
                 onClick={() => router.replace("/dashboard")}
-                className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 transition-colors"
+                className="text-xs font-medium flex items-center gap-1 transition-colors hover:opacity-80"
+                style={{ color: GOLD }}
               >
                 Dashboard <ArrowUpRight className="w-3 h-3" />
               </button>
@@ -171,7 +234,7 @@ export default function LoginPage() {
 
         {/* Brand */}
         <motion.div
-          className="text-center mb-8"
+          className="text-center mb-6"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1, duration: 0.4 }}
@@ -186,20 +249,52 @@ export default function LoginPage() {
               priority
             />
           </div>
-          <h1 className="text-2xl font-semibold text-white tracking-tight">
-            BDJA Portal
-          </h1>
-          <p className="text-slate-400 mt-1 text-sm">
+          <h1 className="text-xl font-semibold text-white tracking-tight">
             Bishop Davis Joy Academy
-          </p>
+          </h1>
+          <p className="text-sm text-slate-400 mt-0.5">Portal</p>
           <div className="flex items-center justify-center gap-2 mt-2">
-            <BookOpen className="w-3 h-3 text-amber-400/70" />
-            <span className="text-[11px] text-amber-400/60 font-medium tracking-wide uppercase">
+            <BookOpen className="w-3 h-3" style={{ color: `${GOLD}80` }} />
+            <span className="text-[11px] font-medium tracking-wide uppercase" style={{ color: `${GOLD}80` }}>
               Prayer, Commitment & Hard Work
             </span>
-            <BookOpen className="w-3 h-3 text-amber-400/70" />
+            <BookOpen className="w-3 h-3" style={{ color: `${GOLD}80` }} />
           </div>
         </motion.div>
+
+        {/* Quote */}
+        <AnimatePresence mode="wait">
+          {quote && (
+            <motion.div
+              key={quote.text}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.4 }}
+              className="mb-6 text-center px-4"
+            >
+              <div className="inline-flex items-start gap-2">
+                <Quote className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: `${GOLD}60` }} />
+                <div>
+                  <p className="text-xs text-slate-400 leading-relaxed italic">
+                    {quote.text}
+                  </p>
+                  <p className="text-[10px] mt-1.5" style={{ color: `${GOLD}70` }}>
+                    — {quote.author}
+                    <span className="text-slate-600 ml-1">· {quote.category}</span>
+                  </p>
+                </div>
+                <Quote className="w-3.5 h-3.5 shrink-0 mt-0.5 rotate-180" style={{ color: `${GOLD}60` }} />
+              </div>
+              <button
+                onClick={refreshQuote}
+                className="mt-2 text-[10px] text-slate-600 hover:text-slate-400 transition-colors"
+              >
+                Refresh quote
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Card */}
         <motion.div
@@ -231,7 +326,8 @@ export default function LoginPage() {
                   {isActive && (
                     <motion.div
                       layoutId="activeTab"
-                      className="absolute bottom-0 left-4 right-4 h-0.5 bg-current rounded-full"
+                      className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
+                      style={{ background: GOLD }}
                       transition={{ type: "spring", stiffness: 400, damping: 32 }}
                     />
                   )}
@@ -241,26 +337,6 @@ export default function LoginPage() {
           </div>
 
           <div className="p-6 sm:p-7">
-            {/* Role header */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={role}
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center gap-3 mb-5"
-              >
-                <div className={`w-9 h-9 rounded-lg ${activeRole.bgTint} border ${activeRole.borderColor} flex items-center justify-center`}>
-                  <RoleIcon className={`w-4.5 h-4.5 ${activeRole.color}`} />
-                </div>
-                <div>
-                  <p className="text-white font-medium text-sm">{activeRole.label} portal</p>
-                  <p className="text-slate-500 text-xs">{activeRole.description}</p>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-
             {/* Error */}
             <AnimatePresence>
               {error && (
@@ -270,7 +346,7 @@ export default function LoginPage() {
                   exit={{ opacity: 0, height: 0 }}
                   className="mb-4 overflow-hidden"
                 >
-                  <div className="p-3 bg-red-500/8 border border-red-500/15 rounded-xl flex items-start gap-2">
+                  <div className="p-3 rounded-xl flex items-start gap-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
                     <ShieldCheck className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                     <p className="text-sm text-red-300">{error}</p>
                   </div>
@@ -302,7 +378,10 @@ export default function LoginPage() {
                       placeholder={activeRole.idPlaceholder}
                       required
                       autoFocus
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700/60 rounded-xl text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500/40 transition-all"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700/60 rounded-xl text-white placeholder-slate-600 text-sm focus:outline-none transition-all"
+                      style={{ focusRing: `0 0 0 3px ${GOLD}14` }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.boxShadow = `0 0 0 3px ${GOLD}14`; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.boxShadow = ""; }}
                     />
                   </div>
                   {role === "student" && (
@@ -334,7 +413,9 @@ export default function LoginPage() {
                       required
                       minLength={role === "student" ? 4 : 1}
                       maxLength={role === "student" ? 8 : 128}
-                      className="w-full pl-10 pr-11 py-2.5 bg-slate-800/50 border border-slate-700/60 rounded-xl text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500/40 transition-all"
+                      className="w-full pl-10 pr-11 py-2.5 bg-slate-800/50 border border-slate-700/60 rounded-xl text-white placeholder-slate-600 text-sm focus:outline-none transition-all"
+                      onFocus={(e) => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.boxShadow = `0 0 0 3px ${GOLD}14`; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.boxShadow = ""; }}
                     />
                     <button
                       type="button"
@@ -354,12 +435,11 @@ export default function LoginPage() {
                 </motion.div>
               </AnimatePresence>
 
-              <motion.button
+              <RippleButton
                 type="submit"
                 disabled={loading}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-1 text-sm"
+                className="w-full py-2.5 px-4 text-slate-950 font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-1 text-sm"
+                style={{ background: GOLD }}
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -369,19 +449,22 @@ export default function LoginPage() {
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
-              </motion.button>
+              </RippleButton>
             </form>
 
             {/* Footer */}
             <div className="mt-5 pt-4 border-t border-slate-700/30 text-center space-y-1.5">
               <p className="text-xs text-slate-500">
                 Forgot your {role === "student" ? "PIN" : "password"}?{" "}
-                <a href="/contact" className="text-amber-400/80 hover:text-amber-400 transition-colors">
+                <a href="/contact" className="transition-colors hover:underline" style={{ color: GOLD }}>
                   Contact administration
                 </a>
               </p>
               <p className="text-[10px] text-slate-600">
-                Parents can view their child&apos;s progress through the Student portal
+                Need help?{" "}
+                <a href="/help" className="transition-colors hover:underline" style={{ color: `${GOLD}90` }}>
+                  Visit our help desk
+                </a>
               </p>
             </div>
           </div>

@@ -9,6 +9,8 @@ import {
   ArrowRight, ChevronRight, Star, Heart, Lightbulb, Shield
 } from "lucide-react";
 
+const GOLD = "#D4AF37";
+
 const HERO_SLIDES = [
   { src: "/slides/hero-1.jpg", alt: "BDJA Campus" },
   { src: "/slides/hero-2.jpg", alt: "Students learning" },
@@ -28,36 +30,12 @@ const GRADES = [
 ];
 
 const FEATURES = [
-  {
-    icon: GraduationCap,
-    title: "Academic Excellence",
-    desc: "Rigorous curriculum designed to challenge and inspire every student to reach their full potential.",
-  },
-  {
-    icon: Heart,
-    title: "Holistic Development",
-    desc: "We nurture the whole child — academically, socially, emotionally, and physically.",
-  },
-  {
-    icon: Lightbulb,
-    title: "Modern Facilities",
-    desc: "State-of-the-art classrooms, laboratories, and sports facilities for optimal learning.",
-  },
-  {
-    icon: Shield,
-    title: "Safe Environment",
-    desc: "A secure, inclusive campus where every child feels valued, respected, and protected.",
-  },
-  {
-    icon: Users,
-    title: "Expert Faculty",
-    desc: "Passionate, qualified educators committed to bringing out the best in every learner.",
-  },
-  {
-    icon: Trophy,
-    title: "Proven Results",
-    desc: "Consistently high performance in national assessments and co-curricular competitions.",
-  },
+  { icon: GraduationCap, title: "Academic Excellence", desc: "Rigorous curriculum designed to challenge and inspire every student to reach their full potential." },
+  { icon: Heart, title: "Holistic Development", desc: "We nurture the whole child — academically, socially, emotionally, and physically." },
+  { icon: Lightbulb, title: "Modern Facilities", desc: "State-of-the-art classrooms, laboratories, and sports facilities for optimal learning." },
+  { icon: Shield, title: "Safe Environment", desc: "A secure, inclusive campus where every child feels valued, respected, and protected." },
+  { icon: Users, title: "Expert Faculty", desc: "Passionate, qualified educators committed to bringing out the best in every learner." },
+  { icon: Trophy, title: "Proven Results", desc: "Consistently high performance in national assessments and co-curricular competitions." },
 ];
 
 function BlindsHero() {
@@ -82,21 +60,12 @@ function BlindsHero() {
 
   return (
     <section className="relative h-[70vh] sm:h-[80vh] min-h-[480px] max-h-[800px] overflow-hidden bg-slate-950">
-      {/* Background image — uses object-cover with center positioning, responsive */}
       <div className="absolute inset-0">
-        <Image
-          src={HERO_SLIDES[current].src}
-          alt={HERO_SLIDES[current].alt}
-          fill
-          className="object-cover object-center"
-          sizes="100vw"
-          priority
-        />
+        <Image src={HERO_SLIDES[current].src} alt={HERO_SLIDES[current].alt} fill className="object-cover object-center" sizes="100vw" priority />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-slate-950/20" />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-transparent to-slate-950/30" />
       </div>
 
-      {/* Blinds overlay */}
       <div className="absolute inset-0 flex pointer-events-none z-10">
         {Array.from({ length: BLIND_COUNT }).map((_, i) => {
           const isClosing = blindPhase === "closing";
@@ -107,21 +76,13 @@ function BlindsHero() {
               key={i}
               className="flex-1 bg-slate-950 origin-top"
               initial={{ scaleY: 0 }}
-              animate={{
-                scaleY: isClosing ? 1 : isOpening ? 0 : 0,
-              }}
-              transition={{
-                duration: 0.45,
-                delay: isClosing ? delay : isOpening ? (BLIND_COUNT - 1 - i) * 0.05 : 0,
-                ease: [0.4, 0, 0.2, 1],
-              }}
-              style={{ transformOrigin: "top" }}
+              animate={{ scaleY: isClosing ? 1 : isOpening ? 0 : 0 }}
+              transition={{ duration: 0.45, delay: isClosing ? delay : isOpening ? (BLIND_COUNT - 1 - i) * 0.05 : 0, ease: [0.4, 0, 0.2, 1] }}
             />
           );
         })}
       </div>
 
-      {/* Content */}
       <div className="relative z-20 h-full flex flex-col justify-end pb-16 sm:pb-20 px-5 sm:px-6 max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
           <motion.div
@@ -132,36 +93,28 @@ function BlindsHero() {
             transition={{ duration: 0.5, delay: blindPhase === "opening" ? 0.35 : 0 }}
             className="max-w-xl"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-4" style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}20`, color: GOLD }}>
               <Star className="w-3 h-3" />
               Excellence in Education
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-tight tracking-tight">
               Shaping Tomorrow&apos;s
-              <span className="block text-amber-400">Leaders Today</span>
+              <span className="block" style={{ color: GOLD }}>Leaders Today</span>
             </h1>
             <p className="mt-3 text-sm sm:text-base text-slate-300 leading-relaxed max-w-md">
-              At Bishop Davis Joy Academy, we believe every child deserves a foundation
-              of excellence. Join us in nurturing minds, building character, and inspiring greatness.
+              At Bishop Davis Joy Academy, we believe every child deserves a foundation of excellence. Join us in nurturing minds, building character, and inspiring greatness.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link
-                href="/admissions"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-xl text-sm transition-colors"
-              >
+              <Link href="/admissions" className="inline-flex items-center gap-2 px-5 py-2.5 text-slate-950 font-semibold rounded-xl text-sm transition-colors hover:opacity-90" style={{ background: GOLD }}>
                 Apply Now <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link
-                href="/about"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-xl text-sm transition-colors"
-              >
+              <Link href="/about" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-xl text-sm transition-colors">
                 Learn More <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
           </motion.div>
         </AnimatePresence>
 
-        {/* Slide indicators */}
         <div className="flex items-center gap-2 mt-8">
           {HERO_SLIDES.map((_, i) => (
             <button
@@ -169,16 +122,11 @@ function BlindsHero() {
               onClick={() => {
                 if (i !== current && blindPhase === "idle") {
                   setBlindPhase("closing");
-                  setTimeout(() => {
-                    setCurrent(i);
-                    setBlindPhase("opening");
-                    setTimeout(() => setBlindPhase("idle"), 700);
-                  }, 600);
+                  setTimeout(() => { setCurrent(i); setBlindPhase("opening"); setTimeout(() => setBlindPhase("idle"), 700); }, 600);
                 }
               }}
-              className={`h-1 rounded-full transition-all duration-500 ${
-                i === current ? "w-8 bg-amber-400" : "w-4 bg-white/20 hover:bg-white/40"
-              }`}
+              className={`h-1 rounded-full transition-all duration-500 ${i === current ? "w-8" : "w-4 bg-white/20 hover:bg-white/40"}`}
+              style={i === current ? { background: GOLD } : {}}
             />
           ))}
         </div>
@@ -193,8 +141,8 @@ function InfiniteMarquee() {
     <section className="py-14 bg-slate-950 border-y border-slate-800/40 overflow-hidden">
       <div className="max-w-7xl mx-auto px-5 sm:px-6 mb-8">
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-            <BookOpen className="w-4 h-4 text-amber-400" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}20` }}>
+            <BookOpen className="w-4 h-4" style={{ color: GOLD }} />
           </div>
           <h2 className="text-lg font-semibold text-white">Grades Offered</h2>
         </div>
@@ -202,28 +150,14 @@ function InfiniteMarquee() {
       </div>
 
       <div className="relative">
-        {/* Fade edges */}
         <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none" />
-
         <div className="marquee-track flex gap-4 animate-marquee">
           {doubled.map((grade, i) => (
-            <div
-              key={`${grade.name}-${i}`}
-              className="shrink-0 w-36 sm:w-40 group relative rounded-xl overflow-hidden border border-slate-700/30 hover:border-amber-500/25 transition-all"
-            >
-              {/* The image IS the card */}
+            <div key={`${grade.name}-${i}`} className="shrink-0 w-36 sm:w-40 group relative rounded-xl overflow-hidden border border-slate-700/30 hover:border-[#D4AF37]/25 transition-all">
               <div className="relative w-full aspect-square">
-                <Image
-                  src={grade.icon}
-                  alt={grade.name}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  sizes="160px"
-                />
-                {/* Gradient overlay for text readability */}
+                <Image src={grade.icon} alt={grade.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="160px" />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
-                {/* Text overlay */}
                 <div className="absolute bottom-0 left-0 right-0 p-3">
                   <p className="text-white font-semibold text-sm">{grade.name}</p>
                   <p className="text-slate-400 text-[11px] mt-0.5">{grade.level}</p>
@@ -243,9 +177,7 @@ function Features() {
       <div className="max-w-7xl mx-auto px-5 sm:px-6">
         <div className="text-center mb-14">
           <h2 className="text-2xl sm:text-3xl font-semibold text-white">Why Choose BDJA?</h2>
-          <p className="mt-2 text-slate-400 text-sm max-w-md mx-auto">
-            A legacy of excellence built on strong values, modern teaching, and unwavering commitment to every learner.
-          </p>
+          <p className="mt-2 text-slate-400 text-sm max-w-md mx-auto">A legacy of excellence built on strong values, modern teaching, and unwavering commitment to every learner.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {FEATURES.map((f, i) => {
@@ -257,10 +189,10 @@ function Features() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.4, delay: i * 0.06 }}
-                className="p-6 rounded-2xl bg-slate-900/40 border border-slate-700/30 hover:border-amber-500/15 hover:bg-slate-800/40 transition-all group"
+                className="p-6 rounded-2xl bg-slate-900/40 border border-slate-700/30 hover:border-[#D4AF37]/15 hover:bg-slate-800/40 transition-all group"
               >
-                <div className="w-10 h-10 rounded-lg bg-amber-500/8 border border-amber-500/15 flex items-center justify-center mb-4 group-hover:bg-amber-500/12 transition-colors">
-                  <Icon className="w-5 h-5 text-amber-400" />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:transition-colors" style={{ background: `${GOLD}08`, border: `1px solid ${GOLD}15` }}>
+                  <Icon className="w-5 h-5" style={{ color: GOLD }} />
                 </div>
                 <h3 className="text-white font-medium text-base mb-1.5">{f.title}</h3>
                 <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
@@ -295,7 +227,7 @@ function Stats() {
                 transition={{ duration: 0.4, delay: i * 0.08 }}
                 className="text-center p-5 rounded-2xl bg-slate-800/20 border border-slate-700/20"
               >
-                <Icon className="w-5 h-5 text-amber-400/70 mx-auto mb-2" />
+                <Icon className="w-5 h-5 mx-auto mb-2" style={{ color: `${GOLD}70` }} />
                 <p className="text-2xl font-semibold text-white">{s.value}</p>
                 <p className="text-xs text-slate-500 mt-1">{s.label}</p>
               </motion.div>
@@ -315,12 +247,10 @@ function QuickInfo() {
           <div>
             <h2 className="text-2xl sm:text-3xl font-semibold text-white leading-snug">
               A Place Where Every Child
-              <span className="text-amber-400"> Thrives</span>
+              <span style={{ color: GOLD }}> Thrives</span>
             </h2>
             <p className="mt-4 text-slate-400 text-sm leading-relaxed">
-              Bishop Davis Joy Academy is more than a school — it is a community dedicated to
-              unlocking potential. From playgroup to Grade 6, we provide a structured, nurturing
-              environment where curiosity is encouraged, discipline is instilled, and success is celebrated.
+              Bishop Davis Joy Academy is more than a school — it is a community dedicated to unlocking potential. From playgroup to Grade 6, we provide a structured, nurturing environment where curiosity is encouraged, discipline is instilled, and success is celebrated.
             </p>
             <div className="mt-8 space-y-4">
               {[
@@ -332,7 +262,7 @@ function QuickInfo() {
                 return (
                   <div key={item.text} className="flex items-center gap-3 text-sm text-slate-300">
                     <div className="w-8 h-8 rounded-lg bg-slate-800/50 border border-slate-700/40 flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4 text-amber-400/70" />
+                      <Icon className="w-4 h-4" style={{ color: `${GOLD}70` }} />
                     </div>
                     {item.text}
                   </div>
@@ -340,22 +270,13 @@ function QuickInfo() {
               })}
             </div>
             <div className="mt-8">
-              <Link
-                href="/contact"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-xl text-sm transition-colors"
-              >
+              <Link href="/contact" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-xl text-sm transition-colors">
                 Visit Our Campus <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
           <div className="relative h-72 sm:h-80 lg:h-96 rounded-2xl overflow-hidden border border-slate-700/30">
-            <Image
-              src="/slides/hero-2.jpg"
-              alt="BDJA Students"
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
+            <Image src="/slides/hero-2.jpg" alt="BDJA Students" fill className="object-cover object-center" sizes="(max-width: 1024px) 100vw, 50vw" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent" />
           </div>
         </div>
@@ -369,24 +290,14 @@ function CTA() {
     <section className="py-20 bg-slate-950">
       <div className="max-w-7xl mx-auto px-5 sm:px-6">
         <div className="relative rounded-2xl overflow-hidden border border-slate-700/30 bg-slate-900/40 p-10 sm:p-14 text-center">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-amber-500/5 blur-3xl rounded-full pointer-events-none" />
-          <h2 className="text-2xl sm:text-3xl font-semibold text-white relative z-10">
-            Ready to Join BDJA?
-          </h2>
-          <p className="mt-3 text-slate-400 text-sm max-w-md mx-auto relative z-10">
-            Begin your child&apos;s journey to excellence. Admissions are open for all grades.
-          </p>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${GOLD}08 0%, transparent 70%)`, filter: "blur(80px)" }} />
+          <h2 className="text-2xl sm:text-3xl font-semibold text-white relative z-10">Ready to Join BDJA?</h2>
+          <p className="mt-3 text-slate-400 text-sm max-w-md mx-auto relative z-10">Begin your child&apos;s journey to excellence. Admissions are open for all grades.</p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3 relative z-10">
-            <Link
-              href="/admissions"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-xl text-sm transition-colors"
-            >
+            <Link href="/admissions" className="inline-flex items-center gap-2 px-6 py-2.5 text-slate-950 font-semibold rounded-xl text-sm transition-colors hover:opacity-90" style={{ background: GOLD }}>
               Start Admission <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-xl text-sm transition-colors"
-            >
+            <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-xl text-sm transition-colors">
               Contact Us <ChevronRight className="w-4 h-4" />
             </Link>
           </div>

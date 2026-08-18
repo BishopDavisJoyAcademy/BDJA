@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { recordFailedLogin, recordSuccessfulLogin, checkAccountLockout, extractDeviceInfo, getClientIP, recordSession } from "@/lib/security";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
@@ -24,7 +26,6 @@ export async function POST(req: NextRequest) {
     const ip = getClientIP(req);
     const ua = req.headers.get("user-agent") || "";
 
-    // Look up student by admission number
     interface StudentLoginRow {
       id: string;
       admission_number: string;
@@ -52,13 +53,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Student account not properly configured" }, { status: 500 });
     }
 
-    // Check lockout
     const lockout = await checkAccountLockout(userId);
     if (lockout.isLocked) {
       return NextResponse.json({ error: lockout.message || "Account locked" }, { status: 403 });
     }
 
-    // Sign in with email + PIN
     const { data: authData, error: authError } = await admin.auth.signInWithPassword({ email, password: pin });
 
     if (authError || !authData.session) {
@@ -71,7 +70,28 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 60 * 1000);
     await recordSession(userId, authData.session.access_token, ip, extractDeviceInfo(req).user_agent, expiresAt);
 
-    return NextResponse.json({
+    // Set cookies via server client
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll(); },
+          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+    await supabase.auth.setSession({
+      access_token: authData.session.access_token,
+      refresh_token: authData.session.refresh_token,
+    });
+
+    const response = NextResponse.json({
       success: true,
       session: {
         access_token: authData.session.access_token,
@@ -80,6 +100,21 @@ export async function POST(req: NextRequest) {
       },
       user: { id: userId, email },
     });
+
+    const allCookies = cookieStore.getAll();
+    allCookies.forEach((c) => {
+      if (c.name.startsWith("sb-") || c.name.includes("-auth-")) {
+        response.cookies.set(c.name, c.value, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 7,
+        });
+      }
+    });
+
+    return response;
   } catch (error: any) {
     console.error("[student-login] Error:", error);
     return NextResponse.json({ error: error.message || "Login failed" }, { status: 500 });

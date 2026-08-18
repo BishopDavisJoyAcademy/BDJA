@@ -15,6 +15,7 @@ interface SignInResult {
   error: string | null;
   mustChangePassword?: boolean;
   userCategory?: string | null;
+  redirectTo?: string;
 }
 
 interface ProfileRow {
@@ -29,7 +30,15 @@ interface ProfileRow {
   password_changed: boolean;
 }
 
-const AUTH_TIMEOUT_MS = 8000;
+const AUTH_TIMEOUT_MS = 10000;
+
+function getDashboardPath(category: string | null): string {
+  if (category === "admin") return "/admin";
+  if (category === "student") return "/student";
+  if (category === "parent") return "/parent";
+  if (category === "staff") return "/teacher";
+  return "/dashboard";
+}
 
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
@@ -124,7 +133,7 @@ export function useAuth() {
       );
       listener = l;
     } catch {
-      // Supabase not initialized — listener not needed
+      // Supabase not initialized
     }
 
     return () => {
@@ -143,12 +152,27 @@ export function useAuth() {
           setState((s) => ({ ...s, loading: false, error: { type: "auth", message: error?.message || "Invalid credentials" } }));
           return { success: false, error: error?.message || "Invalid credentials" };
         }
+        // Fetch profile immediately to determine redirect
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("password_changed, role, user_category, is_active")
+          .eq("id", data.user.id)
+          .single();
+
+        if (!profile || !profile.is_active) {
+          await supabase.auth.signOut();
+          setState({ user: null, loading: false, error: { type: "auth", message: "Account inactive" } });
+          return { success: false, error: "Account inactive" };
+        }
+
         const user = await fetchUser();
+        const redirectTo = getDashboardPath(profile.user_category);
         return {
           success: true,
           error: null,
-          mustChangePassword: user?.must_change_password,
-          userCategory: user?.user_category,
+          mustChangePassword: !profile.password_changed,
+          userCategory: profile.user_category,
+          redirectTo,
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Invalid credentials";
@@ -189,6 +213,7 @@ export function useAuth() {
           error: null,
           mustChangePassword: user?.must_change_password,
           userCategory: user?.user_category,
+          redirectTo: getDashboardPath(user?.user_category || "student"),
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Login failed";
@@ -204,7 +229,7 @@ export function useAuth() {
       const supabase = getSupabaseClient();
       await supabase.auth.signOut();
     } catch {
-      // Ignore sign-out errors
+      // Ignore
     }
     setState({ user: null, loading: false, error: null });
   }, []);

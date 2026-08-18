@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import Link from "next/link";
 
-export default function DashboardError({
+export default function AuthError({
   error,
   reset,
 }: {
@@ -13,39 +13,36 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Dashboard error:", error);
+    console.error("Auth error:", error);
   }, [error]);
 
   return (
-    <div className="flex-1 flex items-center justify-center p-8">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="max-w-md w-full text-center"
+        className="max-w-sm w-full text-center"
       >
         <div className="w-14 h-14 rounded-xl bg-red-500/8 border border-red-500/15 flex items-center justify-center mx-auto mb-5">
           <AlertTriangle className="w-6 h-6 text-red-400" />
         </div>
-        <h2 className="text-lg font-semibold text-white mb-2">Page Error</h2>
-        <p className="text-sm text-slate-400 mb-1">
-          {error.message || "Failed to load this page."}
+        <h2 className="text-lg font-semibold text-white mb-2">Authentication Error</h2>
+        <p className="text-sm text-slate-400 mb-5">
+          {error.message || "Something went wrong during authentication."}
         </p>
-        {error.digest && (
-          <p className="text-[10px] text-slate-600 font-mono mb-5">{error.digest}</p>
-        )}
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button
             onClick={reset}
             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded-xl text-sm transition-colors"
           >
-            <RefreshCw className="w-4 h-4" /> Try Again
+            <RefreshCw className="w-4 h-4" /> Retry
           </button>
           <Link
-            href="/dashboard"
+            href="/"
             className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-xl text-sm transition-colors"
           >
-            <Home className="w-4 h-4" /> Dashboard
+            <Home className="w-4 h-4" /> Home
           </Link>
         </div>
       </motion.div>

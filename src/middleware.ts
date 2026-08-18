@@ -54,7 +54,7 @@ const ONBOARDING_APIS = [
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Public paths always pass through — no auth checks, no redirects
+  // Public paths always pass through
   if (
     PUBLIC_PATHS.includes(pathname) ||
     PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
@@ -62,7 +62,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Initialize Supabase SSR client
+  let response = NextResponse.next({ request: req });
+
+  // Initialize Supabase SSR client with proper cookie handling
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -72,8 +74,9 @@ export async function middleware(req: NextRequest) {
           return req.cookies.getAll();
         },
         setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-          cookiesToSet.forEach(({ name, value }) => {
+          cookiesToSet.forEach(({ name, value, options }) => {
             req.cookies.set(name, value);
+            response.cookies.set(name, value, options);
           });
         },
       },
@@ -127,7 +130,7 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/reset-password/") ||
       PASSWORD_CHANGE_APIS.some((p) => pathname === p || pathname.startsWith(p + "/"))
     ) {
-      return NextResponse.next();
+      return response;
     }
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Password change required" }, { status: 403 });
@@ -145,7 +148,7 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/onboarding/") ||
       ONBOARDING_APIS.some((p) => pathname === p || pathname.startsWith(p + "/"))
     ) {
-      return NextResponse.next();
+      return response;
     }
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Onboarding required" }, { status: 403 });
@@ -192,7 +195,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

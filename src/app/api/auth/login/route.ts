@@ -21,11 +21,14 @@ export async function POST(req: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
+          getAll() {
+            return cookieStore.getAll();
           },
-          set() {},
-          remove() {},
+          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
         },
       }
     );
@@ -48,13 +51,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Account inactive" }, { status: 403 });
     }
 
-    return NextResponse.json({
+    // Build response with cookies properly set
+    const response = NextResponse.json({
       success: true,
       mustChangePassword: !profile.password_changed,
       role: profile.role,
       userCategory: profile.user_category,
       restored,
     });
+
+    // Ensure auth cookies are forwarded to browser
+    const allCookies = cookieStore.getAll();
+    allCookies.forEach((c) => {
+      if (c.name.startsWith("sb-") || c.name.includes("-auth-")) {
+        response.cookies.set(c.name, c.value, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 7,
+        });
+      }
+    });
+
+    return response;
   } catch (err: unknown) {
     console.error("[login] Error:", getErrorMessage(err));
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

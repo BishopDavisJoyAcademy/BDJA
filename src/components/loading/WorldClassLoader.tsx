@@ -1,53 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
 
-// Text scramble effect hook
-function useTextScramble(
-  finalText: string,
-  trigger: boolean,
-  speed = 30
-) {
-  const [display, setDisplay] = useState("");
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+const SCHOOL_NAME = "BISHOP DAVIS JOY ACADEMY";
+const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
 
-  useEffect(() => {
-    if (!trigger) return;
-    let iteration = 0;
-    const interval = setInterval(() => {
-      setDisplay(
-        finalText
-          .split("")
-          .map((char, idx) => {
-            if (char === " ") return " ";
-            if (char === ",") return ",";
-            if (char === "&") return "&";
-            if (idx < iteration) return finalText[idx];
-            return chars[Math.floor(Math.random() * chars.length)];
-          })
-          .join("")
-      );
-      if (iteration >= finalText.length) {
-        clearInterval(interval);
-        setDisplay(finalText);
-      }
-      iteration += 1 / 2;
-    }, speed);
-    return () => clearInterval(interval);
-  }, [trigger, finalText, speed, chars]);
-
-  return display;
-}
-
-// Typewriter effect hook
-function useTypewriter(
-  text: string,
-  trigger: boolean,
-  speed = 60,
-  delay = 0
-) {
+function useScrambleText(finalText: string, trigger: boolean, speed = 28) {
   const [display, setDisplay] = useState("");
   const [done, setDone] = useState(false);
 
@@ -55,321 +14,317 @@ function useTypewriter(
     if (!trigger) return;
     setDisplay("");
     setDone(false);
-    let i = 0;
-    const startTimeout = setTimeout(() => {
-      const interval = setInterval(() => {
-        if (i >= text.length) {
-          clearInterval(interval);
-          setDone(true);
-          return;
-        }
-        setDisplay(text.slice(0, i + 1));
-        i++;
-      }, speed);
-      return () => clearInterval(interval);
-    }, delay);
-    return () => clearTimeout(startTimeout);
-  }, [trigger, text, speed, delay]);
+    let iteration = 0;
+    const interval = setInterval(() => {
+      setDisplay(
+        finalText
+          .split("")
+          .map((char, idx) => {
+            if (char === " ") return " ";
+            if (idx < Math.floor(iteration)) return finalText[idx];
+            return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+          })
+          .join("")
+      );
+      if (iteration >= finalText.length) {
+        clearInterval(interval);
+        setDisplay(finalText);
+        setDone(true);
+      }
+      iteration += 0.5;
+    }, speed);
+    return () => clearInterval(interval);
+  }, [trigger, finalText, speed]);
 
   return { display, done };
 }
 
-interface WorldClassLoaderProps {
-  timeoutSeconds?: number;
-  onTimeout?: () => void;
-  error?: string | null;
+function MonitorSVG({ phase }: { phase: "hidden" | "building" | "ready" | "done" }) {
+  return (
+    <motion.svg
+      width="200"
+      height="160"
+      viewBox="0 0 200 160"
+      fill="none"
+      initial={{ scale: 0.6, opacity: 0 }}
+      animate={{
+        scale: phase === "hidden" ? 0.6 : 1,
+        opacity: phase === "hidden" ? 0 : 1,
+      }}
+      transition={{ type: "spring", stiffness: 260, damping: 20, delay: phase === "hidden" ? 0 : 0.2 }}
+    >
+      {/* Stand */}
+      <motion.rect
+        x="85" y="130" width="30" height="12" rx="2"
+        fill="#1e293b"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      />
+      <motion.rect
+        x="70" y="142" width="60" height="6" rx="3"
+        fill="#1e293b"
+        initial={{ opacity: 0, scaleX: 0 }}
+        animate={{ opacity: 1, scaleX: 1 }}
+        transition={{ delay: 0.6, type: "spring" }}
+        style={{ transformOrigin: "100px 145px" }}
+      />
+      {/* Bezel */}
+      <motion.rect
+        x="20" y="20" width="160" height="110" rx="10"
+        fill="#0f172a"
+        stroke="#334155"
+        strokeWidth="2"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+      />
+      {/* Screen */}
+      <motion.rect
+        x="28" y="28" width="144" height="94" rx="4"
+        fill="#020617"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.45 }}
+      />
+      {/* Screen glow */}
+      <motion.rect
+        x="28" y="28" width="144" height="94" rx="4"
+        fill="url(#screenGlow)"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.3 }}
+        transition={{ delay: 0.8 }}
+      />
+      <defs>
+        <linearGradient id="screenGlow" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+    </motion.svg>
+  );
 }
 
-export default function WorldClassLoader({
-  timeoutSeconds = 8,
-  onTimeout,
-  error,
-}: WorldClassLoaderProps) {
-  const [phase, setPhase] = useState<"enter" | "stable" | "timeout" | "error">("enter");
-  const [progress, setProgress] = useState(0);
-  const [shimmerOffset, setShimmerOffset] = useState(-200);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const mottoScramble = useTextScramble(
-    "Prayer, Commitment & Hard Work",
-    phase === "stable",
-    25
-  );
-
-  const typewriter = useTypewriter(
-    "Bishop Davis Joy Academy",
-    phase === "enter",
-    70,
-    300
-  );
-
-  const subTypewriter = useTypewriter(
-    "Preparing your workspace...",
-    typewriter.done,
-    40,
-    200
-  );
-
-  // Progress bar animation
-  useEffect(() => {
-    if (phase !== "stable") return;
-    const interval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 95) return p;
-        return p + Math.random() * 3;
-      });
-    }, 120);
-    return () => clearInterval(interval);
-  }, [phase]);
-
-  // Shimmer animation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setShimmerOffset((o) => (o >= 400 ? -200 : o + 2));
-    }, 16);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Phase transitions
-  useEffect(() => {
-    const enterTimer = setTimeout(() => setPhase("stable"), 600);
-    const timeoutTimer = setTimeout(() => {
-      setPhase("error");
-      onTimeout?.();
-    }, timeoutSeconds * 1000);
-
-    return () => {
-      clearTimeout(enterTimer);
-      clearTimeout(timeoutTimer);
-    };
-  }, [timeoutSeconds, onTimeout]);
-
-  // If error prop is passed, show error immediately
-  useEffect(() => {
-    if (error) setPhase("error");
-  }, [error]);
-
+function GraduationCapSVG() {
   return (
-    <div className="min-h-screen bg-slate-950 relative overflow-hidden flex items-center justify-center">
-      {/* Animated gradient orbs */}
-      <div className="absolute inset-0 pointer-events-none">
-        {[...Array(5)].map((_, i) => (
+    <motion.svg
+      width="56"
+      height="44"
+      viewBox="0 0 56 44"
+      fill="none"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1.4, type: "spring", stiffness: 200 }}
+    >
+      {/* Mortarboard top */}
+      <path d="M4 18L28 8L52 18L28 28L4 18Z" fill="#1e293b" stroke="#475569" strokeWidth="1.2" />
+      {/* Top surface */}
+      <path d="M4 18L28 12L52 18" fill="#0f172a" />
+      {/* Cylindrical band */}
+      <rect x="20" y="26" width="16" height="10" rx="2" fill="#1e293b" stroke="#475569" strokeWidth="1" />
+      {/* Gold button */}
+      <circle cx="28" cy="18" r="3" fill="#d4a843" />
+      {/* Tassel */}
+      <motion.path
+        d="M48 18C48 18 50 24 50 28C50 32 48 36 46 38"
+        stroke="#d4a843"
+        strokeWidth="1.5"
+        fill="none"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={{ delay: 1.8, duration: 0.6 }}
+      />
+      {/* Tassel fringe */}
+      <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2 }}>
+        <line x1="44" y1="38" x2="42" y2="42" stroke="#d4a843" strokeWidth="1" />
+        <line x1="46" y1="38" x2="45" y2="42" stroke="#d4a843" strokeWidth="1" />
+        <line x1="48" y1="38" x2="48" y2="42" stroke="#d4a843" strokeWidth="1" />
+        <line x1="45" y1="38" x2="43" y2="42" stroke="#d4a843" strokeWidth="1" />
+      </motion.g>
+    </motion.svg>
+  );
+}
+
+function WifiRadar() {
+  return (
+    <motion.div
+      className="absolute -top-2 -left-2"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.8 }}
+    >
+      <div className="relative w-12 h-12">
+        <div className="absolute inset-0 flex items-end justify-start pb-1 pl-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/80" />
+        </div>
+        {[1, 2, 3].map((i) => (
           <motion.div
             key={i}
-            className="absolute rounded-full"
-            style={{
-              width: 300 + i * 80,
-              height: 300 + i * 80,
-              background: `radial-gradient(circle, ${
-                i % 3 === 0
-                  ? "rgba(245,158,11,0.08)"
-                  : i % 3 === 1
-                  ? "rgba(16,185,129,0.06)"
-                  : "rgba(14,165,233,0.05)"
-              } 0%, transparent 70%)`,
-              left: `${15 + i * 18}%`,
-              top: `${10 + i * 15}%`,
-            }}
-            animate={{
-              x: [0, 40, -30, 0],
-              y: [0, -40, 30, 0],
-              scale: [1, 1.15, 0.9, 1],
-            }}
+            className="absolute bottom-1 left-1 rounded-full border border-emerald-400/40"
+            style={{ width: i * 10, height: i * 10, transformOrigin: "bottom left" }}
+            initial={{ opacity: 0, scale: 0.3 }}
+            animate={{ opacity: [0, 0.6, 0], scale: [0.3, 1.2, 1.5] }}
             transition={{
-              duration: 10 + i * 3,
+              duration: 2,
               repeat: Infinity,
-              ease: "easeInOut",
+              delay: i * 0.4 + 1,
+              ease: "easeOut",
             }}
           />
         ))}
       </div>
+    </motion.div>
+  );
+}
 
-      {/* Grid overlay */}
-      <div
-        className="absolute inset-0 opacity-[0.02] pointer-events-none"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)`,
-          backgroundSize: "80px 80px",
-        }}
-      />
-
-      <motion.div
-        className="relative z-10 flex flex-col items-center text-center px-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        {/* Logo with skeleton shimmer */}
-        <div className="relative mb-8">
-          <motion.div
-            className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.5, type: "spring" }}
-          >
-            {/* Shimmer overlay */}
-            <div
-              className="absolute inset-0 z-10 pointer-events-none"
-              style={{
-                background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)`,
-                transform: `translateX(${shimmerOffset}px)`,
-                width: "60%",
-              }}
-            />
-            <Image
-              src="/logo.png"
-              alt="Bishop Davis Joy Academy"
-              width={72}
-              height={72}
-              className="object-contain relative z-0"
-              priority
-            />
-          </motion.div>
-
-          {/* Orbiting ring */}
-          <motion.div
-            className="absolute inset-0 rounded-2xl border border-amber-500/20"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            style={{ margin: -4 }}
-          />
-          <motion.div
-            className="absolute top-0 right-0 w-2 h-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400/50"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            style={{ transformOrigin: "-44px 44px" }}
-          />
-        </div>
-
-        {/* Typewriter title */}
-        <div className="h-10 mb-2">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight font-serif">
-            {typewriter.display}
-            <motion.span
-              className="inline-block w-0.5 h-7 bg-amber-400 ml-0.5 align-middle"
-              animate={{ opacity: [1, 0] }}
-              transition={{ duration: 0.5, repeat: Infinity }}
-            />
-          </h1>
-        </div>
-
-        {/* Scramble motto */}
-        <AnimatePresence>
-          {typewriter.done && (
-            <motion.p
-              className="text-sm font-medium tracking-[0.2em] uppercase mb-6"
-              style={{ color: "#fbbf24" }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4 }}
-            >
-              {mottoScramble}
-            </motion.p>
-          )}
-        </AnimatePresence>
-
-        {/* Typewriter subtitle */}
-        {typewriter.done && (
-          <div className="h-6 mb-8">
-            <p className="text-sm text-slate-400">
-              {subTypewriter.display}
-              {subTypewriter.done && (
-                <motion.span
-                  className="inline-block w-0.5 h-4 bg-slate-500 ml-0.5 align-middle"
-                  animate={{ opacity: [1, 0] }}
-                  transition={{ duration: 0.5, repeat: Infinity }}
-                />
-              )}
-            </p>
-          </div>
-        )}
-
-        {/* Progress bar */}
-        <AnimatePresence>
-          {phase === "stable" && (
-            <motion.div
-              className="w-64 h-1 bg-slate-800 rounded-full overflow-hidden mb-4"
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: 256 }}
-              transition={{ duration: 0.5 }}
-            >
+function SkeletonBars({ visible }: { visible: boolean }) {
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          className="flex flex-col gap-2 w-36 mt-3"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ delay: 2.6 }}
+        >
+          {[0.7, 0.5, 0.4].map((w, i) => (
+            <div key={i} className="h-2 rounded-full bg-slate-700/40 overflow-hidden relative" style={{ width: `${w * 100}%` }}>
               <motion.div
-                className="h-full rounded-full"
-                style={{
-                  background: "linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b)",
-                  backgroundSize: "200% 100%",
-                }}
-                animate={{
-                  width: `${Math.min(progress, 100)}%`,
-                  backgroundPosition: ["0% 0%", "200% 0%"],
-                }}
-                transition={{
-                  width: { duration: 0.3 },
-                  backgroundPosition: { duration: 1.5, repeat: Infinity, ease: "linear" },
-                }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-500/20 to-transparent"
+                animate={{ x: ["-100%", "200%"] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: i * 0.2 }}
               />
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          ))}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
-        {/* Skeleton cards */}
-        <AnimatePresence>
-          {phase === "stable" && (
-            <motion.div
-              className="flex gap-3 mt-2"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-20 h-12 rounded-lg bg-slate-800/60 border border-slate-700/30 relative overflow-hidden"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4 + i * 0.15 }}
-                >
-                  <motion.div
-                    className="absolute inset-0"
-                    style={{
-                      background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 50%, transparent 100%)`,
-                    }}
-                    animate={{ x: [-80, 80] }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      delay: i * 0.3,
-                      ease: "easeInOut",
-                    }}
-                  />
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+function FloatingShapes() {
+  return (
+    <>
+      {[...Array(5)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full border border-slate-700/20"
+          style={{
+            width: 20 + i * 12,
+            height: 20 + i * 12,
+            left: `${10 + i * 18}%`,
+            top: `${20 + i * 10}%`,
+          }}
+          animate={{
+            y: [0, -15, 0],
+            x: [0, 8, -5, 0],
+            rotate: [0, 10, -5, 0],
+          }}
+          transition={{
+            duration: 6 + i * 2,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </>
+  );
+}
 
-        {/* Error / Timeout state */}
-        <AnimatePresence>
-          {phase === "error" && (
-            <motion.div
-              className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl max-w-sm"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              <p className="text-sm text-red-300 mb-3">
-                {error || "Unable to connect. Please check your network and try again."}
-              </p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm rounded-lg transition-colors"
+export default function WorldClassLoader({
+  message = "Preparing your portal",
+  subMessage = "Bishop Davis Joy Academy",
+}: {
+  message?: string;
+  subMessage?: string;
+}) {
+  const [phase, setPhase] = useState<"hidden" | "building" | "ready" | "done">("hidden");
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  const [loopKey, setLoopKey] = useState(0);
+  const { display: scrambledText, done: textDone } = useScrambleText(SCHOOL_NAME, phase === "ready", 24);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase("building"), 100);
+    const t2 = setTimeout(() => setPhase("ready"), 900);
+    const t3 = setTimeout(() => setShowSkeleton(true), 2600);
+    const t4 = setTimeout(() => {
+      setPhase("done");
+      setShowSkeleton(false);
+    }, 5000);
+    const t5 = setTimeout(() => {
+      setPhase("hidden");
+      setLoopKey((k) => k + 1);
+    }, 5800);
+    return () => {
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5);
+    };
+  }, [loopKey]);
+
+  return (
+    <div key={loopKey} className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950">
+      {/* Subtle ambient */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-amber-500/[0.03] blur-3xl rounded-full" />
+        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-emerald-500/[0.02] blur-3xl rounded-full" />
+      </div>
+
+      <FloatingShapes />
+
+      {/* Main scene */}
+      <div className="relative flex flex-col items-center">
+        <WifiRadar />
+
+        <MonitorSVG phase={phase} />
+
+        {/* Text on screen */}
+        <div className="absolute top-[42px] left-1/2 -translate-x-1/2 text-center w-[140px]">
+          <AnimatePresence>
+            {phase === "ready" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
               >
-                Reload Page
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <p className="text-[8px] font-mono text-amber-400/90 tracking-[0.15em] leading-tight">
+                  {scrambledText}
+                </p>
+                {textDone && (
+                  <motion.div
+                    className="mx-auto mt-1 h-[1px] bg-amber-400/40 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 0.5 }}
+                  />
+                )}
+                <motion.span
+                  className="inline-block w-[3px] h-[6px] bg-amber-400/60 mt-0.5"
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.6, repeat: Infinity }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Graduation cap centered on screen */}
+        <div className="absolute top-[58px] left-1/2 -translate-x-1/2">
+          <GraduationCapSVG />
+        </div>
+
+        {/* Skeleton bars below */}
+        <SkeletonBars visible={showSkeleton} />
+      </div>
+
+      {/* Bottom text */}
+      <motion.div
+        className="mt-10 text-center"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2 }}
+      >
+        <p className="text-sm font-medium text-slate-300 tracking-wide">{message}</p>
+        <p className="text-xs text-slate-600 mt-1">{subMessage}</p>
       </motion.div>
     </div>
   );

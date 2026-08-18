@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { X, FileText, Image, Video, Music, Link2, BarChart3, PenTool, RotateCcw } from "lucide-react";
 import { AttachmentFile } from "@/types/attachments";
 import { ThemeConfig } from "@/lib/joy-themes";
@@ -70,7 +71,7 @@ export function AttachmentChip({ attachment, formatFileSize, onRemove, onPreview
       onClick={handleClick}
     >
       {attachment.thumbnail ? (
-        <img src={attachment.thumbnail} alt={attachment.name || "Attachment thumbnail"} className="w-6 h-6 rounded object-cover shrink-0" />
+        <Image src={attachment.thumbnail || ""} alt={attachment.name || "Attachment thumbnail"} width={24} height={24} className="rounded object-cover shrink-0" />
       ) : (
         <span style={{ color: theme.primary }}>{getIcon()}</span>
       )}

@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { ADMIN_SEGMENT } from "@/lib/constants";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -651,7 +652,7 @@ export function JoyChat() {
   const ThinkingIndicator = () => (
     <div className="flex gap-3">
       <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ background: theme.primary + "15" }}>
-        <img src="/joy-logo.png" alt="Joy" className="w-5 h-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+        <Image src="/joy-logo.png" alt="Joy" width={20} height={20} className="object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         <Bot className="w-4 h-4" style={{ color: theme.primary }} />
       </div>
       <div className="px-4 py-3 rounded-2xl rounded-bl-md" style={{ background: theme.assistantBubble }}>
@@ -675,7 +676,7 @@ export function JoyChat() {
         style={{ background: theme.primary, boxShadow: theme.shadow }}
         aria-label="Open Joy AI"
       >
-        <img src="/joy-logo.png" alt="Joy" className="w-8 h-8 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+        <Image src="/joy-logo.png" alt="Joy" width={32} height={32} className="object-contain" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling?.classList.remove('hidden'); }} />
         <Bot className="w-7 h-7 hidden" style={{ color: theme.textInverse }} />
       </button>
     );
@@ -702,7 +703,7 @@ export function JoyChat() {
       <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ background: theme.headerGradient }}>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden" style={{ background: "rgba(255,255,255,0.2)" }}>
-            <img src="/joy-logo.png" alt="Joy" className="w-6 h-6 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+            <Image src="/joy-logo.png" alt="Joy" width={24} height={24} className="object-contain" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling?.classList.remove('hidden'); }} />
             <Bot className="w-5 h-5 text-white hidden" />
           </div>
           <div>
@@ -819,7 +820,7 @@ export function JoyChat() {
         {messages.length === 0 && !isStreaming && !isLoading && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: theme.primary + "15" }}>
-              <img src="/joy-logo.png" alt="Joy" className="w-10 h-10 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+              <Image src="/joy-logo.png" alt="Joy" width={40} height={40} className="object-contain" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling?.classList.remove('hidden'); }} />
               <Bot className="w-8 h-8 hidden" style={{ color: theme.primary }} />
             </div>
             <div className="space-y-2">
@@ -844,7 +845,7 @@ export function JoyChat() {
                 <span className="text-xs font-bold text-gray-600">{userName.charAt(0).toUpperCase()}</span>
               ) : (
                 <>
-                  <img src="/joy-logo.png" alt="Joy" className="w-5 h-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  <Image src="/joy-logo.png" alt="Joy" width={20} height={20} className="object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                   <Bot className="w-4 h-4 hidden" style={{ color: theme.primary }} />
                 </>
               )}
@@ -898,7 +899,7 @@ export function JoyChat() {
         {isStreaming && streamingText && (
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ background: theme.primary + "15" }}>
-              <img src="/joy-logo.png" alt="Joy" className="w-5 h-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              <Image src="/joy-logo.png" alt="Joy" width={20} height={20} className="object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               <Bot className="w-4 h-4" style={{ color: theme.primary }} />
             </div>
             <div className="max-w-[80%]">

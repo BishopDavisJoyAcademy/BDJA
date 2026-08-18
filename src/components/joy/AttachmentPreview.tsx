@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { X, FileText, Image, Video, Music, Link2, BarChart3, PenTool, ExternalLink } from "lucide-react";
 import { AttachmentFile, PollOption } from "@/types/attachments";
@@ -23,10 +24,12 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
       case "whiteboard":
         return (
           <div className="flex flex-col items-center gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={attachment.dataUrl || attachment.thumbnail || attachment.url}
+                        <Image
+              src={attachment.dataUrl || attachment.thumbnail || attachment.url || ""}
               alt={attachment.name}
+              width={400}
+              height={300}
+              unoptimized
               className="max-w-full max-h-[60vh] rounded-xl shadow-lg object-contain"
             />
             <button

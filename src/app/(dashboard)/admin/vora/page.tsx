@@ -226,7 +226,7 @@ export default function VoraAdminPage() {
             <Card key={v.id} className="p-4 flex flex-col">
               <div className="aspect-video bg-gray-100 rounded-lg mb-3 overflow-hidden relative">
                 {v.thumbnail_url ? (
-                  <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" />
+                  <Image src={v.thumbnail_url || ""} alt={v.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 400px" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Video className="w-8 h-8 text-gray-300" />

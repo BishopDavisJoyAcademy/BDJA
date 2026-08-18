@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { BookOpen, Search, Loader2, ExternalLink } from "lucide-react";
@@ -81,7 +82,7 @@ export default function PublicLibrary() {
             {filtered.map((r) => (
               <Card key={r.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 {r.cover_url ? (
-                  <img src={r.cover_url} alt={r.title} className="w-full h-48 object-cover" />
+                  <Image src={r.cover_url || ""} alt={r.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 300px" />
                 ) : (
                   <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
                     <BookOpen className="w-12 h-12 text-gray-300" />

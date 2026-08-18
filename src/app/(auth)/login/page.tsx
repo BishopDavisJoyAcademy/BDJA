@@ -68,6 +68,7 @@ function RippleButton({
   disabled,
   className,
   type = "button",
+  style,
 }: {
   children: React.ReactNode;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;

@@ -24,7 +24,7 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
       case "whiteboard":
         return (
           <div className="flex flex-col items-center gap-4">
-                        <Image
+                        <NextImage
               src={attachment.dataUrl || attachment.thumbnail || attachment.url || ""}
               alt={attachment.name}
               width={400}

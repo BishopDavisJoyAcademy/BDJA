@@ -70,15 +70,16 @@ export function useAuth() {
         return null;
       }
 
-      const { data: profile, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", session.user.id)
         .single();
 
-      const p = profile as ProfileRow | null;
+      // Explicit type guard to avoid Supabase never inference
+      const profile = profileData as unknown as ProfileRow | null;
 
-      if (profileError || !p || !p.is_active) {
+      if (profileError || !profile || !profile.is_active) {
         setState({ user: null, loading: false, error: null });
         return null;
       }
@@ -86,13 +87,13 @@ export function useAuth() {
       const { data: permData } = await supabase
         .from("staff_permissions")
         .select("permissions(key)")
-        .eq("profile_id", p.id);
+        .eq("profile_id", profile.id);
 
       const permissions = (permData || [])
         .map((row: { permissions: { key: string }[] }) => row.permissions?.[0]?.key)
         .filter((k): k is string => Boolean(k));
 
-      const user = buildUser(p, permissions);
+      const user = buildUser(profile, permissions);
       setState({ user, loading: false, error: null });
       return user;
     } catch (err: unknown) {
@@ -153,11 +154,13 @@ export function useAuth() {
           return { success: false, error: error?.message || "Invalid credentials" };
         }
         // Fetch profile immediately to determine redirect
-        const { data: profile } = await supabase
+        const { data: profileData } = await supabase
           .from("profiles")
           .select("password_changed, role, user_category, is_active")
           .eq("id", data.user.id)
           .single();
+
+        const profile = profileData as unknown as { password_changed: boolean; role: string; user_category: string; is_active: boolean } | null;
 
         if (!profile || !profile.is_active) {
           await supabase.auth.signOut();

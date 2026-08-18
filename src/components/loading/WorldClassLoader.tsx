@@ -1,10 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { RefreshCw, AlertTriangle } from "lucide-react";
 
 const SCHOOL_NAME = "BISHOP DAVIS JOY ACADEMY";
 const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+
+interface WorldClassLoaderProps {
+  message?: string;
+  subMessage?: string;
+  timeoutSeconds?: number;
+  onTimeout?: () => void;
+  error?: string;
+}
 
 function useScrambleText(finalText: string, trigger: boolean, speed = 28) {
   const [display, setDisplay] = useState("");
@@ -53,7 +62,6 @@ function MonitorSVG({ phase }: { phase: "hidden" | "building" | "ready" | "done"
       }}
       transition={{ type: "spring", stiffness: 260, damping: 20, delay: phase === "hidden" ? 0 : 0.2 }}
     >
-      {/* Stand */}
       <motion.rect
         x="85" y="130" width="30" height="12" rx="2"
         fill="#1e293b"
@@ -69,7 +77,6 @@ function MonitorSVG({ phase }: { phase: "hidden" | "building" | "ready" | "done"
         transition={{ delay: 0.6, type: "spring" }}
         style={{ transformOrigin: "100px 145px" }}
       />
-      {/* Bezel */}
       <motion.rect
         x="20" y="20" width="160" height="110" rx="10"
         fill="#0f172a"
@@ -79,7 +86,6 @@ function MonitorSVG({ phase }: { phase: "hidden" | "building" | "ready" | "done"
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
       />
-      {/* Screen */}
       <motion.rect
         x="28" y="28" width="144" height="94" rx="4"
         fill="#020617"
@@ -87,7 +93,6 @@ function MonitorSVG({ phase }: { phase: "hidden" | "building" | "ready" | "done"
         animate={{ opacity: 1 }}
         transition={{ delay: 0.45 }}
       />
-      {/* Screen glow */}
       <motion.rect
         x="28" y="28" width="144" height="94" rx="4"
         fill="url(#screenGlow)"
@@ -116,15 +121,10 @@ function GraduationCapSVG() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 1.4, type: "spring", stiffness: 200 }}
     >
-      {/* Mortarboard top */}
       <path d="M4 18L28 8L52 18L28 28L4 18Z" fill="#1e293b" stroke="#475569" strokeWidth="1.2" />
-      {/* Top surface */}
       <path d="M4 18L28 12L52 18" fill="#0f172a" />
-      {/* Cylindrical band */}
       <rect x="20" y="26" width="16" height="10" rx="2" fill="#1e293b" stroke="#475569" strokeWidth="1" />
-      {/* Gold button */}
       <circle cx="28" cy="18" r="3" fill="#d4a843" />
-      {/* Tassel */}
       <motion.path
         d="M48 18C48 18 50 24 50 28C50 32 48 36 46 38"
         stroke="#d4a843"
@@ -134,7 +134,6 @@ function GraduationCapSVG() {
         animate={{ pathLength: 1 }}
         transition={{ delay: 1.8, duration: 0.6 }}
       />
-      {/* Tassel fringe */}
       <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2 }}>
         <line x1="44" y1="38" x2="42" y2="42" stroke="#d4a843" strokeWidth="1" />
         <line x1="46" y1="38" x2="45" y2="42" stroke="#d4a843" strokeWidth="1" />
@@ -235,16 +234,25 @@ function FloatingShapes() {
 export default function WorldClassLoader({
   message = "Preparing your portal",
   subMessage = "Bishop Davis Joy Academy",
-}: {
-  message?: string;
-  subMessage?: string;
-}) {
+  timeoutSeconds,
+  onTimeout,
+  error: propError,
+}: WorldClassLoaderProps) {
   const [phase, setPhase] = useState<"hidden" | "building" | "ready" | "done">("hidden");
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [loopKey, setLoopKey] = useState(0);
+  const [timedOut, setTimedOut] = useState(false);
   const { display: scrambledText, done: textDone } = useScrambleText(SCHOOL_NAME, phase === "ready", 24);
 
+  const handleReload = useCallback(() => {
+    window.location.reload();
+  }, []);
+
   useEffect(() => {
+    if (propError) {
+      setTimedOut(true);
+      return;
+    }
     const t1 = setTimeout(() => setPhase("building"), 100);
     const t2 = setTimeout(() => setPhase("ready"), 900);
     const t3 = setTimeout(() => setShowSkeleton(true), 2600);
@@ -256,14 +264,44 @@ export default function WorldClassLoader({
       setPhase("hidden");
       setLoopKey((k) => k + 1);
     }, 5800);
+
+    let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+    if (timeoutSeconds && timeoutSeconds > 0) {
+      timeoutTimer = setTimeout(() => {
+        setTimedOut(true);
+        if (onTimeout) onTimeout();
+      }, timeoutSeconds * 1000);
+    }
+
     return () => {
       clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
     };
-  }, [loopKey]);
+  }, [loopKey, timeoutSeconds, onTimeout, propError]);
+
+  // Error state
+  if (timedOut || propError) {
+    return (
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950 px-6">
+        <div className="w-14 h-14 rounded-xl bg-red-500/8 border border-red-500/15 flex items-center justify-center mb-5">
+          <AlertTriangle className="w-6 h-6 text-red-400" />
+        </div>
+        <h2 className="text-lg font-semibold text-white mb-2">Unable to load</h2>
+        <p className="text-sm text-slate-400 max-w-sm text-center mb-6">
+          {propError || "The page is taking longer than expected to load."}
+        </p>
+        <button
+          onClick={handleReload}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded-xl text-sm transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" /> Reload Page
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div key={loopKey} className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950">
-      {/* Subtle ambient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-amber-500/[0.03] blur-3xl rounded-full" />
         <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-emerald-500/[0.02] blur-3xl rounded-full" />
@@ -271,21 +309,14 @@ export default function WorldClassLoader({
 
       <FloatingShapes />
 
-      {/* Main scene */}
       <div className="relative flex flex-col items-center">
         <WifiRadar />
-
         <MonitorSVG phase={phase} />
 
-        {/* Text on screen */}
         <div className="absolute top-[42px] left-1/2 -translate-x-1/2 text-center w-[140px]">
           <AnimatePresence>
             {phase === "ready" && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <p className="text-[8px] font-mono text-amber-400/90 tracking-[0.15em] leading-tight">
                   {scrambledText}
                 </p>
@@ -307,16 +338,13 @@ export default function WorldClassLoader({
           </AnimatePresence>
         </div>
 
-        {/* Graduation cap centered on screen */}
         <div className="absolute top-[58px] left-1/2 -translate-x-1/2">
           <GraduationCapSVG />
         </div>
 
-        {/* Skeleton bars below */}
         <SkeletonBars visible={showSkeleton} />
       </div>
 
-      {/* Bottom text */}
       <motion.div
         className="mt-10 text-center"
         initial={{ opacity: 0, y: 8 }}

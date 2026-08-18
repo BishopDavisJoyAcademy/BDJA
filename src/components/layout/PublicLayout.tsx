@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail, BookOpen, GraduationCap, Library, HelpCircle, Download,
   Search, Menu, X, ArrowRight, Send, XCircle, CheckCircle

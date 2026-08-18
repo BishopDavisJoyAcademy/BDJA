@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import NextImage from "next/image";
 import { useState } from "react";
 import { X, FileText, Image, Video, Music, Link2, BarChart3, PenTool, ExternalLink } from "lucide-react";
 import { AttachmentFile, PollOption } from "@/types/attachments";

@@ -1,6 +1,5 @@
 "use client";
 
-import { PublicLayout } from "@/components/layout/PublicLayout";
 import Link from "next/link";
 import { BookOpen, Video, Library, HelpCircle, Download, GraduationCap } from "lucide-react";
 
@@ -14,8 +13,7 @@ const resources = [
 
 export default function StudentsPage() {
   return (
-    <PublicLayout>
-      <div className="max-w-4xl mx-auto px-4 py-16">
+    <div className="max-w-4xl mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold text-[#1e3a5f] mb-4">Students</h1>
         <p className="text-gray-600 mb-10">Everything you need for your learning journey at Bishop Davis Joy Academy.</p>
         <div className="grid md:grid-cols-2 gap-4">
@@ -35,6 +33,5 @@ export default function StudentsPage() {
           })}
         </div>
       </div>
-    </PublicLayout>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { PublicLayout } from "@/components/layout/PublicLayout";
 import { FileText } from "lucide-react";
 
 const notices = [
@@ -13,8 +12,7 @@ const notices = [
 
 export default function NoticesPage() {
   return (
-    <PublicLayout>
-      <div className="max-w-4xl mx-auto px-4 py-16">
+    <div className="max-w-4xl mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold text-[#1e3a5f] mb-6">Notice Board</h1>
         <p className="text-gray-600 mb-8">Important announcements and notices for the BDJA community.</p>
         <div className="space-y-3">
@@ -31,6 +29,5 @@ export default function NoticesPage() {
           ))}
         </div>
       </div>
-    </PublicLayout>
   );
 }

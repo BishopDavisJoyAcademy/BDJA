@@ -6,13 +6,12 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail, BookOpen, GraduationCap, Library, HelpCircle, Download,
-  Search, Menu, X, ArrowRight, Send, XCircle, CheckCircle
+  Search, Menu, X, ArrowRight, Send, XCircle, CheckCircle, LogIn
 } from "lucide-react";
 
 const topLinks = [
   { label: "Student/Staff Email", action: "contact", icon: Mail },
   { label: "VORA", href: "/vora", icon: BookOpen },
-  { label: "Student/Staff Portal", href: "/login", icon: GraduationCap },
   { label: "Library", href: "/library", icon: Library },
   { label: "Help Desk", href: "/help", icon: HelpCircle },
   { label: "Downloads", href: "/downloads", icon: Download },
@@ -77,10 +76,12 @@ ${contactForm.message}`);
               );
             })}
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 hover:bg-amber-500/15 transition-colors text-xs font-medium">
-              <GraduationCap className="w-3 h-3" /> Sign In
+          <div className="flex items-center gap-2">
+            <Link href="/login" className="flex items-center gap-1.5 text-slate-400 hover:text-amber-400 transition-colors text-xs">
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Student/Staff Portal</span>
             </Link>
+            <span className="text-slate-700 text-xs">|</span>
             <button onClick={() => setSearchOpen(!searchOpen)} className="p-1.5 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50">
               <Search className="w-3.5 h-3.5" />
             </button>

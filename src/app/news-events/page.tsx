@@ -1,6 +1,5 @@
 "use client";
 
-import { PublicLayout } from "@/components/layout/PublicLayout";
 import { FileText } from "lucide-react";
 
 const newsItems = [
@@ -13,8 +12,7 @@ const newsItems = [
 
 export default function NewsEventsPage() {
   return (
-    <PublicLayout>
-      <div className="max-w-4xl mx-auto px-4 py-16">
+    <div className="max-w-4xl mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold text-[#1e3a5f] mb-6">News & Events</h1>
         <p className="text-gray-600 mb-8">Stay updated with the latest happenings at Bishop Davis Joy Academy.</p>
         <div className="space-y-4">
@@ -34,6 +32,5 @@ export default function NewsEventsPage() {
           ))}
         </div>
       </div>
-    </PublicLayout>
   );
 }

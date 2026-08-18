@@ -1,12 +1,10 @@
 "use client";
 
-import { PublicLayout } from "@/components/layout/PublicLayout";
 import { Image as ImageIcon } from "lucide-react";
 
 export default function GalleryPage() {
   return (
-    <PublicLayout>
-      <div className="max-w-5xl mx-auto px-4 py-16">
+    <div className="max-w-5xl mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold text-[#1e3a5f] mb-6">Photo Gallery</h1>
         <p className="text-gray-600 mb-10">Moments captured at Bishop Davis Joy Academy.</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -17,6 +15,5 @@ export default function GalleryPage() {
           ))}
         </div>
       </div>
-    </PublicLayout>
   );
 }

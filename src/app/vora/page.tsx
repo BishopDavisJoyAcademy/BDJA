@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { PublicLayout } from "@/components/layout/PublicLayout";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { AuthGateModal } from "@/components/vora/AuthGateModal";
 import { VideoPlayerModal } from "@/components/vora/VideoPlayerModal";
@@ -197,8 +196,7 @@ export default function VoraPublicPage() {
   }
 
   return (
-    <PublicLayout>
-      {/* ===== HERO ===== */}
+    {/* ===== HERO ===== */}
       <section className="relative overflow-hidden py-16" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #1e3a5f 50%, #0f1f33 100%)' }}>
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #d4a843 0%, transparent 70%)', filter: 'blur(100px)' }} />
@@ -485,6 +483,5 @@ export default function VoraPublicPage() {
       {/* Modals */}
       <AuthGateModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} videoTitle={authModalTitle} />
       <VideoPlayerModal isOpen={playerOpen} onClose={() => { setPlayerOpen(false); setSelectedVideo(null); fetchContinueWatching(); }} video={selectedVideo} />
-    </PublicLayout>
   );
 }

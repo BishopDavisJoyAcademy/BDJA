@@ -1,6 +1,5 @@
 "use client";
 
-import { PublicLayout } from "@/components/layout/PublicLayout";
 import { GraduationCap } from "lucide-react";
 
 const grades = [
@@ -17,8 +16,7 @@ const grades = [
 
 export default function AcademicsPage() {
   return (
-    <PublicLayout>
-      <div className="max-w-5xl mx-auto px-4 py-16">
+    <div className="max-w-5xl mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold text-[#1e3a5f] mb-4">Academics</h1>
         <p className="text-gray-600 mb-10">We follow the Competency Based Curriculum (CBC) designed to develop skills, knowledge, and attitudes for holistic growth.</p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -32,6 +30,5 @@ export default function AcademicsPage() {
           ))}
         </div>
       </div>
-    </PublicLayout>
   );
 }

@@ -63,7 +63,7 @@ const FEATURES = [
 function BlindsHero() {
   const [current, setCurrent] = useState(0);
   const [blindPhase, setBlindPhase] = useState<"idle" | "closing" | "opening">("idle");
-  const BLIND_COUNT = 8;
+  const BLIND_COUNT = 6;
 
   const nextSlide = useCallback(() => {
     if (blindPhase !== "idle") return;
@@ -71,28 +71,29 @@ function BlindsHero() {
     setTimeout(() => {
       setCurrent((p) => (p + 1) % HERO_SLIDES.length);
       setBlindPhase("opening");
-      setTimeout(() => setBlindPhase("idle"), 800);
-    }, 700);
+      setTimeout(() => setBlindPhase("idle"), 700);
+    }, 600);
   }, [blindPhase]);
 
   useEffect(() => {
-    const timer = setInterval(nextSlide, 6000);
+    const timer = setInterval(nextSlide, 7000);
     return () => clearInterval(timer);
   }, [nextSlide]);
 
   return (
-    <section className="relative h-[85vh] min-h-[560px] max-h-[900px] overflow-hidden bg-slate-950">
-      {/* Background image (always current) */}
+    <section className="relative h-[70vh] sm:h-[80vh] min-h-[480px] max-h-[800px] overflow-hidden bg-slate-950">
+      {/* Background image — uses object-cover with center positioning, responsive */}
       <div className="absolute inset-0">
         <Image
           src={HERO_SLIDES[current].src}
           alt={HERO_SLIDES[current].alt}
           fill
-          className="object-cover"
+          className="object-cover object-center"
+          sizes="100vw"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30" />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-transparent to-slate-950/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-slate-950/20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-transparent to-slate-950/30" />
       </div>
 
       {/* Blinds overlay */}
@@ -100,7 +101,7 @@ function BlindsHero() {
         {Array.from({ length: BLIND_COUNT }).map((_, i) => {
           const isClosing = blindPhase === "closing";
           const isOpening = blindPhase === "opening";
-          const delay = i * 0.04;
+          const delay = i * 0.05;
           return (
             <motion.div
               key={i}
@@ -110,8 +111,8 @@ function BlindsHero() {
                 scaleY: isClosing ? 1 : isOpening ? 0 : 0,
               }}
               transition={{
-                duration: 0.5,
-                delay: isClosing ? delay : isOpening ? (BLIND_COUNT - 1 - i) * 0.04 : 0,
+                duration: 0.45,
+                delay: isClosing ? delay : isOpening ? (BLIND_COUNT - 1 - i) * 0.05 : 0,
                 ease: [0.4, 0, 0.2, 1],
               }}
               style={{ transformOrigin: "top" }}
@@ -121,29 +122,29 @@ function BlindsHero() {
       </div>
 
       {/* Content */}
-      <div className="relative z-20 h-full flex flex-col justify-end pb-20 px-6 max-w-7xl mx-auto">
+      <div className="relative z-20 h-full flex flex-col justify-end pb-16 sm:pb-20 px-5 sm:px-6 max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={current}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.5, delay: blindPhase === "opening" ? 0.4 : 0 }}
-            className="max-w-2xl"
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.5, delay: blindPhase === "opening" ? 0.35 : 0 }}
+            className="max-w-xl"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium mb-4">
               <Star className="w-3 h-3" />
               Excellence in Education
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white leading-tight tracking-tight">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-tight tracking-tight">
               Shaping Tomorrow&apos;s
               <span className="block text-amber-400">Leaders Today</span>
             </h1>
-            <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed max-w-lg">
+            <p className="mt-3 text-sm sm:text-base text-slate-300 leading-relaxed max-w-md">
               At Bishop Davis Joy Academy, we believe every child deserves a foundation
               of excellence. Join us in nurturing minds, building character, and inspiring greatness.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
                 href="/admissions"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-xl text-sm transition-colors"
@@ -161,7 +162,7 @@ function BlindsHero() {
         </AnimatePresence>
 
         {/* Slide indicators */}
-        <div className="flex items-center gap-2 mt-10">
+        <div className="flex items-center gap-2 mt-8">
           {HERO_SLIDES.map((_, i) => (
             <button
               key={i}
@@ -171,8 +172,8 @@ function BlindsHero() {
                   setTimeout(() => {
                     setCurrent(i);
                     setBlindPhase("opening");
-                    setTimeout(() => setBlindPhase("idle"), 800);
-                  }, 700);
+                    setTimeout(() => setBlindPhase("idle"), 700);
+                  }, 600);
                 }
               }}
               className={`h-1 rounded-full transition-all duration-500 ${
@@ -189,29 +190,45 @@ function BlindsHero() {
 function InfiniteMarquee() {
   const doubled = [...GRADES, ...GRADES, ...GRADES];
   return (
-    <section className="py-16 bg-slate-950 border-y border-slate-800/40 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 mb-8">
-        <div className="flex items-center gap-3 mb-2">
+    <section className="py-14 bg-slate-950 border-y border-slate-800/40 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 mb-8">
+        <div className="flex items-center gap-3 mb-1">
           <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
             <BookOpen className="w-4 h-4 text-amber-400" />
           </div>
-          <h2 className="text-xl font-semibold text-white">Grades Offered</h2>
+          <h2 className="text-lg font-semibold text-white">Grades Offered</h2>
         </div>
-        <p className="text-sm text-slate-400">Comprehensive programs from early years through upper primary</p>
+        <p className="text-sm text-slate-500">Comprehensive programs from early years through upper primary</p>
       </div>
 
       <div className="relative">
-        <div className="marquee-track flex gap-5 animate-marquee">
+        {/* Fade edges */}
+        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none" />
+
+        <div className="marquee-track flex gap-4 animate-marquee">
           {doubled.map((grade, i) => (
             <div
               key={`${grade.name}-${i}`}
-              className="shrink-0 w-44 bg-slate-900/60 border border-slate-700/30 rounded-xl p-4 flex flex-col items-center text-center hover:border-amber-500/20 hover:bg-slate-800/60 transition-all group"
+              className="shrink-0 w-36 sm:w-40 group relative rounded-xl overflow-hidden border border-slate-700/30 hover:border-amber-500/25 transition-all"
             >
-              <div className="w-14 h-14 rounded-xl bg-slate-800/50 border border-slate-700/40 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                <Image src={grade.icon} alt={grade.name} width={36} height={36} className="object-contain" />
+              {/* The image IS the card */}
+              <div className="relative w-full aspect-square">
+                <Image
+                  src={grade.icon}
+                  alt={grade.name}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  sizes="160px"
+                />
+                {/* Gradient overlay for text readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
+                {/* Text overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-3">
+                  <p className="text-white font-semibold text-sm">{grade.name}</p>
+                  <p className="text-slate-400 text-[11px] mt-0.5">{grade.level}</p>
+                </div>
               </div>
-              <p className="text-white font-medium text-sm">{grade.name}</p>
-              <p className="text-slate-500 text-xs mt-0.5">{grade.level}</p>
             </div>
           ))}
         </div>
@@ -223,7 +240,7 @@ function InfiniteMarquee() {
 function Features() {
   return (
     <section className="py-20 bg-slate-950">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6">
         <div className="text-center mb-14">
           <h2 className="text-2xl sm:text-3xl font-semibold text-white">Why Choose BDJA?</h2>
           <p className="mt-2 text-slate-400 text-sm max-w-md mx-auto">
@@ -265,8 +282,8 @@ function Stats() {
   ];
   return (
     <section className="py-16 bg-slate-900/30 border-y border-slate-800/40">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {stats.map((s, i) => {
             const Icon = s.icon;
             return (
@@ -293,7 +310,7 @@ function Stats() {
 function QuickInfo() {
   return (
     <section className="py-20 bg-slate-950">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
           <div>
             <h2 className="text-2xl sm:text-3xl font-semibold text-white leading-snug">
@@ -331,12 +348,13 @@ function QuickInfo() {
               </Link>
             </div>
           </div>
-          <div className="relative h-80 lg:h-96 rounded-2xl overflow-hidden border border-slate-700/30">
+          <div className="relative h-72 sm:h-80 lg:h-96 rounded-2xl overflow-hidden border border-slate-700/30">
             <Image
               src="/slides/hero-2.jpg"
               alt="BDJA Students"
               fill
-              className="object-cover"
+              className="object-cover object-center"
+              sizes="(max-width: 1024px) 100vw, 50vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent" />
           </div>
@@ -349,7 +367,7 @@ function QuickInfo() {
 function CTA() {
   return (
     <section className="py-20 bg-slate-950">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6">
         <div className="relative rounded-2xl overflow-hidden border border-slate-700/30 bg-slate-900/40 p-10 sm:p-14 text-center">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-amber-500/5 blur-3xl rounded-full pointer-events-none" />
           <h2 className="text-2xl sm:text-3xl font-semibold text-white relative z-10">

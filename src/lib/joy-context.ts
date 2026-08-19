@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "./supabase-server";
 import { JoyContext } from "@/types/joy";
+import { getUserPermissions } from "./permissions";
 
 export async function buildJoyContext(userId: string): Promise<JoyContext> {
   const admin = getSupabaseAdmin();
@@ -24,6 +25,14 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
     ctx.userName = profile.full_name;
     ctx.userCategory = profile.user_category;
     ctx.campusId = profile.campus_id || undefined;
+  }
+
+  // Permissions
+  try {
+    const perms = await getUserPermissions(userId);
+    ctx.availableActions = buildAvailableActions(profile?.user_category || "student", perms);
+  } catch {
+    ctx.availableActions = buildAvailableActions(profile?.user_category || "student", []);
   }
 
   // Student data
@@ -73,6 +82,7 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
         .from("assignments")
         .select("*, subjects(name)")
         .eq("class_id", student.class_id)
+        .gte("due_date", new Date().toISOString().split("T")[0])
         .order("due_date", { ascending: true })
         .limit(10);
       ctx.assignments = assignments || [];
@@ -92,7 +102,7 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
     // Fees
     const { data: fees } = await admin
       .from("fee_payments")
-      .select("*")
+      .select("amount_paid, balance")
       .eq("student_id", userId)
       .order("created_at", { ascending: false })
       .limit(5);
@@ -102,37 +112,25 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
   // Parent data
   if (profile?.user_category === "parent") {
     const { data: children } = await admin
-      .from("parent_children")
-      .select("*, students(*, classes(name))")
+      .from("parent_students")
+      .select("students(admission_number, full_name, grade_level, classes(name))")
       .eq("parent_id", userId);
     ctx.children = children || [];
 
+    // Get fee info for children
     if (children && children.length > 0) {
-      const childIds = children.map((c: any) => c.student_id);
-
-      const { data: grades } = await admin
-        .from("assessments")
-        .select("*, subjects(name)")
-        .in("student_id", childIds)
-        .order("created_at", { ascending: false })
-        .limit(10);
-      ctx.grades = grades || [];
-
-      const { data: fees } = await admin
-        .from("fee_payments")
-        .select("*")
-        .in("student_id", childIds)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      ctx.fees = fees || [];
-
-      const { data: attendance } = await admin
-        .from("attendance")
-        .select("*")
-        .in("student_id", childIds)
-        .order("date", { ascending: false })
-        .limit(30);
-      ctx.attendance = attendance || [];
+      const studentIds = children
+        .map((c: Record<string, unknown>) => (c.students as Record<string, unknown> || {}).id)
+        .filter(Boolean) as string[];
+      if (studentIds.length > 0) {
+        const { data: fees } = await admin
+          .from("fee_payments")
+          .select("amount_paid, balance, student_id")
+          .in("student_id", studentIds)
+          .order("created_at", { ascending: false })
+          .limit(10);
+        ctx.fees = fees || [];
+      }
     }
   }
 
@@ -142,43 +140,87 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
       designation: string | null;
       department: string | null;
     }
-
     const { data: staffRaw } = await admin
       .from("staff")
       .select("designation, department")
-      .eq("id", userId)
+      .eq("profile_id", userId)
       .single();
     const staff = staffRaw as JoyStaffRow | null;
-
     if (staff) {
       ctx.designation = staff.designation || undefined;
     }
 
-    // Classes they teach
-    const { data: classes } = await admin
-      .from("class_subjects")
-      .select("*, classes(name, grade_level), subjects(name)")
-      .eq("teacher_id", userId);
-    ctx.timetable = classes || [];
-
-    // Pending assignments they created
-    const { data: assignments } = await admin
-      .from("assignments")
-      .select("*")
+    // Teaching schedule
+    const { data: timetable } = await admin
+      .from("timetable")
+      .select("*, subjects(name), classes(name)")
       .eq("teacher_id", userId)
-      .order("due_date", { ascending: true })
-      .limit(10);
-    ctx.assignments = assignments || [];
+      .order("day_of_week", { ascending: true })
+      .limit(20);
+    ctx.timetable = timetable || [];
   }
 
-  // Calendar events (all users)
-  const { data: events } = await admin
+  // Calendar events for all
+  const { data: calendarEvents } = await admin
     .from("calendar_events")
     .select("*")
-    .gte("start_date", new Date().toISOString())
-    .order("start_date", { ascending: true })
+    .gte("date", new Date().toISOString().split("T")[0])
+    .order("date", { ascending: true })
     .limit(10);
-  ctx.calendarEvents = events || [];
+  ctx.calendarEvents = calendarEvents || [];
+
+  // VORA results
+  const { data: voraResults } = await admin
+    .from("vora_content")
+    .select("title, subject, grade_level, video_url, thumbnail")
+    .limit(5);
+  ctx.voraResults = voraResults || [];
 
   return ctx;
+}
+
+function buildAvailableActions(category: string, permissions: string[]): string[] {
+  const actions: string[] = [];
+
+  // Common actions
+  actions.push("Search the web and YouTube for educational content");
+  actions.push("Navigate to different pages in the app");
+
+  if (category === "student") {
+    actions.push("View your timetable");
+    actions.push("Check your grades");
+    actions.push("View pending assignments");
+    actions.push("Check your attendance");
+    actions.push("View fee balance");
+    actions.push("Watch VORA learning videos");
+    actions.push("Send messages to teachers");
+  }
+
+  if (category === "parent") {
+    actions.push("View your children's grades");
+    actions.push("Check fee balances");
+    actions.push("View upcoming events");
+    actions.push("Send messages to teachers");
+  }
+
+  if (category === "staff" || category === "teacher") {
+    actions.push("View your teaching schedule");
+    actions.push("Create assignments");
+    actions.push("Enter student marks");
+    actions.push("Manage attendance");
+    actions.push("Send messages to parents and students");
+    actions.push("Access the library");
+  }
+
+  if (category === "admin" || permissions.includes("admin_full_access")) {
+    actions.push("Manage timetable");
+    actions.push("Manage CMS pages");
+    actions.push("View student analytics");
+    actions.push("Manage admissions");
+    actions.push("Send school-wide announcements");
+    actions.push("Manage staff permissions");
+    actions.push("Access all admin functions");
+  }
+
+  return actions;
 }

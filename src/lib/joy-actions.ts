@@ -28,8 +28,8 @@ export async function executeJoyAction(
           return { success: false, message: "No data provided for create action" };
         }
         const { data, error } = await admin
-          .from(actionPayload.table as never)
-          .insert([actionPayload.data as never])
+          .from(actionPayload.table as string)
+          .insert([actionPayload.data as string])
           .select()
           .single();
         if (error) return { success: false, message: error.message };
@@ -45,8 +45,8 @@ export async function executeJoyAction(
           return { success: false, message: "ID and data required for update" };
         }
         const { data, error } = await admin
-          .from(actionPayload.table as never)
-          .update(actionPayload.data as never)
+          .from(actionPayload.table as string)
+          .update(actionPayload.data as string)
           .eq("id", actionPayload.id)
           .select()
           .single();
@@ -63,7 +63,7 @@ export async function executeJoyAction(
           return { success: false, message: "ID required for delete" };
         }
         const { error } = await admin
-          .from(actionPayload.table as never)
+          .from(actionPayload.table as string)
           .delete()
           .eq("id", actionPayload.id);
         if (error) return { success: false, message: error.message };
@@ -71,10 +71,10 @@ export async function executeJoyAction(
       }
 
       case "query": {
-        let query = admin.from(actionPayload.table as never).select("*");
+        let query = admin.from(actionPayload.table as string).select("*");
         if (actionPayload.filters) {
           for (const [key, value] of Object.entries(actionPayload.filters)) {
-            query = query.eq(key, value as never);
+            query = query.eq(key, value as string);
           }
         }
         const { data, error } = await query;

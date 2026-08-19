@@ -3,6 +3,16 @@ import { checkAccountLockout } from "./security";
 import { ValidatedSession, AuthError, UserRole, UserCategory } from "@/types";
 import { restoreMissingProfile } from "./auth";
 
+/**
+ * Type-safe runtime check for account suspension.
+ * Supabase generated types may narrow `is_active` to `true | null`,
+ * but the database column is `boolean | null`. We accept `unknown`
+ * and use strict equality to safely detect explicit `false`.
+ */
+function isAccountSuspended(value: unknown): value is false {
+  return value === false;
+}
+
 export class AuthRequiredError extends Error {
   statusCode: number;
   constructor(message: string, statusCode = 401) {
@@ -104,7 +114,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
     }
 
     // CRITICAL FIX: Only explicit false means inactive. NULL/true = active.
-    if (profile.is_active === false) {
+    if (isAccountSuspended(profile.is_active)) {
       return { session: null, error: { code: "ACCOUNT_SUSPENDED", message: "Your account has been suspended. Please contact the administrator." } };
     }
 
@@ -125,7 +135,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
       campusId: profile.campus_id,
       passwordChanged: profile.password_changed,
       onboardingCompleted: profile.onboarding_completed,
-      isActive: profile.is_active !== false,
+      isActive: !isAccountSuspended(profile.is_active),
       permissions,
     };
 

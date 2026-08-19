@@ -134,6 +134,8 @@ export interface CreateStaffResult {
   email: string;
   tempPassword: string;
   success: boolean;
+  message: string;
+  error?: string;
 }
 
 export async function createStaff(options: CreateStaffOptions): Promise<CreateStaffResult> {
@@ -142,7 +144,7 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
   // Check email uniqueness via DB (not listing all users)
   const { data: existing } = await admin.from("profiles").select("id").eq("email", options.email.toLowerCase()).maybeSingle();
   if (existing) {
-    throw new Error("A user with this email already exists");
+    return { userId: "", staffId: "", email: options.email, tempPassword: "", success: false, message: "A user with this email already exists", error: "A user with this email already exists" };
   }
 
   const userResult = await createUser({
@@ -256,7 +258,7 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
   return { ...userResult, studentId: userResult.userId, tempPassword: pin };
 }
 
-export async function restoreMissingProfile(userId: string): Promise<boolean> {
+export async function restoreMissingProfile(userId: string, email?: string): Promise<boolean> {
   const admin = getSupabaseAdmin();
   try {
     console.log("[restoreMissingProfile] Starting for userId:", userId);
@@ -292,7 +294,7 @@ export async function restoreMissingProfile(userId: string): Promise<boolean> {
 
     const insertData = {
       id: userId,
-      email: authUser.user.email || "",
+      email: authUser.user.email || email || "",
       full_name: authUser.user.user_metadata?.full_name || "User",
       role,
       user_category: userCategory,

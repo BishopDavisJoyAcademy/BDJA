@@ -127,5 +127,42 @@ export function useAuth() {
     router.push("/login");
   }, [router]);
 
-  return { user: state.user, loading: state.loading, error: state.error, signOut, refresh: fetchUser };
+  const signIn = useCallback(async (email: string, password: string): Promise<{ success: boolean; error: string | null; mustChangePassword?: boolean; redirectTo?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error || !data.user) {
+        return { success: false, error: error?.message || "Invalid credentials" };
+      }
+      await fetchUser();
+      return { success: true, error: null };
+    } catch (err: any) {
+      return { success: false, error: err.message || "Login failed" };
+    }
+  }, [fetchUser]);
+
+  const signInStudent = useCallback(async (admissionNumber: string, pin: string): Promise<{ success: boolean; error: string | null; mustChangePassword?: boolean; redirectTo?: string }> => {
+    try {
+      const res = await fetch("/api/auth/student-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ admission_number: admissionNumber, pin }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || "Invalid admission number or PIN" };
+      }
+      if (data.session?.access_token && data.session?.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+      await fetchUser();
+      return { success: true, error: null };
+    } catch (err: any) {
+      return { success: false, error: err.message || "Login failed" };
+    }
+  }, [fetchUser]);
+
+  return { user: state.user, loading: state.loading, error: state.error, signIn, signInStudent, signOut, refresh: fetchUser };
 }

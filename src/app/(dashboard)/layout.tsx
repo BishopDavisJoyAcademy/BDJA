@@ -69,7 +69,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ People: true });
-  const [joyOpen, setJoyOpen] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
@@ -296,13 +295,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setJoyOpen(true)}
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Ask Joy AI
-            </button>
             <Link href="/profile" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
               <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-medium">
                 {user.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "?"}
@@ -319,7 +311,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Joy AI Chat */}
-      <JoyChat open={joyOpen} onClose={() => setJoyOpen(false)} />
+      <JoyChat />
     </div>
   );
 }

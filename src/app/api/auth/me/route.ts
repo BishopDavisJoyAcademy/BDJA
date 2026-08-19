@@ -5,24 +5,6 @@ import { getUserPermissions } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Type-safe helper to determine if an account is suspended.
- * Supabase generated types may narrow `is_active` to `true | null`,
- * but the database column is `boolean | null`. We accept `unknown`
- * and use a runtime check to safely handle all cases.
- */
-function isAccountSuspended(value: unknown): value is false {
-  return value === false;
-}
-
-/**
- * Type-safe helper to compute the effective active state.
- * NULL or missing = active (default). Only explicit false = inactive.
- */
-function computeIsActive(value: unknown): boolean {
-  return typeof value === "boolean" ? value : true;
-}
-
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
@@ -35,6 +17,7 @@ export async function GET(req: NextRequest) {
       role: string;
       user_category: string;
       campus_id: string | null;
+      is_active: boolean | null;
       password_changed: boolean;
       onboarding_completed: boolean;
       staff: { department: string | null; designation: string | null }[] | null;
@@ -46,14 +29,14 @@ export async function GET(req: NextRequest) {
       .select("*, staff(department, designation), students(admission_number, grade_level)")
       .eq("id", session.userId)
       .maybeSingle();
-
     const profile = profileRaw as MeProfileRow | null;
 
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    if (isAccountSuspended(profileRaw?.is_active)) {
+    // Only explicit false means inactive. NULL/true = active.
+    if (profile.is_active === false) {
       return NextResponse.json({ error: "Account suspended" }, { status: 403 });
     }
 
@@ -67,7 +50,7 @@ export async function GET(req: NextRequest) {
         role: profile.role,
         user_category: profile.user_category,
         campus_id: profile.campus_id,
-        is_active: computeIsActive(profileRaw?.is_active),
+        is_active: profile.is_active !== false,
         password_changed: profile.password_changed,
         onboarding_completed: profile.onboarding_completed,
         department: profile.staff?.[0]?.department || null,

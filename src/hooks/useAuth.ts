@@ -1,8 +1,26 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { getSupabaseClient } from "@/lib/supabase";
-import { AuthUser } from "@/types";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { UserRole, UserCategory } from "@/types";
+
+export interface AuthUser {
+  id: string;
+  email: string | null;
+  role: UserRole;
+  user_category: UserCategory;
+  full_name: string;
+  password_changed: boolean;
+  onboarding_completed: boolean;
+  is_active: boolean;
+  campus_id: string | null;
+  department?: string | null;
+  designation?: string | null;
+  admission_number?: string | null;
+  grade_level?: string | null;
+  permissions?: string[];
+}
 
 interface AuthState {
   user: AuthUser | null;
@@ -10,275 +28,104 @@ interface AuthState {
   error: { type: string; message: string } | null;
 }
 
-interface SignInResult {
-  success: boolean;
-  error: string | null;
-  mustChangePassword?: boolean;
-  userCategory?: string | null;
-  redirectTo?: string;
-}
-
-interface ProfileRow {
-  id: string;
-  email: string;
-  full_name: string | null;
-  role: string;
-  user_category: string | null;
-  campus_id: string | null;
-  avatar_url: string | null;
-  is_active: boolean | null;
-  password_changed: boolean;
-}
-
-const AUTH_TIMEOUT_MS = 15000;
-
-function getDashboardPath(category: string | null): string {
-  if (category === "admin") return "/admin";
-  if (category === "student") return "/student";
-  if (category === "parent") return "/parent";
-  if (category === "staff") return "/teacher";
-  return "/dashboard";
-}
-
 export function useAuth() {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    loading: true,
-    error: null,
-  });
-  const initRef = useRef(false);
-  const abortRef = useRef<AbortController | null>(null);
-
-  const buildUser = useCallback((p: ProfileRow, perms: string[]): AuthUser => ({
-    id: p.id,
-    email: p.email,
-    full_name: p.full_name,
-    role: p.role,
-    user_category: p.user_category,
-    campus_id: p.campus_id,
-    avatar_url: p.avatar_url,
-    is_active: p.is_active !== false,
-    must_change_password: !p.password_changed,
-    permissions: perms,
-  }), []);
+  const router = useRouter();
+  const [state, setState] = useState<AuthState>({ user: null, loading: true, error: null });
 
   const fetchUser = useCallback(async () => {
-    // Cancel any in-flight fetch
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortRef.current = controller;
-
     try {
-      const supabase = getSupabaseClient();
+      // Use getUser() for secure validation
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !currentUser) {
+        setState({ user: null, loading: false, error: null });
+        return;
+      }
+
+      // Get session for the token
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        if (!controller.signal.aborted) {
-          setState({ user: null, loading: false, error: null });
-        }
-        return null;
+      const token = session?.access_token;
+      if (!token) {
+        setState({ user: null, loading: false, error: { type: "session_expired", message: "Session expired" } });
+        return;
       }
 
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      const profile = profileData as unknown as ProfileRow | null;
-
-      if (profileError || !profile) {
-        if (!controller.signal.aborted) {
-          setState({ user: null, loading: false, error: { type: "profile_missing", message: "Account not found. Please contact support." } });
-        }
-        return null;
-      }
-
-      // CRITICAL FIX: Only explicit false means inactive
-      if (profile.is_active === false) {
-        if (!controller.signal.aborted) {
-          setState({ user: null, loading: false, error: { type: "account_suspended", message: "Account suspended. Please contact administration." } });
-        }
-        return null;
-      }
-
-      const { data: permData } = await supabase
-        .from("staff_permissions")
-        .select("permissions(key)")
-        .eq("profile_id", profile.id);
-
-      const permissions = (permData || [])
-        .map((row: { permissions: { key: string }[] }) => row.permissions?.[0]?.key)
-        .filter((k): k is string => Boolean(k));
-
-      const user = buildUser(profile, permissions);
-      if (!controller.signal.aborted) {
-        setState({ user, loading: false, error: null });
-      }
-      return user;
-    } catch (err: unknown) {
-      if (controller.signal.aborted) return null;
-      const msg = err instanceof Error ? err.message : "Auth initialization failed";
-      setState({ user: null, loading: false, error: { type: "auth", message: msg } });
-      return null;
-    }
-  }, [buildUser]);
-
-  useEffect(() => {
-    if (initRef.current) return;
-    initRef.current = true;
-
-    let timedOut = false;
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      setState((s) => {
-        if (s.loading) {
-          return { user: null, loading: false, error: { type: "timeout", message: "Authentication timed out. Please reload." } };
-        }
-        return s;
+      const response = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-    }, AUTH_TIMEOUT_MS);
 
-    fetchUser().finally(() => {
-      if (!timedOut) clearTimeout(timeoutId);
-    });
-
-    let listener: { subscription: { unsubscribe: () => void } } | null = null;
-    try {
-      const supabase = getSupabaseClient();
-      const { data: l } = supabase.auth.onAuthStateChange(
-        (event: string) => {
-          if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-            fetchUser();
-          }
-        }
-      );
-      listener = l;
-    } catch {
-      // Supabase not initialized
-    }
-
-    return () => {
-      clearTimeout(timeoutId);
-      listener?.subscription.unsubscribe();
-      if (abortRef.current) {
-        abortRef.current.abort();
-      }
-    };
-  }, [fetchUser]);
-
-  const signIn = useCallback(
-    async (email: string, password: string): Promise<SignInResult> => {
-      setState((s) => ({ ...s, loading: true, error: null }));
-      try {
-        const supabase = getSupabaseClient();
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error || !data.user) {
-          setState((s) => ({ ...s, loading: false, error: { type: "auth", message: error?.message || "Invalid credentials" } }));
-          return { success: false, error: error?.message || "Invalid credentials" };
-        }
-
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("password_changed, role, user_category, is_active")
-          .eq("id", data.user.id)
-          .single();
-
-        const profile = profileData as unknown as { password_changed: boolean; role: string; user_category: string; is_active: boolean | null } | null;
-
-        if (!profile) {
+      if (!response.ok) {
+        if (response.status === 401) {
           await supabase.auth.signOut();
-          setState({ user: null, loading: false, error: { type: "profile_missing", message: "Account not found" } });
-          return { success: false, error: "Account not found" };
+          setState({ user: null, loading: false, error: { type: "session_expired", message: "Session expired" } });
+          return;
         }
-
-        if (profile.is_active === false) {
-          await supabase.auth.signOut();
-          setState({ user: null, loading: false, error: { type: "account_suspended", message: "Account suspended" } });
-          return { success: false, error: "Account suspended" };
-        }
-
-        const user = await fetchUser();
-        const redirectTo = getDashboardPath(profile.user_category);
-        return {
-          success: true,
-          error: null,
-          mustChangePassword: !profile.password_changed,
-          userCategory: profile.user_category,
-          redirectTo,
-        };
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Invalid credentials";
-        setState((s) => ({ ...s, loading: false, error: { type: "auth", message } }));
-        return { success: false, error: message };
+        throw new Error("Failed to load user data");
       }
-    },
-    [fetchUser]
-  );
 
-  const signInStudent = useCallback(
-    async (admissionNumber: string, pin: string): Promise<SignInResult> => {
-      setState((s) => ({ ...s, loading: true, error: null }));
-      try {
-        const res = await fetch("/api/auth/student-login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ admission_number: admissionNumber, pin }),
-        });
+      const data = await response.json();
+      const profile = data.user;
+      if (!profile) throw new Error("Profile not found");
 
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          setState((s) => ({ ...s, loading: false, error: { type: "auth", message: data.error || "Invalid admission number or PIN" } }));
-          return { success: false, error: data.error || "Invalid admission number or PIN" };
-        }
-
-        if (data.session?.access_token && data.session?.refresh_token) {
-          const supabase = getSupabaseClient();
-          await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-          });
-        }
-
-        const user = await fetchUser();
-        return {
-          success: true,
-          error: null,
-          mustChangePassword: user?.must_change_password,
-          userCategory: user?.user_category,
-          redirectTo: getDashboardPath(user?.user_category || "student"),
-        };
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Login failed";
-        setState((s) => ({ ...s, loading: false, error: { type: "auth", message } }));
-        return { success: false, error: message };
+      if (profile.is_active === false) {
+        await supabase.auth.signOut();
+        setState({ user: null, loading: false, error: { type: "account_suspended", message: "Account suspended" } });
+        return;
       }
-    },
-    [fetchUser]
-  );
 
-  const signOut = useCallback(async () => {
-    try {
-      const supabase = getSupabaseClient();
-      await supabase.auth.signOut();
-    } catch {
-      // Ignore
+      const rawRole = profile.role || "student";
+      const role: UserRole = ["student", "parent", "staff", "admin"].includes(rawRole)
+        ? rawRole
+        : ["principal", "super_admin"].includes(rawRole) ? "admin" : "staff";
+
+      let userCategory: UserCategory = profile.user_category;
+      if (!userCategory || !["student", "parent", "staff", "admin"].includes(userCategory)) {
+        userCategory = role === "student" ? "student" : role === "parent" ? "parent" : role === "admin" ? "admin" : "staff";
+      }
+
+      setState({
+        user: {
+          id: profile.id,
+          email: profile.email,
+          role,
+          user_category: userCategory,
+          full_name: profile.full_name || "User",
+          password_changed: profile.password_changed ?? false,
+          onboarding_completed: profile.onboarding_completed ?? false,
+          is_active: profile.is_active ?? true,
+          campus_id: profile.campus_id || null,
+          department: profile.department || null,
+          designation: profile.designation || null,
+          admission_number: profile.admission_number || null,
+          grade_level: profile.grade_level || null,
+          permissions: data.permissions || [],
+        },
+        loading: false,
+        error: null,
+      });
+    } catch (error: any) {
+      console.error("[useAuth] Error:", error);
+      setState({ user: null, loading: false, error: { type: "unknown", message: error.message } });
     }
-    setState({ user: null, loading: false, error: null });
   }, []);
 
-  const refresh = useCallback(async () => {
-    await fetchUser();
+  useEffect(() => {
+    fetchUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
+        fetchUser();
+      } else if (event === "SIGNED_OUT") {
+        setState({ user: null, loading: false, error: null });
+      }
+    });
+    return () => subscription.unsubscribe();
   }, [fetchUser]);
 
-  return {
-    user: state.user,
-    loading: state.loading,
-    error: state.error,
-    signIn,
-    signInStudent,
-    signOut,
-    refresh,
-  };
+  const signOut = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    await supabase.auth.signOut({ scope: "global" });
+    setState({ user: null, loading: false, error: null });
+    router.push("/login");
+  }, [router]);
+
+  return { user: state.user, loading: state.loading, error: state.error, signOut, refresh: fetchUser };
 }

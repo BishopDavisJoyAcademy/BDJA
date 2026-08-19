@@ -1,74 +1,100 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase-client";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { restoreMissingProfile } from "@/lib/auth";
-import { getErrorMessage } from "@/lib/errors";
+import { recordFailedLogin, recordSuccessfulLogin, checkAccountLockout, extractDeviceInfo, getClientIP, recordSession } from "@/lib/security";
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    const identifier = getClientIP(req) + ":login";
+    const { success: rateOk } = await rateLimit(identifier, RATE_LIMITS.login);
+    if (!rateOk) {
+      return NextResponse.json({ error: "Too many login attempts. Please try again later." }, { status: 429 });
+    }
+
     const body = await req.json();
     const { email, password } = body;
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Email and password required" }, { status: 400 });
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
     }
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error || !data.user) {
-      return NextResponse.json({ error: error?.message || "Invalid credentials" }, { status: 401 });
-    }
-
-    const restored = await restoreMissingProfile(data.user.id, data.user.email || "");
-
+    const supabase = await createClient();
     const admin = getSupabaseAdmin();
-    const { data: profileRows, error: profileError } = await admin
-      .from("profiles")
-      .select("password_changed, role, user_category, is_active")
-      .eq("id", data.user.id)
-      .limit(1);
+    const ip = getClientIP(req);
+    const deviceInfo = extractDeviceInfo(req);
 
-    const profile = profileRows?.[0] ?? null;
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (profileError || !profile) {
-      await supabase.auth.signOut();
-      return NextResponse.json({ error: "Account not found" }, { status: 403 });
+    if (authError || !authData.user || !authData.session) {
+      await recordFailedLogin(null, email, ip, req.headers.get("user-agent") || "");
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
+    const userId = authData.user.id;
+
+    // Check lockout
+    const lockout = await checkAccountLockout(userId);
+    if (lockout.isLocked) {
+      return NextResponse.json({ error: lockout.message || "Account locked" }, { status: 403 });
+    }
+
+    // Check profile — use admin client to bypass RLS (session cookies not set yet)
+    let { data: profileRows } = await admin
+      .from("profiles")
+      .select("is_active, password_changed, onboarding_completed, user_category")
+      .eq("id", userId)
+      .limit(1);
+    let profile = (profileRows?.[0] ?? null) as { is_active: boolean | null; password_changed: boolean; onboarding_completed: boolean; user_category: string } | null;
+
+    if (!profile) {
+      // Auto-restore missing profile
+      const { restoreMissingProfile } = await import("@/lib/auth");
+      const restored = await restoreMissingProfile(userId);
+      if (restored) {
+        const { data: restoredRows } = await admin
+          .from("profiles")
+          .select("is_active, password_changed, onboarding_completed, user_category")
+          .eq("id", userId)
+          .limit(1);
+        profile = (restoredRows?.[0] ?? null) as { is_active: boolean | null; password_changed: boolean; onboarding_completed: boolean; user_category: string } | null;
+      }
+      if (!profile) {
+        await recordFailedLogin(userId, email, ip, req.headers.get("user-agent") || "");
+        return NextResponse.json({ error: "Account profile missing" }, { status: 500 });
+      }
+    }
+
+    // CRITICAL FIX: Only explicit false means inactive
     if (profile.is_active === false) {
-      await supabase.auth.signOut();
       return NextResponse.json({ error: "Account suspended" }, { status: 403 });
     }
 
+    await recordSuccessfulLogin(userId, email, ip, req.headers.get("user-agent") || "");
+
+    // Record session server-side
+    const expiresAt = new Date(Date.now() + 10 * 60 * 60 * 1000); // 10 hours
+    await recordSession(userId, authData.session.access_token, ip, deviceInfo.user_agent, expiresAt);
+
     return NextResponse.json({
       success: true,
-      mustChangePassword: !profile.password_changed,
-      role: profile.role,
-      userCategory: profile.user_category,
-      restored,
+      session: {
+        access_token: authData.session.access_token,
+        refresh_token: authData.session.refresh_token,
+        expires_at: authData.session.expires_at,
+      },
+      user: {
+        id: userId,
+        email: authData.user.email,
+        user_category: profile.user_category,
+        password_changed: profile.password_changed,
+        onboarding_completed: profile.onboarding_completed,
+      },
     });
-  } catch (err: unknown) {
-    console.error("[login] Error:", getErrorMessage(err));
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("[api/auth/login] Error:", error);
+    return NextResponse.json({ error: "Login failed" }, { status: 500 });
   }
 }

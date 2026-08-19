@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@/lib/supabase-client";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { restoreMissingProfile } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/errors";
@@ -15,20 +16,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email and password required" }, { status: 400 });
     }
 
-    // Build response FIRST so Supabase can write cookies into it
-    let response = NextResponse.json({});
-
-    const supabase = await createRouteHandlerClient(req, response);
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) {
       return NextResponse.json({ error: error?.message || "Invalid credentials" }, { status: 401 });
     }
 
-    // Restore missing profile (defensive)
     const restored = await restoreMissingProfile(data.user.id, data.user.email || "");
 
-    // Fetch profile with admin client to bypass any RLS issues
     const admin = getSupabaseAdmin();
     const { data: profileRows, error: profileError } = await admin
       .from("profiles")
@@ -43,22 +55,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Account not found" }, { status: 403 });
     }
 
-    // CRITICAL FIX: is_active === false means inactive. NULL/undefined/true means active.
     if (profile.is_active === false) {
       await supabase.auth.signOut();
       return NextResponse.json({ error: "Account suspended" }, { status: 403 });
     }
 
-    // Rebuild the response body (cookies already written by Supabase via setAll)
     return NextResponse.json({
       success: true,
       mustChangePassword: !profile.password_changed,
       role: profile.role,
       userCategory: profile.user_category,
       restored,
-    }, {
-      status: 200,
-      headers: response.headers,
     });
   } catch (err: unknown) {
     console.error("[login] Error:", getErrorMessage(err));

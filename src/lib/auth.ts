@@ -191,7 +191,7 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
     new_data: { department: options.department, designation: options.designation, permissions: options.permissionIds },
   }).catch(() => {});
 
-  return { userId: userResult.userId, staffId: userResult.userId, email: userResult.email, tempPassword: userResult.tempPassword, success: true };
+  return { userId: userResult.userId, staffId: userResult.userId, email: userResult.email, tempPassword: userResult.tempPassword, success: true, message: "Staff created successfully" };
 }
 
 interface CreateStudentOptions {

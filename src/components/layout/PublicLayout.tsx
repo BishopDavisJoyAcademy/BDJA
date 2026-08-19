@@ -51,28 +51,26 @@ const PUBLIC_PATHS = [
 ];
 
 function isPublicPage(pathname: string): boolean {
-  // Exact match
   if (PUBLIC_PATHS.includes(pathname)) return true;
-  // Sub-paths of public pages (e.g. /about/team)
   if (PUBLIC_PATHS.some((p) => p !== "/" && pathname.startsWith(p + "/"))) return true;
   return false;
 }
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
+  // ALL hooks must be called before any conditional return
   const pathname = usePathname();
-  const isPublic = isPublicPage(pathname || "");
-
-  // On non-public pages (dashboard, auth, etc.), render children bare
-  // without the public chrome (utility bar, nav, footer)
-  if (!isPublic) {
-    return <>{children}</>;
-  }
-
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [contactForm, setContactForm] = useState({ name: "", email: "", message: "" });
   const [contactSent, setContactSent] = useState(false);
+
+  const isPublic = isPublicPage(pathname || "");
+
+  // On non-public pages, render children bare without public chrome
+  if (!isPublic) {
+    return <>{children}</>;
+  }
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();

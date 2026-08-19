@@ -27,25 +27,30 @@ export default function ParentFeesPage() {
   const [totalPending, setTotalPending] = useState(0);
 
   useEffect(() => {
-    if (childId) fetchFees();
-  }, [childId]);
-
-  const fetchFees = async () => {
-    try {
-      const res = await fetch(`/api/parent/fees?child=${childId}`);
-      const data = await res.json();
-      if (res.ok) {
-        setPayments(data.payments || []);
-        setChildName(data.child_name || "");
-        setTotalPaid(data.total_paid || 0);
-        setTotalPending(data.total_pending || 0);
-      } else throw new Error(data.error);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to load fees");
-    } finally {
+    if (!childId) {
       setLoading(false);
+      return;
     }
-  };
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/parent/fees?child=${childId}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (res.ok) {
+          setPayments(data.payments || []);
+          setChildName(data.child_name || "");
+          setTotalPaid(data.total_paid || 0);
+          setTotalPending(data.total_pending || 0);
+        } else throw new Error(data.error);
+      } catch (err: any) {
+        if (!cancelled) toast.error(err.message || "Failed to load fees");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [childId]);
 
   if (loading) {
     return (

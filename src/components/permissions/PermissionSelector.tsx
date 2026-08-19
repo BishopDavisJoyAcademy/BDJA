@@ -18,7 +18,7 @@ export function PermissionSelector({ selectedIds, selected, onChange }: Permissi
 
   useEffect(() => {
     if (allPermissions.length === 0) fetchPermissions();
-  }, []);
+  }, [allPermissions.length, fetchPermissions]);
 
   const toggleCategory = (key: string) => {
     setExpandedCategories((prev) => {

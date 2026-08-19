@@ -188,7 +188,7 @@ export function JoyChat() {
     setSuggestions([]);
     clearAttachments();
     setPendingActions([]);
-  }, [createConversation, clearAttachments]);
+  }, [createConversation, clearAttachments, setMessages, setStreamingText, setSuggestions, setPendingActions, setShowSidebar]);
 
 
   // Keyboard shortcuts

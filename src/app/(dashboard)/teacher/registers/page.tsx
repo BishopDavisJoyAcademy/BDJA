@@ -65,9 +65,24 @@ export default function AttendanceRegisters() {
   }, [selectedClass]);
 
   useEffect(() => {
-    if (selectedClass && date) {
-      fetchExistingAttendance();
-    }
+    if (!selectedClass || !date) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/attendance?class_id=${selectedClass}&date=${date}`);
+        if (!res.ok) throw new Error("Failed to fetch existing attendance");
+        const data = await res.json();
+        if (cancelled) return;
+        const existing: Record<string, string> = {};
+        (data.attendance || []).forEach((a: any) => {
+          existing[a.student_id] = a.id;
+        });
+        setExistingAttendance(existing);
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [selectedClass, date]);
 
   async function fetchTeacherClasses() {
@@ -110,20 +125,6 @@ export default function AttendanceRegisters() {
     }
   }
 
-  async function fetchExistingAttendance() {
-    try {
-      const res = await fetch(`/api/attendance?class_id=${selectedClass}&date=${date}`);
-      if (!res.ok) throw new Error("Failed to fetch existing attendance");
-      const data = await res.json();
-      const existing: Record<string, string> = {};
-      (data.attendance || []).forEach((a: any) => {
-        existing[a.student_id] = a.id;
-      });
-      setExistingAttendance(existing);
-    } catch (err) {
-      console.error(err);
-    }
-  }
 
   function updateAttendance(studentId: string, status: "present" | "absent" | "late" | "excused") {
     setAttendance((prev) => ({

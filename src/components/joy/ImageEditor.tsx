@@ -205,7 +205,7 @@ export function ImageEditor({ src, onSave, onClose, theme }: ImageEditorProps) {
     ctx.fillText(textInput, canvas.width / 2, canvas.height / 2);
     setTextInput("");
     saveToHistory();
-  }, [textInput, textColor, textSize, history, historyIndex, saveToHistory]);
+  }, [textInput, textColor, textSize, historyIndex, saveToHistory]);
 
   const applyCrop = useCallback(() => {
     if (!cropStart || !cropEnd) return;

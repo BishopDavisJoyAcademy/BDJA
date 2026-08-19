@@ -27,23 +27,28 @@ export default function ParentGradesPage() {
   const [childName, setChildName] = useState("");
 
   useEffect(() => {
-    if (childId) fetchGrades();
-  }, [childId]);
-
-  const fetchGrades = async () => {
-    try {
-      const res = await fetch(`/api/parent/grades?child=${childId}`);
-      const data = await res.json();
-      if (res.ok) {
-        setGrades(data.grades || []);
-        setChildName(data.child_name || "");
-      } else throw new Error(data.error);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to load grades");
-    } finally {
+    if (!childId) {
       setLoading(false);
+      return;
     }
-  };
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/parent/grades?child=${childId}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (res.ok) {
+          setGrades(data.grades || []);
+          setChildName(data.child_name || "");
+        } else throw new Error(data.error);
+      } catch (err: any) {
+        if (!cancelled) toast.error(err.message || "Failed to load grades");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [childId]);
 
   if (loading) {
     return (

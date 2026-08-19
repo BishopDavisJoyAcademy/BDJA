@@ -199,7 +199,21 @@ export default function AttendanceRegisters() {
       toast.error(`Saved ${saved.length} of ${entries.length} records. ${errors.length} failed.`);
     } else {
       toast.success(`All ${saved.length} attendance records saved!`);
-      fetchExistingAttendance();
+      // Refresh existing attendance IDs after save
+      (async () => {
+        try {
+          const res = await fetch(`/api/attendance?class_id=${selectedClass}&date=${date}`);
+          if (!res.ok) return;
+          const data = await res.json();
+          const existing: Record<string, string> = {};
+          (data.attendance || []).forEach((a: any) => {
+            existing[a.student_id] = a.id;
+          });
+          setExistingAttendance(existing);
+        } catch (err) {
+          console.error(err);
+        }
+      })();
     }
   }
 

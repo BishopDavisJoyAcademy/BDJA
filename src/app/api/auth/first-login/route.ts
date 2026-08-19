@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createRouteHandlerClient } from "@/lib/supabase-client";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { restoreMissingProfile } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/errors";
@@ -9,24 +8,27 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set() {},
-          remove() {},
-        },
-      }
-    );
+    let response = NextResponse.json({});
+    const supabase = await createRouteHandlerClient(req, response);
 
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    // CRITICAL FIX: Verify account is active before allowing password change
+    const admin = getSupabaseAdmin();
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("is_active")
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Account not found" }, { status: 404 });
+    }
+    if (profile.is_active === false) {
+      return NextResponse.json({ error: "Account suspended" }, { status: 403 });
     }
 
     const body = await req.json();
@@ -43,7 +45,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Use admin client to bypass RLS for profile update
-    const admin = getSupabaseAdmin();
     const { error: profileError } = await admin.from("profiles").update({
       password_changed: true,
       updated_at: new Date().toISOString(),

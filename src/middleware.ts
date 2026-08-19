@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   "/academics",
   "/admissions",
   "/contact",
+  "/contacts",
   "/students",
   "/library",
   "/news-events",
@@ -27,6 +28,7 @@ const PUBLIC_PATHS = [
   "/api/health",
   "/api/vora/public",
   "/api/onboarding",
+  "/api/pages/public",
 ];
 
 const PUBLIC_API_PREFIXES = [
@@ -36,6 +38,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/refresh",
   "/api/vora/public",
   "/api/onboarding",
+  "/api/pages/public",
 ];
 
 const PASSWORD_CHANGE_APIS = [
@@ -104,7 +107,7 @@ export async function middleware(req: NextRequest) {
     user_category: string;
     password_changed: boolean;
     onboarding_completed: boolean;
-    is_active: boolean;
+    is_active: boolean | null;
   } | null;
 
   if (profileError || !profile) {
@@ -116,6 +119,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
+  // CRITICAL FIX: Only explicit false means inactive. NULL/true = active.
   if (profile.is_active === false) {
     await supabase.auth.signOut();
     if (pathname.startsWith("/api/")) {

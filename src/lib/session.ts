@@ -29,14 +29,19 @@ export async function requireAuth(req: NextRequest): Promise<ValidatedSession> {
     throw new AuthRequiredError("Authentication required");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("id, email, role, campus_id, user_category, is_active, full_name, password_changed, onboarding_completed")
     .eq("id", session.user.id)
     .single();
 
-  if (!profile || !profile.is_active) {
-    throw new AuthRequiredError("Account inactive or not found");
+  if (profileError || !profile) {
+    throw new AuthRequiredError("Account not found");
+  }
+
+  // CRITICAL FIX: Only explicit false means inactive. NULL/true/undefined = active.
+  if (profile.is_active === false) {
+    throw new AuthRequiredError("Account suspended");
   }
 
   const { data: permData } = await supabase
@@ -57,7 +62,7 @@ export async function requireAuth(req: NextRequest): Promise<ValidatedSession> {
     userCategory: profile.user_category,
     passwordChanged: profile.password_changed,
     onboardingCompleted: profile.onboarding_completed,
-    isActive: profile.is_active,
+    isActive: profile.is_active !== false,
     fullName: profile.full_name,
   };
 }

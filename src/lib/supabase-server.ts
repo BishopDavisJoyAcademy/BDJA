@@ -10,15 +10,22 @@ export function getSupabaseAdmin(): SupabaseClient<Database> {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceKey) {
-    throw new Error("Missing Supabase server environment variables");
+    throw new Error("Missing Supabase server environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
   }
 
-  _admin = createClient(url, serviceKey, {
+  _admin = createClient<Database>(url, serviceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-  }) as unknown as SupabaseClient<Database>;
+  });
 
   return _admin;
+}
+
+/**
+ * Reset the admin client (useful for testing or key rotation scenarios)
+ */
+export function resetSupabaseAdmin(): void {
+  _admin = undefined;
 }

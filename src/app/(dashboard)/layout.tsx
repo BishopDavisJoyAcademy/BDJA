@@ -8,7 +8,7 @@ import Image from "next/image";
 import {
   LayoutDashboard, Users, GraduationCap, FileText, MessageSquare, BarChart3, Shield, Settings, Bug,
   BookOpen, Video, Building2, Calendar, LogOut, ChevronDown, ChevronRight, Sparkles,
-  Wrench, UserCog, AlertTriangle, Globe, PlusCircle, X, Menu
+  Wrench, UserCog, AlertTriangle, Globe, PlusCircle, X, Menu, AlertCircle
 } from "lucide-react";
 import { ADMIN_SEGMENT } from "@/lib/constants";
 import { JoyChat } from "@/components/joy/JoyChat";
@@ -63,17 +63,28 @@ const parentNav: NavItem[] = [
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, error, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ People: true });
   const [joyOpen, setJoyOpen] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) { router.push("/login"); }
-  }, [user, loading, router]);
+    if (loading) return;
+
+    if (!user) {
+      // Only redirect if we're not already on login or public pages
+      if (!pathname.startsWith("/login") && !pathname.startsWith("/unauthorized")) {
+        setRedirecting(true);
+        const loginUrl = new URL("/login", window.location.origin);
+        loginUrl.searchParams.set("redirect", pathname);
+        router.push(loginUrl.toString());
+      }
+    }
+  }, [user, loading, router, pathname]);
 
   const toggleSection = (label: string) => {
     setExpandedSections((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -104,7 +115,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
+  // Show auth error if present
+  if (error && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-6 h-6 text-red-400" />
+          </div>
+          <h2 className="text-lg font-semibold text-white mb-2">Authentication Error</h2>
+          <p className="text-gray-400 text-sm mb-6">{error.message}</p>
+          <button
+            onClick={() => router.push("/login")}
+            className="px-5 py-2.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl text-sm font-medium hover:bg-amber-500/20 transition-colors"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) return null;
+
+  if (redirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400" />
+          <p className="text-sm text-gray-500">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex">
@@ -188,9 +231,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="w-9 h-9 rounded-xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center overflow-hidden">
                   <Image src="/logo.png" alt="BDJA" width={28} height={28} className="object-contain" />
                 </div>
-                <div><p className="font-bold text-white text-sm">BDJA</p><p className="text-[10px] text-gray-500">Admin Portal</p></div>
+                <div>
+                  <p className="font-bold text-white text-sm">BDJA</p>
+                  <p className="text-[10px] text-gray-500">Portal</p>
+                </div>
               </div>
-              <button onClick={() => setMobileOpen(false)} className="p-2 rounded-lg text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <button onClick={() => setMobileOpen(false)} className="p-2 text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
               {nav.map((item) => {
@@ -215,7 +263,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {hasChildren && isExpanded && (
                       <div className="ml-6 mt-1 space-y-0.5 border-l border-slate-800 pl-3">
                         {item.children?.map((child) => (
-                          <Link key={child.href} href={child.href} onClick={() => setMobileOpen(false)} className={`block px-3 py-2 rounded-lg text-sm transition-all ${isActive(child.href) ? "text-amber-400 font-medium" : "text-gray-500 hover:text-gray-300"}`}>{child.label}</Link>
+                          <Link key={child.href} href={child.href} onClick={() => setMobileOpen(false)} className={`block px-3 py-2 rounded-lg text-sm transition-all ${isActive(child.href) ? "text-amber-400 font-medium" : "text-gray-500 hover:text-gray-300"}`}>
+                            {child.label}
+                          </Link>
                         ))}
                       </div>
                     )}
@@ -224,8 +274,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               })}
             </nav>
             <div className="p-3 border-t border-slate-800/50">
-              <button onClick={() => signOut().then(() => router.push("/login"))} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all">
-                <LogOut className="w-[18px] h-[18px]" /><span>Sign Out</span>
+              <button onClick={() => { setMobileOpen(false); signOut().then(() => router.push("/login")); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all">
+                <LogOut className="w-[18px] h-[18px] shrink-0" />
+                <span>Sign Out</span>
               </button>
             </div>
           </aside>
@@ -233,42 +284,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* Mobile Header */}
-        <header className="lg:hidden h-16 flex items-center justify-between px-4 border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-xl">
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Bar */}
+        <header className="h-16 border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-xl flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center overflow-hidden">
-              <Image src="/logo.png" alt="BDJA" width={24} height={24} className="object-contain" />
-            </div>
-            <span className="font-bold text-white text-sm">BDJA</span>
+            <button onClick={() => setMobileOpen(true)} className="lg:hidden p-2 text-gray-400 hover:text-white">
+              <Menu className="w-5 h-5" />
+            </button>
+            <h1 className="text-sm font-medium text-gray-300 capitalize hidden sm:block">
+              {pathname.replace(/^\//, "").replace(/\//g, " / ") || "Dashboard"}
+            </h1>
           </div>
-          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-gray-400 hover:text-white"><Menu className="w-5 h-5" /></button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setJoyOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Ask Joy AI
+            </button>
+            <Link href="/profile" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
+              <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-medium">
+                {user.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "?"}
+              </div>
+              <span className="hidden sm:block">{user.full_name || user.email}</span>
+            </Link>
+          </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">{children}</div>
-        </div>
-      </main>
 
-      {/* Joy Floating Button */}
-      <button onClick={() => setJoyOpen(!joyOpen)} className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-violet-600 text-white shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-105 transition-all flex items-center justify-center border border-violet-400/20">
-        <Sparkles className="w-6 h-6" />
-      </button>
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          {children}
+        </main>
+      </div>
 
-      {/* Joy Chat Panel */}
-      {joyOpen && (
-        <div className="fixed bottom-24 right-6 z-40 w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-8rem)] bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col">
-          <div className="h-12 flex items-center justify-between px-4 border-b border-slate-800/50 bg-slate-800/30">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-violet-400" />
-              <span className="text-sm font-semibold text-white">Joy AI</span>
-            </div>
-            <button onClick={() => setJoyOpen(false)} className="p-1 rounded-lg text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <JoyChat />
-          </div>
-        </div>
-      )}
+      {/* Joy AI Chat */}
+      <JoyChat open={joyOpen} onClose={() => setJoyOpen(false)} />
     </div>
   );
 }

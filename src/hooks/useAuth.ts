@@ -26,11 +26,11 @@ interface ProfileRow {
   user_category: string | null;
   campus_id: string | null;
   avatar_url: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
   password_changed: boolean;
 }
 
-const AUTH_TIMEOUT_MS = 10000;
+const AUTH_TIMEOUT_MS = 15000;
 
 function getDashboardPath(category: string | null): string {
   if (category === "admin") return "/admin";
@@ -47,6 +47,7 @@ export function useAuth() {
     error: null,
   });
   const initRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const buildUser = useCallback((p: ProfileRow, perms: string[]): AuthUser => ({
     id: p.id,
@@ -56,17 +57,26 @@ export function useAuth() {
     user_category: p.user_category,
     campus_id: p.campus_id,
     avatar_url: p.avatar_url,
-    is_active: p.is_active,
+    is_active: p.is_active !== false,
     must_change_password: !p.password_changed,
     permissions: perms,
   }), []);
 
   const fetchUser = useCallback(async () => {
+    // Cancel any in-flight fetch
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        setState({ user: null, loading: false, error: null });
+        if (!controller.signal.aborted) {
+          setState({ user: null, loading: false, error: null });
+        }
         return null;
       }
 
@@ -76,11 +86,20 @@ export function useAuth() {
         .eq("id", session.user.id)
         .single();
 
-      // Explicit type guard to avoid Supabase never inference
       const profile = profileData as unknown as ProfileRow | null;
 
-      if (profileError || !profile || !profile.is_active) {
-        setState({ user: null, loading: false, error: null });
+      if (profileError || !profile) {
+        if (!controller.signal.aborted) {
+          setState({ user: null, loading: false, error: { type: "profile_missing", message: "Account not found. Please contact support." } });
+        }
+        return null;
+      }
+
+      // CRITICAL FIX: Only explicit false means inactive
+      if (profile.is_active === false) {
+        if (!controller.signal.aborted) {
+          setState({ user: null, loading: false, error: { type: "account_suspended", message: "Account suspended. Please contact administration." } });
+        }
         return null;
       }
 
@@ -94,9 +113,12 @@ export function useAuth() {
         .filter((k): k is string => Boolean(k));
 
       const user = buildUser(profile, permissions);
-      setState({ user, loading: false, error: null });
+      if (!controller.signal.aborted) {
+        setState({ user, loading: false, error: null });
+      }
       return user;
     } catch (err: unknown) {
+      if (controller.signal.aborted) return null;
       const msg = err instanceof Error ? err.message : "Auth initialization failed";
       setState({ user: null, loading: false, error: { type: "auth", message: msg } });
       return null;
@@ -140,6 +162,9 @@ export function useAuth() {
     return () => {
       clearTimeout(timeoutId);
       listener?.subscription.unsubscribe();
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
     };
   }, [fetchUser]);
 
@@ -153,19 +178,25 @@ export function useAuth() {
           setState((s) => ({ ...s, loading: false, error: { type: "auth", message: error?.message || "Invalid credentials" } }));
           return { success: false, error: error?.message || "Invalid credentials" };
         }
-        // Fetch profile immediately to determine redirect
+
         const { data: profileData } = await supabase
           .from("profiles")
           .select("password_changed, role, user_category, is_active")
           .eq("id", data.user.id)
           .single();
 
-        const profile = profileData as unknown as { password_changed: boolean; role: string; user_category: string; is_active: boolean } | null;
+        const profile = profileData as unknown as { password_changed: boolean; role: string; user_category: string; is_active: boolean | null } | null;
 
-        if (!profile || !profile.is_active) {
+        if (!profile) {
           await supabase.auth.signOut();
-          setState({ user: null, loading: false, error: { type: "auth", message: "Account inactive" } });
-          return { success: false, error: "Account inactive" };
+          setState({ user: null, loading: false, error: { type: "profile_missing", message: "Account not found" } });
+          return { success: false, error: "Account not found" };
+        }
+
+        if (profile.is_active === false) {
+          await supabase.auth.signOut();
+          setState({ user: null, loading: false, error: { type: "account_suspended", message: "Account suspended" } });
+          return { success: false, error: "Account suspended" };
         }
 
         const user = await fetchUser();

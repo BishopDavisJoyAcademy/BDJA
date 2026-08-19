@@ -122,6 +122,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect");
+  const urlError = searchParams.get("error");
   const { signIn, signInStudent, user, loading: authLoading } = useAuth();
 
   const [role, setRole] = useState<LoginRole>("student");
@@ -136,7 +137,16 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
     setQuote(getRandomQuote());
-  }, []);
+    // Display URL error params (e.g. ?error=account_suspended from middleware)
+    if (urlError) {
+      const errorMessages: Record<string, string> = {
+        account_suspended: "Your account has been suspended. Please contact administration.",
+        session_expired: "Your session has expired. Please log in again.",
+        unauthorized: "You are not authorized to access that page.",
+      };
+      setError(errorMessages[urlError] || "An error occurred. Please try again.");
+    }
+  }, [urlError]);
 
   useEffect(() => {
     if (user && !authLoading) {

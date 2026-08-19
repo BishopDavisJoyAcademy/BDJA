@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase-client";
+import { createRouteHandlerClient } from "@/lib/supabase-client";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Refresh token required" }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    let response = NextResponse.json({});
+    const supabase = await createRouteHandlerClient(req, response);
+
     const { data, error } = await supabase.auth.refreshSession({ refresh_token });
 
     if (error || !data.session) {
@@ -23,6 +25,9 @@ export async function POST(req: NextRequest) {
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
       expires_at: data.session.expires_at,
+    }, {
+      status: 200,
+      headers: response.headers,
     });
   } catch (error: any) {
     console.error("[refresh] Error:", error);

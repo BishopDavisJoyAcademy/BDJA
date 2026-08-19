@@ -6,11 +6,23 @@ export async function restoreMissingProfile(userId: string, email: string): Prom
     const admin = getSupabaseAdmin();
     const { data: existing } = await admin
       .from("profiles")
-      .select("id")
+      .select("id, is_active")
       .eq("id", userId)
       .maybeSingle();
 
-    if (existing) return true;
+    if (existing) {
+      // CRITICAL FIX: If profile exists but is_active is NULL, fix it
+      if (existing.is_active === null) {
+        const { error: fixError } = await admin
+          .from("profiles")
+          .update({ is_active: true, updated_at: new Date().toISOString() })
+          .eq("id", userId);
+        if (fixError) {
+          console.error("[restoreMissingProfile] Fix is_active error:", fixError);
+        }
+      }
+      return true;
+    }
 
     const { error } = await admin.from("profiles").insert([{
       id: userId,
@@ -120,7 +132,7 @@ export async function createStaff(input: CreateStaffInput): Promise<CreateStaffR
 
     return { success: true, userId, message: "Staff created successfully" };
   } catch (err: unknown) {
-    const msg = getErrorMessage(err);
-    return { success: false, userId: "", message: "Exception creating staff", error: msg };
+    console.error("[createStaff] Exception:", getErrorMessage(err));
+    return { success: false, userId: "", message: "Internal error", error: getErrorMessage(err) };
   }
 }

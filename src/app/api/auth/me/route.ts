@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       role: string;
       user_category: string;
       campus_id: string | null;
-      is_active: boolean;
+      is_active: boolean | null;
       password_changed: boolean;
       onboarding_completed: boolean;
       staff: { department: string | null; designation: string | null }[] | null;
@@ -35,6 +35,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
+    if (profile.is_active === false) {
+      return NextResponse.json({ error: "Account suspended" }, { status: 403 });
+    }
+
     const permissions = await getUserPermissions(session.userId);
 
     return NextResponse.json({
@@ -45,7 +49,7 @@ export async function GET(req: NextRequest) {
         role: profile.role,
         user_category: profile.user_category,
         campus_id: profile.campus_id,
-        is_active: profile.is_active,
+        is_active: profile.is_active !== false,
         password_changed: profile.password_changed,
         onboarding_completed: profile.onboarding_completed,
         department: profile.staff?.[0]?.department || null,

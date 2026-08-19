@@ -26,9 +26,13 @@ interface PagesResponse {
 interface CmsPageContentProps {
   slug?: string;
   fallback?: ReactNode;
+  publicMode?: boolean; // If true, uses public API (no auth required)
 }
 
-export function CmsPageContent({ slug: propSlug, fallback }: CmsPageContentProps) {
+const cache = new Map<string, { data: CmsPageData | null; timestamp: number }>();
+const CACHE_TTL_MS = 60_000; // 1 minute client-side cache
+
+export function CmsPageContent({ slug: propSlug, fallback, publicMode = false }: CmsPageContentProps) {
   const pathname = usePathname();
   const slug = propSlug || pathname.replace(/^\//, "") || "home";
   const [page, setPage] = useState<CmsPageData | null>(null);
@@ -36,17 +40,32 @@ export function CmsPageContent({ slug: propSlug, fallback }: CmsPageContentProps
   const [error, setError] = useState("");
 
   useEffect(() => {
-    apiGet<PagesResponse>(`/api/admin/pages?slug=${slug}`)
+    // Check client-side cache first
+    const cached = cache.get(slug);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      setPage(cached.data);
+      setLoading(false);
+      return;
+    }
+
+    const endpoint = publicMode
+      ? `/api/pages/public?slug=${encodeURIComponent(slug)}`
+      : `/api/admin/pages?slug=${encodeURIComponent(slug)}`;
+
+    apiGet<PagesResponse>(endpoint)
       .then((d) => {
-        const found = (d.pages || []).find((p) => p.slug === slug);
-        setPage(found || null);
+        const found = publicMode
+          ? d.page || null
+          : (d.pages || []).find((p) => p.slug === slug) || null;
+        setPage(found);
+        cache.set(slug, { data: found, timestamp: Date.now() });
         setLoading(false);
       })
       .catch((err) => {
         setError(getErrorMessage(err));
         setLoading(false);
       });
-  }, [slug]);
+  }, [slug, publicMode]);
 
   if (loading)
     return (

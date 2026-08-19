@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createRouteHandlerClient } from "@/lib/supabase-client";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { recordFailedLogin, recordSuccessfulLogin, checkAccountLockout, extractDeviceInfo, getClientIP, recordSession } from "@/lib/security";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
@@ -30,12 +29,12 @@ export async function POST(req: NextRequest) {
       id: string;
       admission_number: string;
       profile_id: string;
-      profiles: { id: string; email: string }[] | null;
+      profiles: { id: string; email: string; is_active: boolean | null }[] | null;
     }
 
     const { data: studentRaw, error: studentError } = await admin
       .from("students")
-      .select("id, admission_number, profile_id, profiles!inner(id, email)")
+      .select("id, admission_number, profile_id, profiles!inner(id, email, is_active)")
       .eq("admission_number", admission_number)
       .maybeSingle();
     const student = studentRaw as StudentLoginRow | null;
@@ -53,12 +52,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Student account not properly configured" }, { status: 500 });
     }
 
+    // CRITICAL FIX: Check is_active for students too
+    if (profile.is_active === false) {
+      return NextResponse.json({ error: "Account suspended" }, { status: 403 });
+    }
+
     const lockout = await checkAccountLockout(userId);
     if (lockout.isLocked) {
       return NextResponse.json({ error: lockout.message || "Account locked" }, { status: 403 });
     }
 
-    const { data: authData, error: authError } = await admin.auth.signInWithPassword({ email, password: pin });
+    // Build response for cookie writing
+    let response = NextResponse.json({});
+    const supabase = await createRouteHandlerClient(req, response);
+
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password: pin });
 
     if (authError || !authData.session) {
       await recordFailedLogin(userId, email, ip, ua);
@@ -70,28 +78,7 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 60 * 1000);
     await recordSession(userId, authData.session.access_token, ip, extractDeviceInfo(req).user_agent, expiresAt);
 
-    // Set cookies via server client
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
-    await supabase.auth.setSession({
-      access_token: authData.session.access_token,
-      refresh_token: authData.session.refresh_token,
-    });
-
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
       session: {
         access_token: authData.session.access_token,
@@ -99,22 +86,10 @@ export async function POST(req: NextRequest) {
         expires_at: authData.session.expires_at,
       },
       user: { id: userId, email },
+    }, {
+      status: 200,
+      headers: response.headers,
     });
-
-    const allCookies = cookieStore.getAll();
-    allCookies.forEach((c) => {
-      if (c.name.startsWith("sb-") || c.name.includes("-auth-")) {
-        response.cookies.set(c.name, c.value, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 7,
-        });
-      }
-    });
-
-    return response;
   } catch (error: any) {
     console.error("[student-login] Error:", error);
     return NextResponse.json({ error: error.message || "Login failed" }, { status: 500 });

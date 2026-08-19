@@ -23,57 +23,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useJoyConversations } from "@/hooks/useJoyConversations";
 import { useJoyPreferences } from "@/hooks/useJoyPreferences";
 import { useAttachments } from "@/hooks/useAttachments";
-import { getThemeConfig, THEME_LIST } from "@/lib/joy-themes";
-import { JoyMessage, JoyConversation, JoyTheme, JoyAction, JoySearchResult, JoyVideoResult } from "@/types/joy";
+import { getThemeConfig, THEME_MAP, THEME_LIST } from "@/lib/joy-themes";
+import { JoyMessage, JoyConversation, JoyTheme, JoyAction, JoySearchResult, JoyVideoResult, JoyUserPreferences } from "@/types/joy";
 import { AttachmentFile } from "@/types/attachments";
 import { AttachmentChip } from "./AttachmentChip";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { BottomSheet } from "./BottomSheet";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-
-// SpeechRecognition types
-declare global {
-  interface Window {
-    webkitSpeechRecognition?: new () => SpeechRecognition;
-    SpeechSynthesisUtterance?: new (text: string) => SpeechSynthesisUtterance;
-    speechSynthesis?: SpeechSynthesis;
-  }
-  interface SpeechRecognition extends EventTarget {
-    lang: string;
-    interimResults: boolean;
-    maxAlternatives?: number;
-    onresult: ((event: SpeechRecognitionEvent) => void) | null;
-    onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-    onend: (() => void) | null;
-    start(): void;
-    stop(): void;
-    abort(): void;
-  }
-  interface SpeechRecognitionEvent extends Event {
-    readonly resultIndex: number;
-    readonly results: SpeechRecognitionResultList;
-  }
-  interface SpeechRecognitionResultList {
-    readonly length: number;
-    item(index: number): SpeechRecognitionResult;
-    [index: number]: SpeechRecognitionResult;
-  }
-  interface SpeechRecognitionResult {
-    readonly length: number;
-    item(index: number): SpeechRecognitionAlternative;
-    [index: number]: SpeechRecognitionAlternative;
-    readonly isFinal: boolean;
-  }
-  interface SpeechRecognitionAlternative {
-    readonly transcript: string;
-    readonly confidence: number;
-  }
-  interface SpeechRecognitionErrorEvent extends Event {
-    readonly error: string;
-    readonly message: string;
-  }
-}
 
 interface GreetingPrompt {
   icon: React.ReactNode;
@@ -116,7 +73,7 @@ export function JoyChat() {
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [reactions, setReactions] = useState<Record<string, "like" | "dislike">>({});
+  const [reactions, setReactions] = useState<Record<string, "like" | "dislike">({});
   const [isListening, setIsListening] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -156,7 +113,6 @@ export function JoyChat() {
   const userCategory = user?.user_category || "student";
   const userRole = user?.role || "student";
 
-  // Greeting
   const getGreeting = useCallback(() => {
     const hour = new Date().getHours();
     const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -182,7 +138,7 @@ export function JoyChat() {
     if (userCategory === "parent") return [
       { icon: <GraduationCap className="w-4 h-4" />, text: "How is my child doing?", sendText: "How is my child performing academically?" },
       { icon: <Calendar className="w-4 h-4" />, text: "Upcoming events", sendText: "What upcoming events are there?" },
-      { icon: <BookOpen className="w-4 h-4" />, text: "Fee balance", sendText: "What is my fee balance?" },
+      { icon: <BookOpen className="w-4 h-4" />, text: "Fee payments", sendText: "Show me fee payment history" },
       ...common,
     ];
     if (userCategory === "staff") return [
@@ -218,7 +174,6 @@ export function JoyChat() {
     setRetryCount(0);
   }, [createConversation, clearAttachments, setMessages]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -241,7 +196,6 @@ export function JoyChat() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isFullScreen, isOpen, showSettings, showSidebar, previewAttachment, showLinkInput, showPollInput, showWhiteboard, searchModal.isOpen, handleNewChat, setPreviewAttachment]);
 
-  // Click outside attachment menu
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (attachmentMenuRef.current && !attachmentMenuRef.current.contains(e.target as Node)) {
@@ -252,7 +206,6 @@ export function JoyChat() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showAttachmentMenu]);
 
-  // Voice input (STT)
   useEffect(() => {
     if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
       const SpeechRecognitionCtor = window.webkitSpeechRecognition;
@@ -279,7 +232,6 @@ export function JoyChat() {
     else { recognitionRef.current.start(); setIsListening(true); }
   };
 
-  // Text-to-Speech (TTS)
   const speakText = useCallback((text: string, messageId: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     if (speakingId === messageId) {
@@ -297,7 +249,6 @@ export function JoyChat() {
     setSpeakingId(messageId);
   }, [speakingId]);
 
-  // Drag & drop
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(false); };
   const handleDrop = (e: React.DragEvent) => {
@@ -306,7 +257,6 @@ export function JoyChat() {
     if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files, "documents");
   };
 
-  // Clipboard paste
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items;
     for (const item of Array.from(items)) {
@@ -349,29 +299,19 @@ export function JoyChat() {
     setShowPollInput(false);
   };
 
-  // Search functionality
   const handleSearch = useCallback(async () => {
     if (!searchModal.query.trim()) return;
     setSearchModal((s) => ({ ...s, loading: true, results: [], videos: [] }));
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
-
       const res = await fetch("/api/joy/search", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          query: searchModal.query,
-          source: searchModal.activeTab,
-          maxResults: 5,
-        }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ query: searchModal.query, source: searchModal.activeTab, maxResults: 5 }),
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error);
-
       if (searchModal.activeTab === "youtube") {
         setSearchModal((s) => ({ ...s, videos: json.results || [], loading: false }));
       } else {
@@ -396,29 +336,18 @@ export function JoyChat() {
     toast.success("Video added to message");
   };
 
-  // Execute actions on frontend using Next.js router
   const executeFrontendActions = useCallback((actions: JoyAction[]) => {
     if (!actions || actions.length === 0) return;
     for (const action of actions) {
       if (action.type === "navigate" && action.target) {
         const target = action.target;
         const pathMap: Record<string, string> = {
-          fees_management: "/fees",
-          vora: "/vora",
-          grades: "/grades",
-          timetable: "/timetable",
-          assignments: "/assignments",
-          attendance: "/attendance",
-          calendar: "/calendar",
-          library: "/library",
-          messages: "/messages",
-          admissions: "/manage/admissions",
-          admin: `/${ADMIN_SEGMENT}`,
-          teacher: "/teacher",
-          student: "/student",
-          parent: "/parent",
-          profile: "/profile",
-          settings: "/settings",
+          fees_management: "/fees", vora: "/vora", grades: "/grades",
+          timetable: "/timetable", assignments: "/assignments", attendance: "/attendance",
+          calendar: "/calendar", library: "/library", messages: "/messages",
+          admissions: "/manage/admissions", admin: `/${ADMIN_SEGMENT}`,
+          teacher: "/teacher", student: "/student", parent: "/parent",
+          profile: "/profile", settings: "/settings",
         };
         const path = pathMap[target] || (target.startsWith("/") ? target : `/${target}`);
         toast.success(`Navigating to ${action.target}...`);
@@ -436,15 +365,12 @@ export function JoyChat() {
     }
   }, [router]);
 
-  // Main send handler - FIXED for proper streaming and non-streaming
   const handleSend = async (text?: string) => {
     const messageText = text || input.trim();
     if (!messageText && attachments.length === 0) return;
     if (isLoading || isStreaming) return;
-
     setErrorMessage(null);
 
-    // Build message content with attachments included
     let fullContent = messageText;
     const linkAttachments = attachments.filter((a) => a.type === "link" && a.url);
     if (linkAttachments.length > 0) {
@@ -452,7 +378,6 @@ export function JoyChat() {
       fullContent = fullContent ? `${fullContent}\n\n${linksText}` : linksText;
     }
 
-    // Add extracted document content
     const extractedAttachments = attachments.filter((a) => a.extractedContent);
     if (extractedAttachments.length > 0) {
       const extractText = extractedAttachments
@@ -477,7 +402,6 @@ export function JoyChat() {
       created_at: new Date().toISOString(),
     };
 
-    // Update UI immediately
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsLoading(true);
@@ -489,22 +413,12 @@ export function JoyChat() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated. Please log in again.");
 
-      // Upload attachments
       const uploadedAttachments = await uploadAll();
       const attachmentUrls = uploadedAttachments
         .filter((a) => a.url)
-        .map((a) => ({
-          name: a.name,
-          type: a.type,
-          url: a.url,
-          metadata: a.metadata,
-          extractedContent: a.extractedContent,
-        }));
+        .map((a) => ({ name: a.name, type: a.type, url: a.url, metadata: a.metadata, extractedContent: a.extractedContent }));
 
-      const chatMessages = [...messages, userMsg].map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      const chatMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
 
       if (preferences.enable_streaming) {
         setIsStreaming(true);
@@ -513,16 +427,8 @@ export function JoyChat() {
 
         const res = await fetch("/api/chat", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            messages: chatMessages,
-            conversationId,
-            stream: true,
-            attachments: attachmentUrls,
-          }),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ messages: chatMessages, conversationId, stream: true, attachments: attachmentUrls }),
         });
 
         if (!res.ok) {
@@ -545,19 +451,13 @@ export function JoyChat() {
             if (data === "[DONE]") break;
             try {
               const parsed = JSON.parse(data) as { chunk?: string; toolCalls?: unknown[]; toolResult?: unknown; error?: string };
-              if (parsed.error) {
-                throw new Error(parsed.error);
-              }
+              if (parsed.error) throw new Error(parsed.error);
               if (parsed.chunk) {
                 receivedAnyChunk = true;
                 fullText += parsed.chunk;
                 setStreamingText(fullText);
               }
-              if (parsed.toolCalls) {
-                console.log("[JoyChat] Tool calls received:", parsed.toolCalls);
-              }
             } catch (parseErr) {
-              // Ignore parse errors for individual lines
               if (parseErr instanceof Error && !parseErr.message.includes("Unexpected token")) {
                 console.warn("[JoyChat] Parse error:", parseErr.message);
               }
@@ -577,39 +477,24 @@ export function JoyChat() {
           };
           setMessages((prev) => [...prev, assistantMsg]);
           generateSuggestions(fullText);
-
-          // Extract and execute actions
           const actionMatch = fullText.match(/\{\s*"actions"\s*:\s*(\[[\s\S]*?\])\s*\}/);
           if (actionMatch) {
             try {
               const actions = JSON.parse(`{"actions":${actionMatch[1]}}`).actions as JoyAction[];
               executeFrontendActions(actions);
-            } catch {
-              /* ignore parse errors */
-            }
+            } catch { /* ignore */ }
           }
         } else if (!receivedAnyChunk) {
           throw new Error("No response received from AI. Please try again.");
         }
       } else {
-        // Non-streaming
         const res = await fetch("/api/chat", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            messages: chatMessages,
-            conversationId,
-            stream: false,
-            attachments: attachmentUrls,
-          }),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ messages: chatMessages, conversationId, stream: false, attachments: attachmentUrls }),
         });
-
         const json = await res.json();
         if (json.error) throw new Error(json.error);
-
         const replyText = json.reply || "I'm sorry, I couldn't process that.";
         const assistantMsg: JoyMessage = {
           id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
@@ -621,12 +506,10 @@ export function JoyChat() {
         };
         setMessages((prev) => [...prev, assistantMsg]);
         generateSuggestions(replyText);
-
         if (json.actions?.length > 0) {
           executeFrontendActions(json.actions as JoyAction[]);
         }
       }
-
       setRetryCount(0);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Failed to send message";
@@ -656,7 +539,7 @@ export function JoyChat() {
       newSuggestions.push("What's my next class?", "Show me the full week");
     } else if (lower.includes("video") || lower.includes("watch") || lower.includes("learn")) {
       newSuggestions.push("Find more videos on this", "Explain it in simpler terms");
-    } else if (lower.includes("fee") || lower.includes("payment") || lower.includes("balance")) {
+    } else if (lower.includes("fee") || lower.includes("payment")) {
       newSuggestions.push("How do I make a payment?", "Show me the fee structure");
     } else {
       newSuggestions.push("Tell me more", "Can you explain that differently?", "Give me an example");
@@ -692,10 +575,8 @@ export function JoyChat() {
   };
 
   const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
   const fontSizeClass = preferences.font_size === "small" ? "text-xs" : preferences.font_size === "large" ? "text-base" : "text-sm";
 
-  // Whiteboard drawing handlers
   useEffect(() => {
     if (!showWhiteboard || !whiteboardCanvasRef.current) return;
     const canvas = whiteboardCanvasRef.current;
@@ -706,17 +587,13 @@ export function JoyChat() {
     ctx.lineJoin = "round";
     ctx.strokeStyle = whiteboardColor;
     ctx.lineWidth = whiteboardSize;
-
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     whiteboardStrokes.forEach((stroke) => {
       ctx.beginPath();
       ctx.strokeStyle = stroke.color;
       ctx.lineWidth = stroke.width;
-      stroke.points.forEach((p, i) => {
-        if (i === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-      });
+      stroke.points.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
       ctx.stroke();
     });
   }, [showWhiteboard, whiteboardStrokes, whiteboardColor, whiteboardSize]);
@@ -727,20 +604,13 @@ export function JoyChat() {
     const rect = canvas.getBoundingClientRect();
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    return {
-      x: (clientX - rect.left) * (canvas.width / rect.width),
-      y: (clientY - rect.top) * (canvas.height / rect.height),
-    };
+    return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
   };
 
   const handleWhiteboardStart = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     const pos = getWhiteboardPos(e);
-    const newStroke = {
-      points: [pos],
-      color: whiteboardTool === "eraser" ? "#ffffff" : whiteboardColor,
-      width: whiteboardTool === "eraser" ? whiteboardSize * 3 : whiteboardSize,
-    };
+    const newStroke = { points: [pos], color: whiteboardTool === "eraser" ? "#ffffff" : whiteboardColor, width: whiteboardTool === "eraser" ? whiteboardSize * 3 : whiteboardSize };
     setWhiteboardCurrentStroke(newStroke);
   };
 
@@ -750,7 +620,6 @@ export function JoyChat() {
     const pos = getWhiteboardPos(e);
     const updated = { ...whiteboardCurrentStroke, points: [...whiteboardCurrentStroke.points, pos] };
     setWhiteboardCurrentStroke(updated);
-
     const ctx = whiteboardCtxRef.current;
     const canvas = whiteboardCanvasRef.current;
     if (!ctx || !canvas) return;
@@ -778,38 +647,31 @@ export function JoyChat() {
     const canvas = whiteboardCanvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
-    addWhiteboard({
-      strokes: whiteboardStrokes,
-      width: canvas.width,
-      height: canvas.height,
-      background: "#ffffff",
-    }, dataUrl);
+    addWhiteboard({ strokes: whiteboardStrokes, width: canvas.width, height: canvas.height, background: "#ffffff" }, dataUrl);
     setShowWhiteboard(false);
     setWhiteboardStrokes([]);
     toast.success("Whiteboard saved!");
   };
 
-  // Thinking indicator
   const ThinkingIndicator = () => (
     <div className="flex gap-3">
       <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ background: theme.primary + "15" }}>
         <Image src="/joy-logo.png" alt="Joy" width={20} height={20} className="object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-        <Bot className="w-4 h-4" style={{ color: theme.primary }} />
+        <Bot className="w-4 h-4 hidden" style={{ color: theme.primary }} />
       </div>
       <div className="px-4 py-3 rounded-2xl rounded-bl-md" style={{ background: theme.assistantBubble }}>
         <div className="flex items-center gap-3">
           <span className="text-xs font-medium" style={{ color: theme.textMuted }}>Joy is thinking</span>
           <div className="flex gap-1">
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: theme.primary, animationDelay: "0ms", animationDuration: "1.2s" }} />
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: theme.primary, animationDelay: "0.3s", animationDuration: "1.2s" }} />
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: theme.primary, animationDelay: "0.6s", animationDuration: "1.2s" }} />
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: theme.primary, animationDelay: "0ms" }} />
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: theme.primary, animationDelay: "0.3s" }} />
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: theme.primary, animationDelay: "0.6s" }} />
           </div>
         </div>
       </div>
     </div>
   );
 
-  // Search Modal Component
   const SearchModal = () => {
     if (!searchModal.isOpen) return null;
     return (
@@ -820,56 +682,27 @@ export function JoyChat() {
               <Search className="w-5 h-5" style={{ color: theme.primary }} />
               <h3 className="font-semibold text-sm" style={{ color: theme.text }}>Search the Web</h3>
             </div>
-            <button onClick={() => setSearchModal((s) => ({ ...s, isOpen: false }))} className="p-1 rounded-lg hover:bg-black/5">
-              <X className="w-4 h-4" style={{ color: theme.textMuted }} />
-            </button>
+            <button onClick={() => setSearchModal((s) => ({ ...s, isOpen: false }))} className="p-1 rounded-lg hover:bg-black/5"><X className="w-4 h-4" style={{ color: theme.textMuted }} /></button>
           </div>
           <div className="p-4 space-y-3">
             <div className="flex gap-2">
-              <input
-                type="text"
-                value={searchModal.query}
-                onChange={(e) => setSearchModal((s) => ({ ...s, query: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Search for information, videos, or resources..."
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm border outline-none focus:ring-2"
-                style={{ background: theme.surface, borderColor: theme.border, color: theme.text }}
-                autoFocus
-              />
-              <button
-                onClick={handleSearch}
-                disabled={searchModal.loading}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: theme.primary }}
-              >
+              <input type="text" value={searchModal.query} onChange={(e) => setSearchModal((s) => ({ ...s, query: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && handleSearch()} placeholder="Search for information, videos, or resources..." className="flex-1 px-4 py-2.5 rounded-xl text-sm border outline-none" style={{ background: theme.surface, borderColor: theme.border, color: theme.text }} autoFocus />
+              <button onClick={handleSearch} disabled={searchModal.loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50" style={{ background: theme.primary }}>
                 {searchModal.loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
               </button>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => setSearchModal((s) => ({ ...s, activeTab: "web", results: [], videos: [] }))}
-                className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors", searchModal.activeTab === "web" ? "text-white" : "")}
-                style={{ background: searchModal.activeTab === "web" ? theme.primary : theme.surface, color: searchModal.activeTab === "web" ? "#fff" : theme.text }}
-              >
+              <button onClick={() => setSearchModal((s) => ({ ...s, activeTab: "web", results: [], videos: [] }))} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors", searchModal.activeTab === "web" ? "text-white" : "")} style={{ background: searchModal.activeTab === "web" ? theme.primary : theme.surface, color: searchModal.activeTab === "web" ? "#fff" : theme.text }}>
                 <Globe className="w-3 h-3 inline mr-1" /> Web
               </button>
-              <button
-                onClick={() => setSearchModal((s) => ({ ...s, activeTab: "youtube", results: [], videos: [] }))}
-                className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors", searchModal.activeTab === "youtube" ? "text-white" : "")}
-                style={{ background: searchModal.activeTab === "youtube" ? "#ff0000" : theme.surface, color: searchModal.activeTab === "youtube" ? "#fff" : theme.text }}
-              >
+              <button onClick={() => setSearchModal((s) => ({ ...s, activeTab: "youtube", results: [], videos: [] }))} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors", searchModal.activeTab === "youtube" ? "text-white" : "")} style={{ background: searchModal.activeTab === "youtube" ? "#ff0000" : theme.surface, color: searchModal.activeTab === "youtube" ? "#fff" : theme.text }}>
                 <Youtube className="w-3 h-3 inline mr-1" /> YouTube
               </button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
             {searchModal.activeTab === "web" && searchModal.results.map((result, i) => (
-              <div
-                key={i}
-                className="p-3 rounded-xl border cursor-pointer hover:shadow-md transition-all"
-                style={{ background: theme.surface, borderColor: theme.border }}
-                onClick={() => insertSearchResult(result)}
-              >
+              <div key={i} className="p-3 rounded-xl border cursor-pointer hover:shadow-md transition-all" style={{ background: theme.surface, borderColor: theme.border }} onClick={() => insertSearchResult(result)}>
                 <div className="flex items-start gap-2">
                   <Globe className="w-4 h-4 mt-0.5 shrink-0" style={{ color: theme.primary }} />
                   <div className="flex-1 min-w-0">
@@ -882,21 +715,10 @@ export function JoyChat() {
               </div>
             ))}
             {searchModal.activeTab === "youtube" && searchModal.videos.map((video, i) => (
-              <div
-                key={i}
-                className="p-3 rounded-xl border cursor-pointer hover:shadow-md transition-all"
-                style={{ background: theme.surface, borderColor: theme.border }}
-                onClick={() => insertVideoResult(video)}
-              >
+              <div key={i} className="p-3 rounded-xl border cursor-pointer hover:shadow-md transition-all" style={{ background: theme.surface, borderColor: theme.border }} onClick={() => insertVideoResult(video)}>
                 <div className="flex items-start gap-3">
                   <div className="relative w-24 h-16 rounded-lg overflow-hidden shrink-0 bg-black/10">
-                    {video.thumbnail ? (
-                      <Image src={video.thumbnail} alt={video.title} fill className="object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Play className="w-6 h-6 text-white/50" />
-                      </div>
-                    )}
+                    {video.thumbnail ? <Image src={video.thumbnail} alt={video.title} fill className="object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Play className="w-6 h-6 text-white/50" /></div>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-medium line-clamp-2" style={{ color: theme.text }}>{video.title}</h4>
@@ -918,15 +740,9 @@ export function JoyChat() {
     );
   };
 
-  // Render
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform overflow-hidden"
-        style={{ background: theme.primary, boxShadow: theme.shadow }}
-        aria-label="Open Joy AI"
-      >
+      <button onClick={() => setIsOpen(true)} className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform overflow-hidden" style={{ background: theme.primary, boxShadow: theme.shadow }} aria-label="Open Joy AI">
         <Image src="/joy-logo.png" alt="Joy" width={32} height={32} className="object-contain" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = "none"; el.nextElementSibling?.classList.remove("hidden"); }} />
         <Bot className="w-7 h-7 hidden" style={{ color: theme.textInverse }} />
       </button>
@@ -934,14 +750,7 @@ export function JoyChat() {
   }
 
   return (
-    <div
-      className={cn("fixed z-50 flex flex-col overflow-hidden transition-all duration-300", isFullScreen ? "inset-0 rounded-none" : "bottom-4 right-4 w-[400px] h-[600px] rounded-2xl shadow-2xl")}
-      style={{ background: theme.background, boxShadow: isFullScreen ? "none" : theme.shadow, border: `1px solid ${theme.border}` }}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {/* Drag overlay */}
+    <div className={cn("fixed z-50 flex flex-col overflow-hidden transition-all duration-300", isFullScreen ? "inset-0 rounded-none" : "bottom-4 right-4 w-[400px] h-[600px] rounded-2xl shadow-2xl")} style={{ background: theme.background, boxShadow: isFullScreen ? "none" : theme.shadow, border: `1px solid ${theme.border}` }} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
       {isDragOver && (
         <div className="absolute inset-0 z-[55] flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-2xl">
           <div className="px-6 py-4 rounded-2xl border-2 border-dashed" style={{ background: theme.surface, borderColor: theme.primary }}>
@@ -963,18 +772,10 @@ export function JoyChat() {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setShowSidebar((p) => !p)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Conversations">
-            <MessageSquarePlus className="w-4 h-4 text-white" />
-          </button>
-          <button onClick={() => setShowSettings((p) => !p)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Settings">
-            <Settings className="w-4 h-4 text-white" />
-          </button>
-          <button onClick={() => setIsFullScreen((p) => !p)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title={isFullScreen ? "Exit Full Screen" : "Full Screen"}>
-            {isFullScreen ? <Minimize2 className="w-4 h-4 text-white" /> : <Maximize2 className="w-4 h-4 text-white" />}
-          </button>
-          <button onClick={() => setIsOpen(false)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Close">
-            <X className="w-4 h-4 text-white" />
-          </button>
+          <button onClick={() => setShowSidebar((p) => !p)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Conversations"><MessageSquarePlus className="w-4 h-4 text-white" /></button>
+          <button onClick={() => setShowSettings((p) => !p)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Settings"><Settings className="w-4 h-4 text-white" /></button>
+          <button onClick={() => setIsFullScreen((p) => !p)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title={isFullScreen ? "Exit Full Screen" : "Full Screen"}>{isFullScreen ? <Minimize2 className="w-4 h-4 text-white" /> : <Maximize2 className="w-4 h-4 text-white" />}</button>
+          <button onClick={() => setIsOpen(false)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Close"><X className="w-4 h-4 text-white" /></button>
         </div>
       </div>
 
@@ -988,27 +789,16 @@ export function JoyChat() {
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {conversations.map((conv) => (
-              <div
-                key={conv.id}
-                onClick={() => { selectConversation(conv); setShowSidebar(false); }}
-                className={cn("group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors", currentConversation?.id === conv.id ? "font-medium" : "")}
-                style={{ background: currentConversation?.id === conv.id ? theme.primaryLight + "20" : "transparent", color: currentConversation?.id === conv.id ? theme.primary : theme.text }}
-              >
+              <div key={conv.id} onClick={() => { selectConversation(conv); setShowSidebar(false); }} className={cn("group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors", currentConversation?.id === conv.id ? "font-medium" : "")} style={{ background: currentConversation?.id === conv.id ? theme.primaryLight + "20" : "transparent", color: currentConversation?.id === conv.id ? theme.primary : theme.text }}>
                 <ChevronLeft className="w-3 h-3 shrink-0 opacity-50" />
                 <span className="truncate text-sm flex-1">{conv.title}</span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => { e.stopPropagation(); updateConversation(conv.id, { is_pinned: !conv.is_pinned }); }} className="p-1 rounded hover:bg-black/5">
-                    <Pin className={cn("w-3 h-3", conv.is_pinned ? "fill-current" : "")} />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }} className="p-1 rounded hover:bg-red-50">
-                    <Trash2 className="w-3 h-3 text-red-500" />
-                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); updateConversation(conv.id, { is_pinned: !conv.is_pinned }); }} className="p-1 rounded hover:bg-black/5"><Pin className={cn("w-3 h-3", conv.is_pinned ? "fill-current" : "")} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }} className="p-1 rounded hover:bg-red-50"><Trash2 className="w-3 h-3 text-red-500" /></button>
                 </div>
               </div>
             ))}
-            {conversations.length === 0 && (
-              <p className="text-xs text-center py-4" style={{ color: theme.textMuted }}>No conversations yet</p>
-            )}
+            {conversations.length === 0 && <p className="text-xs text-center py-4" style={{ color: theme.textMuted }}>No conversations yet</p>}
           </div>
         </div>
       )}
@@ -1020,32 +810,20 @@ export function JoyChat() {
             <h3 className="font-semibold text-sm" style={{ color: theme.text }}>Settings</h3>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* Theme */}
             <div>
               <label className="text-xs font-medium mb-2 block" style={{ color: theme.textMuted }}>Theme</label>
               <div className="grid grid-cols-2 gap-2">
                 {THEME_LIST.map((t) => (
-                  <button
-                    key={t.key}
-                    onClick={() => updatePreferences({ theme: t.key })}
-                    className={cn("flex items-center gap-2 px-3 py-2 rounded-lg text-xs border transition-all", preferences.theme === t.key ? "border-current" : "")}
-                    style={{ background: t.config.surface, borderColor: preferences.theme === t.key ? t.config.primary : theme.border, color: t.config.text }}
-                  >
-                    <div className="w-3 h-3 rounded-full" style={{ background: t.config.primary }} />
+                  <button key={t.key} onClick={() => updatePreferences({ theme: t.key })} className={cn("flex items-center gap-2 px-3 py-2 rounded-lg text-xs border transition-all", preferences.theme === t.key ? "border-current" : "")} style={{ background: THEME_MAP[t.key].surface, borderColor: preferences.theme === t.key ? THEME_MAP[t.key].primary : theme.border, color: THEME_MAP[t.key].text }}>
+                    <div className="w-3 h-3 rounded-full" style={{ background: THEME_MAP[t.key].primary }} />
                     {t.name}
                   </button>
                 ))}
               </div>
             </div>
-            {/* Personality */}
             <div>
               <label className="text-xs font-medium mb-2 block" style={{ color: theme.textMuted }}>Personality</label>
-              <select
-                value={preferences.personality_mode}
-                onChange={(e) => updatePreferences({ personality_mode: e.target.value as JoyUserPreferences["personality_mode"] })}
-                className="w-full px-3 py-2 rounded-lg text-xs border outline-none"
-                style={{ background: theme.background, borderColor: theme.border, color: theme.text }}
-              >
+              <select value={preferences.personality_mode} onChange={(e) => updatePreferences({ personality_mode: e.target.value as JoyUserPreferences["personality_mode"] })} className="w-full px-3 py-2 rounded-lg text-xs border outline-none" style={{ background: theme.background, borderColor: theme.border, color: theme.text }}>
                 <option value="auto">Auto (Recommended)</option>
                 <option value="playful">Playful</option>
                 <option value="study_buddy">Study Buddy</option>
@@ -1053,35 +831,23 @@ export function JoyChat() {
                 <option value="efficient">Efficient</option>
               </select>
             </div>
-            {/* Font Size */}
             <div>
               <label className="text-xs font-medium mb-2 block" style={{ color: theme.textMuted }}>Font Size</label>
               <div className="flex gap-2">
                 {(["small", "medium", "large"] as const).map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => updatePreferences({ font_size: size })}
-                    className={cn("flex-1 px-3 py-2 rounded-lg text-xs border capitalize transition-colors", preferences.font_size === size ? "text-white" : "")}
-                    style={{ background: preferences.font_size === size ? theme.primary : theme.background, borderColor: theme.border, color: preferences.font_size === size ? "#fff" : theme.text }}
-                  >
+                  <button key={size} onClick={() => updatePreferences({ font_size: size })} className={cn("flex-1 px-3 py-2 rounded-lg text-xs border capitalize transition-colors", preferences.font_size === size ? "text-white" : "")} style={{ background: preferences.font_size === size ? theme.primary : theme.background, borderColor: theme.border, color: preferences.font_size === size ? "#fff" : theme.text }}>
                     {size}
                   </button>
                 ))}
               </div>
             </div>
-            {/* Toggles */}
             <div className="space-y-2">
               {[
                 { key: "enable_streaming" as const, label: "Enable Streaming", icon: <RefreshCw className="w-3.5 h-3.5" /> },
                 { key: "show_timestamps" as const, label: "Show Timestamps", icon: <Calendar className="w-3.5 h-3.5" /> },
                 { key: "enable_sound" as const, label: "Sound Effects", icon: <Volume2 className="w-3.5 h-3.5" /> },
               ].map((toggle) => (
-                <button
-                  key={toggle.key}
-                  onClick={() => updatePreferences({ [toggle.key]: !preferences[toggle.key] })}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs border transition-colors"
-                  style={{ background: theme.background, borderColor: theme.border, color: theme.text }}
-                >
+                <button key={toggle.key} onClick={() => updatePreferences({ [toggle.key]: !preferences[toggle.key] })} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs border transition-colors" style={{ background: theme.background, borderColor: theme.border, color: theme.text }}>
                   <span className="flex items-center gap-2">{toggle.icon} {toggle.label}</span>
                   <div className={cn("w-8 h-4 rounded-full transition-colors relative", preferences[toggle.key] ? "" : "bg-gray-300")} style={{ background: preferences[toggle.key] ? theme.primary : undefined }}>
                     <div className={cn("absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform", preferences[toggle.key] ? "translate-x-4" : "translate-x-0.5")} />
@@ -1095,18 +861,14 @@ export function JoyChat() {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-        {/* Error Banner */}
         {errorMessage && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626" }}>
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span className="flex-1">{errorMessage}</span>
-            <button onClick={() => setErrorMessage(null)} className="p-1 rounded hover:bg-red-100">
-              <X className="w-3 h-3" />
-            </button>
+            <button onClick={() => setErrorMessage(null)} className="p-1 rounded hover:bg-red-100"><X className="w-3 h-3" /></button>
           </div>
         )}
 
-        {/* Greeting */}
         {messages.length === 0 && !isLoading && (
           <div className="text-center py-8">
             <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: theme.primary + "15" }}>
@@ -1117,24 +879,17 @@ export function JoyChat() {
             <p className="text-sm mb-6" style={{ color: theme.textMuted }}>How can I help you today?</p>
             <div className="grid grid-cols-1 gap-2 max-w-xs mx-auto">
               {getSmartSuggestions().map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSend(s.sendText)}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs border transition-all hover:scale-[1.02]"
-                  style={{ background: theme.surface, borderColor: theme.border, color: theme.text }}
-                >
-                  <span style={{ color: theme.primary }}>{s.icon}</span>
-                  {s.text}
+                <button key={i} onClick={() => handleSend(s.sendText)} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs border transition-all hover:scale-[1.02]" style={{ background: theme.surface, borderColor: theme.border, color: theme.text }}>
+                  <span style={{ color: theme.primary }}>{s.icon}</span>{s.text}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Messages */}
         {messages.map((msg) => (
           <div key={msg.id} className={cn("flex gap-3", msg.role === "user" ? "flex-row-reverse" : "")}>
-            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden", msg.role === "user" ? "" : "")} style={{ background: msg.role === "user" ? theme.primary : theme.primary + "15" }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ background: msg.role === "user" ? theme.primary : theme.primary + "15" }}>
               {msg.role === "user" ? (
                 <span className="text-xs font-bold text-white">{userName.charAt(0).toUpperCase()}</span>
               ) : (
@@ -1145,45 +900,16 @@ export function JoyChat() {
               )}
             </div>
             <div className={cn("max-w-[80%] space-y-1", msg.role === "user" ? "items-end" : "items-start")}>
-              <div
-                className={cn("px-4 py-2.5 rounded-2xl text-sm", msg.role === "user" ? "rounded-br-md" : "rounded-bl-md")}
-                style={{
-                  background: msg.role === "user" ? theme.userBubble : theme.assistantBubble,
-                  color: msg.role === "user" ? theme.userBubbleText : theme.assistantBubbleText,
-                }}
-              >
+              <div className={cn("px-4 py-2.5 rounded-2xl text-sm", msg.role === "user" ? "rounded-br-md" : "rounded-bl-md")} style={{ background: msg.role === "user" ? theme.userBubble : theme.assistantBubble, color: msg.role === "user" ? theme.userBubbleText : theme.assistantBubbleText }}>
                 {msg.role === "assistant" ? (
                   <div className={cn("prose prose-sm max-w-none", fontSizeClass)} style={{ color: "inherit" }}>
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        code({ node, inline, className, children, ...props }: { node?: unknown; inline?: boolean; className?: string; children: React.ReactNode }) {
-                          const match = /language-(\w+)/.exec(className || "");
-                          return !inline && match ? (
-                            <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>
-                              {String(children).replace(/\n$/, "")}
-                            </SyntaxHighlighter>
-                          ) : (
-                            <code className="px-1.5 py-0.5 rounded text-xs" style={{ background: theme.codeBg, color: theme.textInverse }} {...props}>
-                              {children}
-                            </code>
-                          );
-                        },
-                        table({ children }) {
-                          return (
-                            <div className="overflow-x-auto my-2">
-                              <table className="w-full text-xs border-collapse" style={{ borderColor: theme.border }}>
-                                {children}
-                              </table>
-                            </div>
-                          );
-                        },
-                        th({ children }) {
-                          return <th className="px-2 py-1.5 text-left font-semibold border-b" style={{ borderColor: theme.border, background: theme.surfaceHover }}>{children}</th>;
-                        },
-                        td({ children }) {
-                          return <td className="px-2 py-1.5 border-b" style={{ borderColor: theme.border }}>{children}</td>;
-                        },
+                        code: CodeBlock,
+                        table: TableBlock,
+                        th: ThBlock,
+                        td: TdBlock,
                       }}
                     >
                       {msg.content}
@@ -1194,9 +920,7 @@ export function JoyChat() {
                 )}
               </div>
               <div className={cn("flex items-center gap-1", msg.role === "user" ? "justify-end" : "justify-start")}>
-                {preferences.show_timestamps && (
-                  <span className="text-[10px]" style={{ color: theme.textMuted }}>{formatTime(msg.created_at)}</span>
-                )}
+                {preferences.show_timestamps && <span className="text-[10px]" style={{ color: theme.textMuted }}>{formatTime(msg.created_at)}</span>}
                 {msg.role === "assistant" && (
                   <>
                     <button onClick={() => copyToClipboard(msg.content, msg.id)} className="p-1 rounded hover:bg-black/5 transition-colors" title="Copy">
@@ -1218,7 +942,6 @@ export function JoyChat() {
           </div>
         ))}
 
-        {/* Streaming text */}
         {isStreaming && streamingText && (
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ background: theme.primary + "15" }}>
@@ -1235,21 +958,12 @@ export function JoyChat() {
           </div>
         )}
 
-        {/* Thinking indicator */}
         {isLoading && !isStreaming && <ThinkingIndicator />}
 
-        {/* Suggestions */}
         {suggestions.length > 0 && !isLoading && (
           <div className="flex flex-wrap gap-2 pl-11">
             {suggestions.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => handleSend(s)}
-                className="px-3 py-1.5 rounded-full text-xs border transition-all hover:scale-105"
-                style={{ background: theme.surface, borderColor: theme.border, color: theme.text }}
-              >
-                {s}
-              </button>
+              <button key={i} onClick={() => handleSend(s)} className="px-3 py-1.5 rounded-full text-xs border transition-all hover:scale-105" style={{ background: theme.surface, borderColor: theme.border, color: theme.text }}>{s}</button>
             ))}
           </div>
         )}
@@ -1261,69 +975,29 @@ export function JoyChat() {
       {attachments.length > 0 && (
         <div className="px-4 py-2 flex flex-wrap gap-2 shrink-0 border-t" style={{ borderColor: theme.border, background: theme.background }}>
           {attachments.map((att) => (
-            <AttachmentChip
-              key={att.id}
-              attachment={att}
-              formatFileSize={formatFileSize}
-              onRemove={removeAttachment}
-              onPreview={setPreviewAttachment}
-              onUpload={retryUpload}
-              theme={theme}
-            />
+            <AttachmentChip key={att.id} attachment={att} formatFileSize={formatFileSize} onRemove={removeAttachment} onPreview={setPreviewAttachment} onUpload={retryUpload} theme={theme} />
           ))}
         </div>
       )}
 
       {/* Input Area */}
       <div className="px-4 py-3 shrink-0 border-t" style={{ borderColor: theme.border, background: theme.background }}>
-        {/* Link Input */}
         {showLinkInput && (
           <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-xl" style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
             <Link2 className="w-4 h-4 shrink-0" style={{ color: theme.primary }} />
-            <input
-              type="url"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submitLink()}
-              placeholder="Paste a link..."
-              className="flex-1 text-xs bg-transparent outline-none"
-              style={{ color: theme.text }}
-              autoFocus
-            />
+            <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submitLink()} placeholder="Paste a link..." className="flex-1 text-xs bg-transparent outline-none" style={{ color: theme.text }} autoFocus />
             <button onClick={submitLink} className="px-2 py-1 rounded-lg text-xs font-medium text-white" style={{ background: theme.primary }}>Add</button>
             <button onClick={() => setShowLinkInput(false)} className="p-1 rounded hover:bg-black/5"><X className="w-3 h-3" style={{ color: theme.textMuted }} /></button>
           </div>
         )}
 
-        {/* Poll Input */}
         {showPollInput && (
           <div className="mb-2 p-3 rounded-xl space-y-2" style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
-            <input
-              type="text"
-              value={pollQuestion}
-              onChange={(e) => setPollQuestion(e.target.value)}
-              placeholder="Poll question..."
-              className="w-full px-3 py-2 rounded-lg text-xs border outline-none"
-              style={{ background: theme.background, borderColor: theme.border, color: theme.text }}
-              autoFocus
-            />
+            <input type="text" value={pollQuestion} onChange={(e) => setPollQuestion(e.target.value)} placeholder="Poll question..." className="w-full px-3 py-2 rounded-lg text-xs border outline-none" style={{ background: theme.background, borderColor: theme.border, color: theme.text }} autoFocus />
             {pollOptions.map((opt, i) => (
               <div key={i} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={opt}
-                  onChange={(e) => {
-                    const next = [...pollOptions];
-                    next[i] = e.target.value;
-                    setPollOptions(next);
-                  }}
-                  placeholder={`Option ${i + 1}`}
-                  className="flex-1 px-3 py-1.5 rounded-lg text-xs border outline-none"
-                  style={{ background: theme.background, borderColor: theme.border, color: theme.text }}
-                />
-                {pollOptions.length > 2 && (
-                  <button onClick={() => setPollOptions((prev) => prev.filter((_, idx) => idx !== i))} className="p-1 rounded hover:bg-red-50"><X className="w-3 h-3 text-red-500" /></button>
-                )}
+                <input type="text" value={opt} onChange={(e) => { const next = [...pollOptions]; next[i] = e.target.value; setPollOptions(next); }} placeholder={`Option ${i + 1}`} className="flex-1 px-3 py-1.5 rounded-lg text-xs border outline-none" style={{ background: theme.background, borderColor: theme.border, color: theme.text }} />
+                {pollOptions.length > 2 && <button onClick={() => setPollOptions((prev) => prev.filter((_, idx) => idx !== i))} className="p-1 rounded hover:bg-red-50"><X className="w-3 h-3 text-red-500" /></button>}
               </div>
             ))}
             <div className="flex items-center gap-2">
@@ -1337,86 +1011,30 @@ export function JoyChat() {
 
         <div className="flex items-end gap-2">
           <div className="relative flex-1">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
-              }}
-              onPaste={handlePaste}
-              placeholder="Ask Joy anything..."
-              rows={1}
-              className={cn("w-full px-4 py-2.5 pr-10 rounded-xl text-sm border resize-none outline-none focus:ring-2", fontSizeClass)}
-              style={{
-                background: theme.surface,
-                borderColor: theme.border,
-                color: theme.text,
-                maxHeight: "120px",
-                minHeight: "40px",
-              }}
-            />
-            <button
-              onClick={() => setShowAttachmentMenu((p) => !p)}
-              className="absolute right-3 bottom-2.5 p-1 rounded hover:bg-black/5 transition-colors"
-              title="Add attachment"
-            >
+            <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} onPaste={handlePaste} placeholder="Ask Joy anything..." rows={1} className={cn("w-full px-4 py-2.5 pr-10 rounded-xl text-sm border resize-none outline-none focus:ring-2", fontSizeClass)} style={{ background: theme.surface, borderColor: theme.border, color: theme.text, maxHeight: "120px", minHeight: "40px" }} />
+            <button onClick={() => setShowAttachmentMenu((p) => !p)} className="absolute right-3 bottom-2.5 p-1 rounded hover:bg-black/5 transition-colors" title="Add attachment">
               <Paperclip className="w-4 h-4" style={{ color: theme.textMuted }} />
             </button>
           </div>
-          <button
-            onClick={() => toggleVoice()}
-            className={cn("p-2.5 rounded-xl transition-colors", isListening ? "animate-pulse" : "")}
-            style={{ background: isListening ? "#ef4444" : theme.surface, color: isListening ? "#fff" : theme.textMuted }}
-            title={isListening ? "Stop listening" : "Voice input"}
-          >
+          <button onClick={() => toggleVoice()} className={cn("p-2.5 rounded-xl transition-colors", isListening ? "animate-pulse" : "")} style={{ background: isListening ? "#ef4444" : theme.surface, color: isListening ? "#fff" : theme.textMuted }} title={isListening ? "Stop listening" : "Voice input"}>
             {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
-          <button
-            onClick={() => handleSend()}
-            disabled={isLoading || isStreaming || (!input.trim() && attachments.length === 0)}
-            className="p-2.5 rounded-xl text-white transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
-            style={{ background: theme.sendButton }}
-          >
+          <button onClick={() => handleSend()} disabled={isLoading || isStreaming || (!input.trim() && attachments.length === 0)} className="p-2.5 rounded-xl text-white transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100" style={{ background: theme.sendButton }}>
             {isLoading || isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
 
-        {/* Attachment Menu */}
         {showAttachmentMenu && (
           <div ref={attachmentMenuRef} className="absolute bottom-16 right-4 z-30">
-            <BottomSheet
-              isOpen={showAttachmentMenu}
-              onClose={() => setShowAttachmentMenu(false)}
-              onCamera={handleCamera}
-              onPhotos={handlePhotos}
-              onDocuments={handleDocuments}
-              onScanner={handleScanner}
-              onVoice={() => { toggleVoice(); setShowAttachmentMenu(false); }}
-              onWhiteboard={handleWhiteboardOpen}
-              onPoll={handlePoll}
-              onLink={handleLink}
-              onSearch={() => { setSearchModal((s) => ({ ...s, isOpen: true })); setShowAttachmentMenu(false); }}
-              theme={theme}
-            />
+            <BottomSheet isOpen={showAttachmentMenu} onClose={() => setShowAttachmentMenu(false)} onCamera={handleCamera} onPhotos={handlePhotos} onDocuments={handleDocuments} onScanner={handleScanner} onVoice={() => { toggleVoice(); setShowAttachmentMenu(false); }} onWhiteboard={handleWhiteboardOpen} onPoll={handlePoll} onLink={handleLink} onSearch={() => { setSearchModal((s) => ({ ...s, isOpen: true })); setShowAttachmentMenu(false); }} theme={theme} />
           </div>
         )}
       </div>
 
-      {/* Search Modal */}
       <SearchModal />
 
-      {/* Attachment Preview */}
-      {previewAttachment && (
-        <AttachmentPreview
-          attachment={previewAttachment}
-          onClose={() => setPreviewAttachment(null)}
-          onUpdate={updateAttachment}
-          theme={theme}
-        />
-      )}
+      {previewAttachment && <AttachmentPreview attachment={previewAttachment} onClose={() => setPreviewAttachment(null)} onUpdate={updateAttachment} theme={theme} />}
 
-      {/* Whiteboard Modal */}
       {showWhiteboard && (
         <div className="absolute inset-0 z-50 flex flex-col" style={{ background: theme.background }}>
           <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: theme.border }}>
@@ -1426,12 +1044,8 @@ export function JoyChat() {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <button onClick={() => setWhiteboardTool("pen")} className={cn("p-1.5 rounded", whiteboardTool === "pen" ? "" : "")} style={{ background: whiteboardTool === "pen" ? theme.primary + "20" : "transparent" }}>
-                  <PenTool className="w-3.5 h-3.5" style={{ color: whiteboardTool === "pen" ? theme.primary : theme.textMuted }} />
-                </button>
-                <button onClick={() => setWhiteboardTool("eraser")} className={cn("p-1.5 rounded", whiteboardTool === "eraser" ? "" : "")} style={{ background: whiteboardTool === "eraser" ? theme.primary + "20" : "transparent" }}>
-                  <Eraser className="w-3.5 h-3.5" style={{ color: whiteboardTool === "eraser" ? theme.primary : theme.textMuted }} />
-                </button>
+                <button onClick={() => setWhiteboardTool("pen")} className="p-1.5 rounded" style={{ background: whiteboardTool === "pen" ? theme.primary + "20" : "transparent" }}><PenTool className="w-3.5 h-3.5" style={{ color: whiteboardTool === "pen" ? theme.primary : theme.textMuted }} /></button>
+                <button onClick={() => setWhiteboardTool("eraser")} className="p-1.5 rounded" style={{ background: whiteboardTool === "eraser" ? theme.primary + "20" : "transparent" }}><Eraser className="w-3.5 h-3.5" style={{ color: whiteboardTool === "eraser" ? theme.primary : theme.textMuted }} /></button>
               </div>
               <div className="w-px h-5" style={{ background: theme.border }} />
               <input type="color" value={whiteboardColor} onChange={(e) => setWhiteboardColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer" />
@@ -1444,25 +1058,11 @@ export function JoyChat() {
             </div>
           </div>
           <div className="flex-1 p-4 overflow-hidden">
-            <canvas
-              ref={whiteboardCanvasRef}
-              width={800}
-              height={500}
-              className="w-full h-full rounded-xl border cursor-crosshair touch-none"
-              style={{ background: "#ffffff", borderColor: theme.border }}
-              onMouseDown={handleWhiteboardStart}
-              onMouseMove={handleWhiteboardMove}
-              onMouseUp={handleWhiteboardEnd}
-              onMouseLeave={handleWhiteboardEnd}
-              onTouchStart={handleWhiteboardStart}
-              onTouchMove={handleWhiteboardMove}
-              onTouchEnd={handleWhiteboardEnd}
-            />
+            <canvas ref={whiteboardCanvasRef} width={800} height={500} className="w-full h-full rounded-xl border cursor-crosshair touch-none" style={{ background: "#ffffff", borderColor: theme.border }} onMouseDown={handleWhiteboardStart} onMouseMove={handleWhiteboardMove} onMouseUp={handleWhiteboardEnd} onMouseLeave={handleWhiteboardEnd} onTouchStart={handleWhiteboardStart} onTouchMove={handleWhiteboardMove} onTouchEnd={handleWhiteboardEnd} />
           </div>
         </div>
       )}
 
-      {/* Shortcuts Modal */}
       {showShortcuts && (
         <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowShortcuts(false)}>
           <div className="max-w-sm w-full rounded-2xl p-5 shadow-2xl" style={{ background: theme.surface }} onClick={(e) => e.stopPropagation()}>
@@ -1490,11 +1090,35 @@ export function JoyChat() {
         </div>
       )}
 
-      {/* Hidden file inputs */}
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { addFiles(e.target.files, "camera"); e.target.value = ""; }} />
       <input ref={photosInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addFiles(e.target.files, "photos"); e.target.value = ""; }} />
       <input ref={docsInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.md,.csv,.json,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" multiple className="hidden" onChange={(e) => { addFiles(e.target.files, "documents"); e.target.value = ""; }} />
       <input ref={scannerInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { addFiles(e.target.files, "scanner"); e.target.value = ""; }} />
     </div>
   );
+}
+
+// Helper components for ReactMarkdown
+function CodeBlock({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode }) {
+  const match = /language-(\w+)/.exec(className || "");
+  return !inline && match ? (
+    <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>
+      {String(children).replace(/
+$/, "")}
+    </SyntaxHighlighter>
+  ) : (
+    <code className="px-1.5 py-0.5 rounded text-xs" style={{ background: "#1e293b", color: "#ffffff" }} {...props}>{children}</code>
+  );
+}
+
+function TableBlock({ children }: { children?: React.ReactNode }) {
+  return <div className="overflow-x-auto my-2"><table className="w-full text-xs border-collapse">{children}</table></div>;
+}
+
+function ThBlock({ children }: { children?: React.ReactNode }) {
+  return <th className="px-2 py-1.5 text-left font-semibold border-b" style={{ background: "#f1f5f9", borderColor: "#e2e8f0" }}>{children}</th>;
+}
+
+function TdBlock({ children }: { children?: React.ReactNode }) {
+  return <td className="px-2 py-1.5 border-b" style={{ borderColor: "#e2e8f0" }}>{children}</td>;
 }

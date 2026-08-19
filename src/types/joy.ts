@@ -12,11 +12,11 @@ export interface JoyMessage {
   conversation_id: string;
   role: "user" | "assistant" | "system";
   content: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at: string;
 }
 
-export interface JoyUserPreferences {
+export type JoyUserPreferences = {
   id: string;
   user_id: string;
   theme: JoyTheme;
@@ -28,7 +28,7 @@ export interface JoyUserPreferences {
   font_size: "small" | "medium" | "large";
   created_at: string;
   updated_at: string;
-}
+};
 
 export type JoyTheme =
   | "light"
@@ -40,9 +40,9 @@ export type JoyTheme =
   | "cream";
 
 export interface JoyAction {
-  type: "navigate" | "refresh" | "open_modal" | "create_record" | "update_record" | "delete_record" | "export" | "notify";
+  type: "navigate" | "refresh" | "open_modal" | "create_record" | "update_record" | "delete_record" | "export" | "notify" | "search" | "send_message";
   target?: string;
-  payload?: Record<string, any>;
+  payload?: Record<string, unknown>;
   confirmation?: string;
 }
 
@@ -79,8 +79,48 @@ export interface JoyActionLog {
   id: string;
   user_id: string;
   action_type: string;
-  action_data: Record<string, any>;
+  action_data: Record<string, unknown>;
   success: boolean;
   error_message: string | null;
   created_at: string;
+}
+
+export interface JoySearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  source: string;
+}
+
+export interface JoyVideoResult {
+  title: string;
+  videoId: string;
+  thumbnail: string;
+  channel: string;
+  duration?: string;
+  subject?: string;
+  gradeLevel?: string;
+}
+
+export interface JoyExtractedContent {
+  text: string;
+  type: "pdf" | "docx" | "image" | "text" | "unknown";
+  pages?: number;
+  wordCount?: number;
+}
+
+export interface JoyToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export interface JoyToolResult {
+  tool_call_id: string;
+  role: "tool";
+  name: string;
+  content: string;
 }

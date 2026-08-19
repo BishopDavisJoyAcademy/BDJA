@@ -99,37 +99,73 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
       .limit(30);
     ctx.attendance = attendance || [];
 
-    // Fees
-    const { data: fees } = await admin
+    // Fees — calculate from fee_payments and fee_structures
+    const { data: feePayments } = await admin
       .from("fee_payments")
-      .select("amount_paid, balance")
+      .select("amount, status, created_at")
       .eq("student_id", userId)
       .order("created_at", { ascending: false })
-      .limit(5);
-    ctx.fees = fees || [];
+      .limit(10);
+
+    if (feePayments && feePayments.length > 0) {
+      ctx.fees = feePayments.map((fp) => ({
+        amount_paid: fp.amount,
+        status: fp.status,
+        date: fp.created_at,
+      }));
+    } else {
+      ctx.fees = [];
+    }
   }
 
   // Parent data
   if (profile?.user_category === "parent") {
-    const { data: children } = await admin
+    const { data: parentStudents } = await admin
       .from("parent_students")
-      .select("students(admission_number, full_name, grade_level, classes(name))")
+      .select("student_id, relationship")
       .eq("parent_id", userId);
-    ctx.children = children || [];
 
-    // Get fee info for children
-    if (children && children.length > 0) {
-      const studentIds = children
-        .map((c: Record<string, unknown>) => (c.students as Record<string, unknown> || {}).id)
-        .filter(Boolean) as string[];
+    if (parentStudents && parentStudents.length > 0) {
+      const studentIds = parentStudents.map((ps) => ps.student_id).filter(Boolean);
+
+      // Get student profiles
+      const { data: childrenProfiles } = await admin
+        .from("profiles")
+        .select("id, full_name, user_category")
+        .in("id", studentIds);
+
+      // Get student records
+      const { data: studentRecords } = await admin
+        .from("students")
+        .select("profile_id, grade_level, admission_number, class_id, classes(name)")
+        .in("profile_id", studentIds);
+
+      ctx.children = (childrenProfiles || []).map((cp) => {
+        const sr = (studentRecords || []).find((s) => s.profile_id === cp.id);
+        return {
+          students: {
+            full_name: cp.full_name,
+            admission_number: sr?.admission_number,
+            grade_level: sr?.grade_level,
+            classes: sr?.classes,
+          },
+        };
+      });
+
+      // Get fee payments for children
       if (studentIds.length > 0) {
-        const { data: fees } = await admin
+        const { data: childFees } = await admin
           .from("fee_payments")
-          .select("amount_paid, balance, student_id")
+          .select("amount, status, created_at, student_id")
           .in("student_id", studentIds)
           .order("created_at", { ascending: false })
           .limit(10);
-        ctx.fees = fees || [];
+        ctx.fees = (childFees || []).map((f) => ({
+          amount_paid: f.amount,
+          status: f.status,
+          date: f.created_at,
+          student_id: f.student_id,
+        }));
       }
     }
   }
@@ -143,7 +179,7 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
     const { data: staffRaw } = await admin
       .from("staff")
       .select("designation, department")
-      .eq("profile_id", userId)
+      .eq("id", userId)
       .single();
     const staff = staffRaw as JoyStaffRow | null;
     if (staff) {
@@ -169,20 +205,21 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
     .limit(10);
   ctx.calendarEvents = calendarEvents || [];
 
-  // VORA results
+  // VORA results — use thumbnail_url
   const { data: voraResults } = await admin
     .from("vora_content")
-    .select("title, subject, grade_level, video_url, thumbnail")
+    .select("title, subject, grade_level, video_url, thumbnail_url")
     .limit(5);
-  ctx.voraResults = voraResults || [];
+  ctx.voraResults = (voraResults || []).map((v) => ({
+    ...v,
+    thumbnail: v.thumbnail_url,
+  }));
 
   return ctx;
 }
 
 function buildAvailableActions(category: string, permissions: string[]): string[] {
   const actions: string[] = [];
-
-  // Common actions
   actions.push("Search the web and YouTube for educational content");
   actions.push("Navigate to different pages in the app");
 
@@ -191,16 +228,14 @@ function buildAvailableActions(category: string, permissions: string[]): string[
     actions.push("Check your grades");
     actions.push("View pending assignments");
     actions.push("Check your attendance");
-    actions.push("View fee balance");
+    actions.push("View fee payments");
     actions.push("Watch VORA learning videos");
-    actions.push("Send messages to teachers");
   }
 
   if (category === "parent") {
     actions.push("View your children's grades");
-    actions.push("Check fee balances");
+    actions.push("Check fee payments");
     actions.push("View upcoming events");
-    actions.push("Send messages to teachers");
   }
 
   if (category === "staff" || category === "teacher") {
@@ -208,7 +243,6 @@ function buildAvailableActions(category: string, permissions: string[]): string[
     actions.push("Create assignments");
     actions.push("Enter student marks");
     actions.push("Manage attendance");
-    actions.push("Send messages to parents and students");
     actions.push("Access the library");
   }
 

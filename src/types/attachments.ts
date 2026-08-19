@@ -3,14 +3,15 @@ export interface AttachmentFile {
   file: File;
   name: string;
   size: number;
-  type: "image" | "document" | "video" | "audio" | "whiteboard" | "link" | "poll";
-  status: "pending" | "uploading" | "success" | "error";
+  type: "image" | "document" | "video" | "audio" | "whiteboard" | "link" | "poll" | "search";
+  status: "pending" | "uploading" | "success" | "error" | "extracting";
   progress: number;
   url?: string;
   thumbnail?: string;
   dataUrl?: string;
   errorMessage?: string;
-  metadata?: Record<string, any>;
+  extractedContent?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface PollOption {
@@ -26,8 +27,17 @@ export interface PollData {
 }
 
 export interface WhiteboardData {
-  strokes: Record<string, unknown>[];
+  strokes: Array<{
+    points: Array<{ x: number; y: number }>;
+    color: string;
+    width: number;
+  }>;
   width: number;
   height: number;
   background: string;
+}
+
+export interface SearchQueryData {
+  query: string;
+  source: "web" | "youtube" | "vora";
 }

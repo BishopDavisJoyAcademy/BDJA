@@ -16,6 +16,7 @@ interface BottomSheetProps {
   onScanner: () => void;
   onPoll: () => void;
   onLink: () => void;
+  onSearch: () => void;
   theme: ThemeConfig;
 }
 

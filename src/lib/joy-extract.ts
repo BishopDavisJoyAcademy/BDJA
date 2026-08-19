@@ -1,3 +1,5 @@
+declare module "pdf-parse";
+
 import { JoyExtractedContent } from "@/types/joy";
 
 export async function extractContent(file: File | Buffer, fileName: string): Promise<JoyExtractedContent> {
@@ -20,7 +22,9 @@ async function extractPdf(file: File | Buffer): Promise<JoyExtractedContent> {
   } catch { /* fall through */ }
   try {
     const text = await readFileAsText(file);
-    return { text: `PDF content (raw extraction):\n\n${text.slice(0, 5000)}`, type: "pdf", wordCount: text.split(/\s+/).length };
+    return { text: `PDF content (raw extraction):
+
+${text.slice(0, 5000)}`, type: "pdf", wordCount: text.split(/\s+/).length };
   } catch {
     return { text: "Could not extract PDF content. Please upload a text file or image instead.", type: "pdf" };
   }
@@ -46,7 +50,9 @@ async function extractText(file: File | Buffer): Promise<JoyExtractedContent> {
 async function extractImage(file: File | Buffer): Promise<JoyExtractedContent> {
   try {
     const base64 = await fileToBase64(file);
-    return { text: `[Image uploaded]\n\nBase64: ${base64.slice(0, 100)}...`, type: "image" };
+    return { text: `[Image uploaded]
+
+Base64: ${base64.slice(0, 100)}...`, type: "image" };
   } catch {
     return { text: "Could not process image.", type: "image" };
   }

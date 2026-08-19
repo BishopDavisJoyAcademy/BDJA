@@ -80,12 +80,13 @@ export const JOY_TOOLS = [
   {
     type: "function" as const,
     function: {
-      name: "get_fee_balance",
-      description: "Get a student's fee balance.",
+      name: "get_fee_payments",
+      description: "Get a student's fee payment history.",
       parameters: {
         type: "object",
         properties: {
           student_id: { type: "string", description: "The student profile ID" },
+          limit: { type: "number", default: 10 },
         },
         required: ["student_id"],
       },
@@ -123,16 +124,17 @@ export const JOY_TOOLS = [
   {
     type: "function" as const,
     function: {
-      name: "send_message",
-      description: "Send a message to another user in the BDJA messaging system.",
+      name: "send_notification",
+      description: "Send a notification to a user in the BDJA system.",
       parameters: {
         type: "object",
         properties: {
-          recipient_id: { type: "string", description: "The recipient user ID" },
-          subject: { type: "string", description: "Message subject" },
-          body: { type: "string", description: "Message body" },
+          user_id: { type: "string", description: "The recipient user ID" },
+          title: { type: "string", description: "Notification title" },
+          content: { type: "string", description: "Notification content" },
+          type: { type: "string", description: "Notification type", default: "system" },
         },
-        required: ["recipient_id", "subject", "body"],
+        required: ["user_id", "title", "content"],
       },
     },
   },
@@ -146,6 +148,7 @@ export async function executeTool(toolCall: JoyToolCall): Promise<JoyToolResult>
   } catch {
     return { tool_call_id: toolCall.id, role: "tool", name, content: `Error: Invalid JSON arguments for tool ${name}` };
   }
+
   try {
     let result: string;
     switch (name) {
@@ -176,10 +179,10 @@ export async function executeTool(toolCall: JoyToolCall): Promise<JoyToolResult>
         result = JSON.stringify(data || []);
         break;
       }
-      case "get_fee_balance": {
+      case "get_fee_payments": {
         const admin = getSupabaseAdmin();
-        const { data } = await admin.from("fee_payments").select("amount_paid, balance").eq("student_id", String(args.student_id)).order("created_at", { ascending: false }).limit(1).single();
-        result = JSON.stringify(data || { balance: 0, amount_paid: 0 });
+        const { data } = await admin.from("fee_payments").select("amount, status, created_at, payment_method").eq("student_id", String(args.student_id)).order("created_at", { ascending: false }).limit(Number(args.limit) || 10);
+        result = JSON.stringify(data || []);
         break;
       }
       case "get_timetable": {
@@ -196,13 +199,14 @@ export async function executeTool(toolCall: JoyToolCall): Promise<JoyToolResult>
         result = JSON.stringify(data || []);
         break;
       }
-      case "send_message": {
+      case "send_notification": {
         const admin = getSupabaseAdmin();
-        const { error } = await admin.from("messages").insert({
-          recipient_id: String(args.recipient_id),
-          subject: String(args.subject),
-          body: String(args.body),
-          sender_id: "joy_system",
+        const { error } = await admin.from("notifications").insert({
+          user_id: String(args.user_id),
+          title: String(args.title),
+          content: String(args.content),
+          type: String(args.type || "system"),
+          read: false,
         });
         result = error ? JSON.stringify({ error: error.message }) : JSON.stringify({ success: true });
         break;

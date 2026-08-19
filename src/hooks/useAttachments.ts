@@ -143,6 +143,23 @@ export function useAttachments() {
     ]);
   }, []);
 
+  const addSearch = useCallback((data: SearchQueryData) => {
+    const id = generateId();
+    setAttachments((prev) => [
+      ...prev,
+      {
+        id,
+        file: new File([], "search.json"),
+        name: `Search: ${data.query}`,
+        size: 0,
+        type: "search" as const,
+        status: "success" as const,
+        progress: 100,
+        metadata: { searchData: data },
+      },
+    ]);
+  }, []);
+
   const addWhiteboard = useCallback((data: WhiteboardData, dataUrl?: string) => {
     const id = generateId();
     const finalDataUrl = dataUrl || "";
@@ -230,6 +247,7 @@ export function useAttachments() {
     addLink,
     addPoll,
     addWhiteboard,
+    addSearch,
     updateAttachment,
     removeAttachment,
     clearAttachments,

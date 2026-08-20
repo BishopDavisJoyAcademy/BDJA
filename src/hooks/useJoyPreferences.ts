@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { JoyUserPreferences, JoyTheme } from "@/types/joy";
+import toast from "react-hot-toast";
 
 const DEFAULT_PREFS: JoyUserPreferences = {
   id: "",
@@ -23,23 +24,18 @@ export function useJoyPreferences() {
   const [loading, setLoading] = useState(true);
 
   const fetchPreferences = useCallback(async () => {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      setLoading(false);
-      return;
-    }
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setLoading(false);
-      return;
-    }
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setLoading(false); return; }
+
       const res = await fetch("/api/joy/preferences", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const json = await res.json();
       if (json.preferences) {
         setPreferences(json.preferences);
+      } else if (json.error) {
+        console.error("[useJoyPreferences] fetch error:", json.error);
       }
     } catch (err) {
       console.error("[useJoyPreferences] fetch error:", err);
@@ -49,11 +45,10 @@ export function useJoyPreferences() {
   }, []);
 
   const updatePreferences = useCallback(async (updates: Partial<JoyUserPreferences>) => {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
       const res = await fetch("/api/joy/preferences", {
         method: "POST",
         headers: {
@@ -65,9 +60,13 @@ export function useJoyPreferences() {
       const json = await res.json();
       if (json.preferences) {
         setPreferences(json.preferences);
+      } else if (json.error) {
+        toast.error(json.error);
+        console.error("[useJoyPreferences] update error:", json.error);
       }
     } catch (err) {
       console.error("[useJoyPreferences] update error:", err);
+      toast.error("Failed to update preferences");
     }
   }, []);
 

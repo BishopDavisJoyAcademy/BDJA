@@ -1,40 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.slice(7);
+    const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
-    const { data: { user }, error } = await admin.auth.getUser(token);
-    if (error || !user) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
     const { data, error: dbError } = await admin
       .from("joy_user_preferences")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", session.user.id)
       .maybeSingle();
 
     if (dbError && dbError.code !== "PGRST116") throw dbError;
 
     if (!data) {
+      const defaults = {
+        user_id: session.user.id,
+        theme: "light",
+        personality_mode: "auto",
+        language_preference: "auto",
+        font_size: "medium",
+        show_timestamps: true,
+        enable_sound: true,
+        enable_streaming: true,
+      };
       const { data: created, error: createError } = await admin
         .from("joy_user_preferences")
-        .insert({
-          user_id: user.id,
-          theme: "light",
-          personality_mode: "friendly",
-          language_preference: "en",
-          font_size: "medium",
-          show_timestamps: true,
-          enable_sound: true,
-          enable_streaming: true,
-        })
+        .insert(defaults)
         .select()
         .maybeSingle();
       if (createError) throw createError;
@@ -43,25 +39,28 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ preferences: data });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[joy/preferences GET] Error:", error);
+    return NextResponse.json({ error: error.message || "Failed to load preferences" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.slice(7);
+    const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
-    const { data: { user }, error } = await admin.auth.getUser(token);
-    if (error || !user) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-
     const body = await req.json();
-    const { theme, personality_mode, language_preference, show_timestamps, enable_sound, enable_streaming, font_size } = body;
 
-    const update: any = {};
+    const {
+      theme,
+      personality_mode,
+      language_preference,
+      show_timestamps,
+      enable_sound,
+      enable_streaming,
+      font_size,
+    } = body;
+
+    const update: Record<string, any> = {};
     if (theme !== undefined) update.theme = theme;
     if (personality_mode !== undefined) update.personality_mode = personality_mode;
     if (language_preference !== undefined) update.language_preference = language_preference;
@@ -72,22 +71,20 @@ export async function POST(req: NextRequest) {
 
     const { data, error: dbError } = await admin
       .from("joy_user_preferences")
-      .upsert({
-        user_id: user.id,
-        theme: update.theme ?? "light",
-        personality_mode: update.personality_mode ?? "friendly",
-        language_preference: update.language_preference ?? "en",
-        font_size: update.font_size ?? "medium",
-        show_timestamps: update.show_timestamps ?? true,
-        enable_sound: update.enable_sound ?? true,
-        enable_streaming: update.enable_streaming ?? true,
-      }, { onConflict: "user_id" })
+      .upsert(
+        {
+          user_id: session.user.id,
+          ...update,
+        },
+        { onConflict: "user_id" }
+      )
       .select()
       .maybeSingle();
 
     if (dbError) throw dbError;
     return NextResponse.json({ preferences: data });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[joy/preferences POST] Error:", error);
+    return NextResponse.json({ error: error.message || "Failed to save preferences" }, { status: 500 });
   }
 }

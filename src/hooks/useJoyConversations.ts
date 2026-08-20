@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { JoyConversation, JoyMessage } from "@/types/joy";
 
-// In-memory message cache to prevent empty conversations when switching
 const messageCache = new Map<string, JoyMessage[]>();
 
 export function useJoyConversations() {
@@ -17,27 +16,25 @@ export function useJoyConversations() {
   const fetchConversations = useCallback(async () => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) { isFetchingRef.current = false; return; }
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { isFetchingRef.current = false; return; }
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { isFetchingRef.current = false; return; }
+
       const res = await fetch("/api/conversations", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const json = await res.json();
       if (json.conversations) {
         setConversations(json.conversations);
-        // Pre-load messages for all conversations into cache
+        // Pre-load messages
         for (const conv of json.conversations) {
           if (!messageCache.has(conv.id)) {
-            const { data } = await supabase
-              .from("conversation_messages")
-              .select("*")
-              .eq("conversation_id", conv.id)
-              .order("created_at", { ascending: true });
-            if (data) {
-              messageCache.set(conv.id, data);
+            const msgsRes = await fetch(`/api/joy/messages?conversation_id=${conv.id}`, {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            const msgsJson = await msgsRes.json();
+            if (msgsJson.messages) {
+              messageCache.set(conv.id, msgsJson.messages);
             }
           }
         }
@@ -50,8 +47,6 @@ export function useJoyConversations() {
   }, []);
 
   const createConversation = useCallback(async (title?: string) => {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return null;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return null;
     try {
@@ -80,23 +75,20 @@ export function useJoyConversations() {
   const loadMessages = useCallback(async (conversationId: string) => {
     setLoading(true);
     try {
-      // First check cache
       const cached = messageCache.get(conversationId);
-      if (cached) {
-        setMessages(cached);
+      if (cached) setMessages(cached);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setLoading(false); return; }
+
+      const res = await fetch(`/api/joy/messages?conversation_id=${conversationId}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await res.json();
+      if (json.messages) {
+        setMessages(json.messages);
+        messageCache.set(conversationId, json.messages);
       }
-
-      // Then fetch fresh from DB
-      const { data, error } = await supabase
-        .from("conversation_messages")
-        .select("*")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-      const msgs = data || [];
-      setMessages(msgs);
-      messageCache.set(conversationId, msgs);
     } catch (err) {
       console.error("[useJoyConversations] load messages error:", err);
     } finally {
@@ -106,18 +98,12 @@ export function useJoyConversations() {
 
   const selectConversation = useCallback(async (conversation: JoyConversation) => {
     setCurrentConversation(conversation);
-    // Immediately show cached messages if available
     const cached = messageCache.get(conversation.id);
-    if (cached) {
-      setMessages(cached);
-    }
-    // Then load fresh
+    if (cached) setMessages(cached);
     await loadMessages(conversation.id);
   }, [loadMessages]);
 
   const updateConversation = useCallback(async (id: string, updates: Partial<JoyConversation>) => {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     try {
@@ -131,9 +117,7 @@ export function useJoyConversations() {
       });
       const json = await res.json();
       if (json.conversation) {
-        setConversations((prev) =>
-          prev.map((c) => (c.id === id ? json.conversation : c))
-        );
+        setConversations((prev) => prev.map((c) => (c.id === id ? json.conversation : c)));
         if (currentConversation?.id === id) {
           setCurrentConversation(json.conversation);
         }
@@ -144,8 +128,6 @@ export function useJoyConversations() {
   }, [currentConversation]);
 
   const deleteConversation = useCallback(async (id: string) => {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     try {
@@ -164,7 +146,7 @@ export function useJoyConversations() {
     }
   }, [currentConversation]);
 
-  // Persist messages to cache whenever they change
+  // Persist messages to cache
   useEffect(() => {
     if (currentConversation?.id && messages.length > 0) {
       messageCache.set(currentConversation.id, messages);

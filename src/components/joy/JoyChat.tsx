@@ -1103,8 +1103,7 @@ function CodeBlock({ inline, className, children, ...props }: { inline?: boolean
   const match = /language-(\w+)/.exec(className || "");
   return !inline && match ? (
     <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>
-      {String(children).replace(/
-$/, "")}
+      {String(children).replace(/\n$/, "")}
     </SyntaxHighlighter>
   ) : (
     <code className="px-1.5 py-0.5 rounded text-xs" style={{ background: "#1e293b", color: "#ffffff" }} {...props}>{children}</code>

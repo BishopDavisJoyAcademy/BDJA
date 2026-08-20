@@ -73,7 +73,7 @@ export function JoyChat() {
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [reactions, setReactions] = useState<Record<string, "like" | "dislike">({});
+  const [reactions, setReactions] = useState<Record<string, "like" | "dislike">>({});
   const [isListening, setIsListening] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);

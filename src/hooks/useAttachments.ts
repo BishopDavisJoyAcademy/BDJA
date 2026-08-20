@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { AttachmentFile, PollData, WhiteboardData } from "@/types/attachments";
+import { AttachmentFile, PollData, WhiteboardData, SearchQueryData } from "@/types/attachments";
 import toast from "react-hot-toast";
 
 export function useAttachments() {

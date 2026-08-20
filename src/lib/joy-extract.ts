@@ -1,5 +1,3 @@
-declare module "pdf-parse";
-
 import { JoyExtractedContent } from "@/types/joy";
 
 export async function extractContent(file: File | Buffer, fileName: string): Promise<JoyExtractedContent> {

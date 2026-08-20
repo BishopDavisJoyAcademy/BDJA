@@ -5,11 +5,25 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
+// Recursive JSON type matching Supabase's Json type
+type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+
+const jsonSchema: z.ZodType<Json> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonSchema),
+    z.record(jsonSchema),
+  ])
+);
+
 const messageSchema = z.object({
   conversation_id: z.string().uuid(),
   role: z.enum(["user", "assistant", "system"]),
   content: z.string().min(1).max(50000),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: jsonSchema.optional(),
 });
 
 export async function GET(req: NextRequest) {

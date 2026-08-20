@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       .from("conversations")
       .select("id")
       .eq("id", conversationId)
-      .eq("user_id", session.user.id)
+      .eq("user_id", session.userId)
       .single();
 
     if (!conv) {
@@ -43,9 +43,10 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error;
     return NextResponse.json({ messages: data || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to load messages";
     console.error("[joy/messages GET] Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to load messages" }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -70,28 +71,33 @@ export async function POST(req: NextRequest) {
       .from("conversations")
       .select("id")
       .eq("id", conversation_id)
-      .eq("user_id", session.user.id)
+      .eq("user_id", session.userId)
       .single();
 
     if (!conv) {
       return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
     }
 
+    const insertData: Record<string, unknown> = {
+      conversation_id,
+      role,
+      content,
+    };
+    if (metadata) {
+      insertData.metadata = metadata;
+    }
+
     const { data, error } = await admin
       .from("conversation_messages")
-      .insert({
-        conversation_id,
-        role,
-        content,
-        metadata: metadata || null,
-      })
+      .insert(insertData)
       .select()
       .single();
 
     if (error) throw error;
     return NextResponse.json({ message: data });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to save message";
     console.error("[joy/messages POST] Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to save message" }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

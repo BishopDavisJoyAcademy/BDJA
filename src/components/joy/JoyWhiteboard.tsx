@@ -8,7 +8,7 @@ interface JoyWhiteboardProps {
   isOpen: boolean;
   theme: ThemeConfig;
   onClose: () => void;
-  onSave: (dataUrl: string, strokes: any[]) => void;
+  onSave: (dataUrl: string, strokes: Array<{ points: Array<{ x: number; y: number }>; color: string; width: number }>) => void;
 }
 
 export function JoyWhiteboard({ isOpen, theme, onClose, onSave }: JoyWhiteboardProps) {

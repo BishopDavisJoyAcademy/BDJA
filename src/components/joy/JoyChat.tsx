@@ -532,7 +532,7 @@ export function JoyChat() {
   const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const fontSizeClass = preferences.font_size === "small" ? "text-xs" : preferences.font_size === "large" ? "text-base" : "text-sm";
 
-  const handleWhiteboardSave = (dataUrl: string, strokes: any[]) => {
+  const handleWhiteboardSave = (dataUrl: string, strokes: Array<{ points: Array<{ x: number; y: number }>; color: string; width: number }>) => {
     addWhiteboard({ strokes, width: 800, height: 500, background: "#ffffff" }, dataUrl);
     toast.success("Whiteboard saved!");
   };

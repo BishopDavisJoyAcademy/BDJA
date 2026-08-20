@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/security";
-import { chatMessageSchema } from "@/lib/validation";
+import { joyChatMessageSchema } from "@/lib/validation";
 import { getErrorMessage, AuthRequiredError } from "@/lib/errors";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { buildJoyContext } from "@/lib/joy-context";
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const parseResult = chatMessageSchema.safeParse(body);
+    const parseResult = joyChatMessageSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json(
         { error: "Invalid input", details: parseResult.error.flatten() },
@@ -33,13 +33,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { messages, conversationId, stream, attachments, preferences } = parseResult.data;
+    const { messages, conversationId, stream, attachments } = parseResult.data;
+    const preferences = body.preferences as { personality_mode?: string; language_preference?: string } | undefined;
 
     const endpoint = getAevibronEndpoint();
     const apiKey = getAevibronKey();
 
     // Build rich user context
-    const ctx = await buildJoyContext(session.user.id);
+    const ctx = await buildJoyContext(session.userId);
     const systemPrompt = buildSystemPrompt({
       ...ctx,
       personality: preferences?.personality_mode || "auto",
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     // Add attachment context if present
     if (attachments && attachments.length > 0) {
       const attachmentContext = attachments
-        .map((a: any) => {
+        .map((a) => {
           if (a.extractedContent) {
             return `[Document: ${a.name}]\n${a.extractedContent.slice(0, 3000)}`;
           }
@@ -80,7 +81,6 @@ export async function POST(req: NextRequest) {
           conversation_id: conversationId,
           role: "user",
           content: userMsg.content,
-          metadata: attachments?.length ? { attachments } : null,
         });
       }
     }
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
             }
 
             let assistantText = "";
-            let toolCalls: any[] = [];
+            let toolCalls: Array<Record<string, unknown>> = [];
             const decoder = new TextDecoder();
 
             while (true) {
@@ -141,19 +141,19 @@ export async function POST(req: NextRequest) {
                   continue;
                 }
                 try {
-                  const parsed = JSON.parse(data);
+                  const parsed = JSON.parse(data) as Record<string, unknown>;
                   if (parsed.error) {
                     controller.enqueue(
-                      encoder.encode(`data: ${JSON.stringify({ error: parsed.error })}\n\n`)
+                      encoder.encode(`data: ${JSON.stringify({ error: String(parsed.error) })}\n\n`)
                     );
                     continue;
                   }
-                  if (parsed.chunk) {
+                  if (typeof parsed.chunk === "string") {
                     assistantText += parsed.chunk;
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk: parsed.chunk })}\n\n`));
                   }
-                  if (parsed.toolCalls) {
-                    toolCalls = parsed.toolCalls;
+                  if (Array.isArray(parsed.toolCalls)) {
+                    toolCalls = parsed.toolCalls as Array<Record<string, unknown>>;
                   }
                 } catch {
                   // Ignore parse errors for malformed SSE lines
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
             if (toolCalls.length > 0) {
               const toolResults = [];
               for (const tc of toolCalls) {
-                const result = await executeTool(tc);
+                const result = await executeTool(tc as { id: string; type: "function"; function: { name: string; arguments: string } });
                 toolResults.push(result);
               }
               // Send tool results back to gateway for final response
@@ -183,7 +183,11 @@ export async function POST(req: NextRequest) {
                 },
                 body: JSON.stringify({
                   model: "aevibron-core-v3",
-                  messages: [...fullMessages, { role: "assistant", content: assistantText, tool_calls: toolCalls }, ...toolMessages],
+                  messages: [
+                    ...fullMessages,
+                    { role: "assistant", content: assistantText },
+                    ...toolMessages,
+                  ],
                   temperature: 0.7,
                   max_tokens: 4096,
                   stream: true,
@@ -205,8 +209,8 @@ export async function POST(req: NextRequest) {
                       continue;
                     }
                     try {
-                      const parsed = JSON.parse(data);
-                      if (parsed.chunk) {
+                      const parsed = JSON.parse(data) as Record<string, unknown>;
+                      if (typeof parsed.chunk === "string") {
                         assistantText += parsed.chunk;
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk: parsed.chunk })}\n\n`));
                       }
@@ -228,9 +232,10 @@ export async function POST(req: NextRequest) {
             }
 
             controller.close();
-          } catch (err: any) {
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "Streaming failed";
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ error: err.message || "Streaming failed" })}\n\n`)
+              encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`)
             );
             controller.close();
           }
@@ -271,15 +276,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data = await res.json();
-    let replyText = data.reply || data.content || data.choices?.[0]?.message?.content || "";
-    let actions = data.actions || [];
+    const data = await res.json() as Record<string, unknown>;
+    let replyText = "";
+    if (typeof data.reply === "string") replyText = data.reply;
+    else if (typeof data.content === "string") replyText = data.content;
+    else if (Array.isArray(data.choices) && data.choices[0] && typeof (data.choices[0] as Record<string, unknown>).message === "object") {
+      const msg = (data.choices[0] as Record<string, unknown>).message as Record<string, unknown>;
+      if (typeof msg.content === "string") replyText = msg.content;
+    }
+
+    let actions: Array<Record<string, unknown>> = [];
+    if (Array.isArray(data.actions)) actions = data.actions as Array<Record<string, unknown>>;
 
     // Handle tool calls in non-streaming
-    if (data.toolCalls && data.toolCalls.length > 0) {
+    const rawToolCalls = data.toolCalls;
+    if (Array.isArray(rawToolCalls) && rawToolCalls.length > 0) {
       const toolResults = [];
-      for (const tc of data.toolCalls) {
-        const result = await executeTool(tc);
+      for (const tc of rawToolCalls) {
+        const result = await executeTool(tc as { id: string; type: "function"; function: { name: string; arguments: string } });
         toolResults.push(result);
       }
 
@@ -299,7 +313,7 @@ export async function POST(req: NextRequest) {
           model: "aevibron-core-v3",
           messages: [
             ...fullMessages,
-            { role: "assistant", content: replyText, tool_calls: data.toolCalls },
+            { role: "assistant", content: replyText },
             ...toolMessages,
           ],
           temperature: 0.7,
@@ -309,9 +323,14 @@ export async function POST(req: NextRequest) {
       });
 
       if (finalRes.ok) {
-        const finalData = await finalRes.json();
-        replyText = finalData.reply || finalData.content || finalData.choices?.[0]?.message?.content || replyText;
-        actions = finalData.actions || actions;
+        const finalData = await finalRes.json() as Record<string, unknown>;
+        if (typeof finalData.reply === "string") replyText = finalData.reply;
+        else if (typeof finalData.content === "string") replyText = finalData.content;
+        else if (Array.isArray(finalData.choices) && finalData.choices[0]) {
+          const msg = (finalData.choices[0] as Record<string, unknown>).message as Record<string, unknown>;
+          if (typeof msg.content === "string") replyText = msg.content;
+        }
+        if (Array.isArray(finalData.actions)) actions = finalData.actions as Array<Record<string, unknown>>;
       }
     }
 
@@ -321,7 +340,6 @@ export async function POST(req: NextRequest) {
         conversation_id: conversationId,
         role: "assistant",
         content: replyText,
-        metadata: actions?.length ? { actions } : null,
       });
     }
 

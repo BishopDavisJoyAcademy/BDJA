@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Image from "next/image";
 import { Search, X, Globe, Youtube, Play, ExternalLink, Loader2 } from "lucide-react";
 import { ThemeConfig } from "@/lib/joy-themes";
 import { JoySearchResult, JoyVideoResult } from "@/types/joy";
@@ -45,8 +46,8 @@ export function JoySearchModal({ isOpen, theme, onClose, onInsertLink }: JoySear
       } else {
         setResults(json.results || []);
       }
-    } catch (err: any) {
-      toast.error(err.message || "Search failed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Search failed");
     } finally {
       setLoading(false);
     }
@@ -158,7 +159,7 @@ export function JoySearchModal({ isOpen, theme, onClose, onInsertLink }: JoySear
             >
               <div className="w-20 h-14 rounded-lg bg-black/10 shrink-0 overflow-hidden relative">
                 {v.thumbnail ? (
-                  <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover" />
+                  <Image src={v.thumbnail} alt={v.title} fill className="object-cover" sizes="80px" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Play className="w-5 h-5" style={{ color: theme.textMuted }} />

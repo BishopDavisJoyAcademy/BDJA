@@ -1,6 +1,6 @@
 import { JoyMessage } from "@/types";
 
-function getAevibronEndpoint(): string {
+export function getAevibronEndpoint(): string {
   const url = process.env.NEXT_PUBLIC_AEVIBRON_ENDPOINT;
   if (!url) {
     throw new Error("NEXT_PUBLIC_AEVIBRON_ENDPOINT environment variable is required");
@@ -8,7 +8,7 @@ function getAevibronEndpoint(): string {
   return url;
 }
 
-function getAevibronKey(): string {
+export function getAevibronKey(): string {
   const key = process.env.AEVIBRON_API_KEY;
   if (!key) {
     throw new Error("AEVIBRON_API_KEY environment variable is required");
@@ -103,7 +103,7 @@ interface AevibronResponse {
   reply?: string;
 }
 
-function buildSystemPrompt(ctx?: AevibronContext): string {
+export function buildSystemPrompt(ctx?: AevibronContext): string {
   const personality = ctx?.personality || "auto";
   const lang = ctx?.language || "auto";
 

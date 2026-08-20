@@ -209,7 +209,7 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
       </div>
       {showEditor && attachment.type === "image" && (
         <ImageEditor
-          imageUrl={attachment.dataUrl || attachment.thumbnail || ""}
+          src={attachment.dataUrl || attachment.thumbnail || ""}
           onClose={() => setShowEditor(false)}
           onSave={(dataUrl) => { onUpdate(attachment.id, { dataUrl, thumbnail: dataUrl }); setShowEditor(false); }}
           theme={theme}

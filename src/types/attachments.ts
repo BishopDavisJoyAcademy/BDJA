@@ -11,13 +11,45 @@ export interface AttachmentFile {
   dataUrl?: string;
   errorMessage?: string;
   extractedContent?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: PollAttachmentMetadata | SearchAttachmentMetadata | WhiteboardAttachmentMetadata | LinkAttachmentMetadata | Record<string, unknown>;
 }
 
 export interface PollOption {
   id: string;
   label: string;
   votes: number;
+}
+
+export interface PollAttachmentMetadata {
+  pollData: {
+    question: string;
+    options: PollOption[];
+    allowMultiple: boolean;
+  };
+}
+
+export interface SearchAttachmentMetadata {
+  searchData: {
+    query: string;
+    source: "web" | "youtube" | "vora";
+  };
+}
+
+export interface WhiteboardAttachmentMetadata {
+  whiteboardData: {
+    strokes: Array<{
+      points: Array<{ x: number; y: number }>;
+      color: string;
+      width: number;
+    }>;
+    width: number;
+    height: number;
+    background: string;
+  };
+}
+
+export interface LinkAttachmentMetadata {
+  linkUrl: string;
 }
 
 export interface PollData {

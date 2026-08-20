@@ -2,8 +2,11 @@
 
 import NextImage from "next/image";
 import { useState } from "react";
-import { X, FileText, Image, Video, Music, Link2, BarChart3, PenTool, ExternalLink } from "lucide-react";
-import { AttachmentFile, PollOption } from "@/types/attachments";
+import {
+  X, FileText, Image, Video, Music, Link2, BarChart3, PenTool,
+  ExternalLink, Search, Loader2
+} from "lucide-react";
+import { AttachmentFile, PollOption, PollAttachmentMetadata, SearchAttachmentMetadata, WhiteboardAttachmentMetadata, LinkAttachmentMetadata } from "@/types/attachments";
 import { ThemeConfig } from "@/lib/joy-themes";
 import { ImageEditor } from "./ImageEditor";
 import { cn } from "@/lib/utils";
@@ -15,6 +18,36 @@ interface AttachmentPreviewProps {
   theme: ThemeConfig;
 }
 
+function isPollMetadata(meta: unknown): meta is PollAttachmentMetadata {
+  if (typeof meta !== "object" || meta === null) return false;
+  const m = meta as Record<string, unknown>;
+  const pollData = m.pollData;
+  if (typeof pollData !== "object" || pollData === null) return false;
+  const pd = pollData as Record<string, unknown>;
+  return typeof pd.question === "string" && Array.isArray(pd.options);
+}
+
+function isSearchMetadata(meta: unknown): meta is SearchAttachmentMetadata {
+  if (typeof meta !== "object" || meta === null) return false;
+  const m = meta as Record<string, unknown>;
+  const searchData = m.searchData;
+  if (typeof searchData !== "object" || searchData === null) return false;
+  const sd = searchData as Record<string, unknown>;
+  return typeof sd.query === "string" && typeof sd.source === "string";
+}
+
+function isWhiteboardMetadata(meta: unknown): meta is WhiteboardAttachmentMetadata {
+  if (typeof meta !== "object" || meta === null) return false;
+  const m = meta as Record<string, unknown>;
+  return typeof m.whiteboardData === "object" && m.whiteboardData !== null;
+}
+
+function isLinkMetadata(meta: unknown): meta is LinkAttachmentMetadata {
+  if (typeof meta !== "object" || meta === null) return false;
+  const m = meta as Record<string, unknown>;
+  return typeof m.linkUrl === "string";
+}
+
 export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: AttachmentPreviewProps) {
   const [showEditor, setShowEditor] = useState(false);
 
@@ -24,7 +57,7 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
       case "whiteboard":
         return (
           <div className="flex flex-col items-center gap-4">
-                        <NextImage
+            <NextImage
               src={attachment.dataUrl || attachment.thumbnail || attachment.url || ""}
               alt={attachment.name}
               width={400}
@@ -61,14 +94,18 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
         );
 
       case "document":
-        if (attachment.dataUrl?.startsWith("data:text") || attachment.name.endsWith(".txt")) {
+        if (attachment.extractedContent) {
           return (
             <div className="w-full max-w-2xl mx-auto">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-5 h-5" style={{ color: theme.primary }} />
+                <span className="font-medium" style={{ color: theme.text }}>{attachment.name}</span>
+              </div>
               <pre
                 className="p-4 rounded-xl text-xs overflow-auto max-h-[60vh] whitespace-pre-wrap"
                 style={{ background: theme.codeBg, color: theme.textInverse }}
               >
-                {attachment.dataUrl?.split(",")[1] ? atob(attachment.dataUrl.split(",")[1]) : "Preview not available"}
+                {attachment.extractedContent}
               </pre>
             </div>
           );
@@ -77,51 +114,73 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
           <div className="flex flex-col items-center gap-4 p-8">
             <FileText className="w-16 h-16" style={{ color: theme.primary }} />
             <p className="text-sm" style={{ color: theme.text }}>{attachment.name}</p>
-            <p className="text-xs" style={{ color: theme.textMuted }}>Document preview not available. Download to view.</p>
+            {attachment.status === "extracting" && (
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" style={{ color: theme.primary }} />
+                <span className="text-sm" style={{ color: theme.textMuted }}>Extracting content...</span>
+              </div>
+            )}
           </div>
         );
 
-      case "link":
+      case "link": {
+        const linkMeta = isLinkMetadata(attachment.metadata) ? attachment.metadata : null;
+        const url = linkMeta?.linkUrl || attachment.url || "";
         return (
           <div className="flex flex-col items-center gap-4 p-8">
             <Link2 className="w-16 h-16" style={{ color: theme.primary }} />
-            <p className="text-sm font-medium" style={{ color: theme.text }}>{attachment.name}</p>
             <a
-              href={attachment.url}
+              href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-white transition-colors hover:opacity-90"
-              style={{ background: theme.primary }}
+              className="text-sm underline flex items-center gap-1"
+              style={{ color: theme.primary }}
             >
-              <ExternalLink className="w-4 h-4" />
-              Open Link
+              {attachment.name} <ExternalLink className="w-3 h-3" />
             </a>
           </div>
         );
+      }
 
-      case "poll":
-        const pollData = attachment.metadata?.pollData;
+      case "poll": {
+        const pollMeta = isPollMetadata(attachment.metadata) ? attachment.metadata : null;
+        if (!pollMeta) return null;
+        const pollData = pollMeta.pollData;
         return (
-          <div className="w-full max-w-md mx-auto p-6 rounded-2xl" style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
+          <div className="w-full max-w-md mx-auto p-4">
             <div className="flex items-center gap-2 mb-4">
               <BarChart3 className="w-5 h-5" style={{ color: theme.primary }} />
-              <h3 className="font-semibold" style={{ color: theme.text }}>{pollData?.question || "Poll"}</h3>
+              <h3 className="font-semibold" style={{ color: theme.text }}>{pollData.question}</h3>
             </div>
             <div className="space-y-2">
-              {pollData?.options?.map((opt: PollOption) => (
-                <div
+              {pollData.options.map((opt: PollOption) => (
+                <button
                   key={opt.id}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl border"
-                  style={{ borderColor: theme.border, background: theme.background }}
+                  className="w-full text-left px-4 py-2.5 rounded-lg border transition-colors hover:opacity-80"
+                  style={{ borderColor: theme.border, background: theme.surface, color: theme.text }}
                 >
-                  <div className="w-4 h-4 rounded-full border-2" style={{ borderColor: theme.primary }} />
-                  <span className="text-sm" style={{ color: theme.text }}>{opt.label}</span>
-                  <span className="text-xs ml-auto" style={{ color: theme.textMuted }}>{opt.votes} votes</span>
-                </div>
+                  {opt.label}
+                </button>
               ))}
             </div>
           </div>
         );
+      }
+
+      case "search": {
+        const searchMeta = isSearchMetadata(attachment.metadata) ? attachment.metadata : null;
+        if (!searchMeta) return null;
+        const searchData = searchMeta.searchData;
+        return (
+          <div className="w-full max-w-md mx-auto p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Search className="w-5 h-5" style={{ color: theme.primary }} />
+              <span className="font-semibold" style={{ color: theme.text }}>Search: {searchData.query}</span>
+            </div>
+            <p className="text-sm" style={{ color: theme.textMuted }}>Source: {searchData.source}</p>
+          </div>
+        );
+      }
 
       default:
         return (
@@ -134,41 +193,28 @@ export function AttachmentPreview({ attachment, onClose, onUpdate, theme }: Atta
   };
 
   return (
-    <>
-      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="w-full max-w-3xl rounded-2xl overflow-hidden flex flex-col max-h-[90vh]" style={{ background: theme.surface }}>
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: theme.border }}>
-            <div className="flex items-center gap-2">
-              {attachment.type === "image" && <Image className="w-4 h-4" style={{ color: theme.primary }} aria-label="Image" />}
-              {attachment.type === "video" && <Video className="w-4 h-4" style={{ color: theme.primary }} />}
-              {attachment.type === "audio" && <Music className="w-4 h-4" style={{ color: theme.primary }} />}
-              {attachment.type === "document" && <FileText className="w-4 h-4" style={{ color: theme.primary }} />}
-              {attachment.type === "link" && <Link2 className="w-4 h-4" style={{ color: theme.primary }} />}
-              {attachment.type === "poll" && <BarChart3 className="w-4 h-4" style={{ color: theme.primary }} />}
-              {attachment.type === "whiteboard" && <PenTool className="w-4 h-4" style={{ color: theme.primary }} />}
-              <span className="font-medium text-sm" style={{ color: theme.text }}>{attachment.name}</span>
-            </div>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-black/5 transition-colors">
-              <X className="w-4 h-4" style={{ color: theme.textMuted }} />
-            </button>
-          </div>
-          <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
-            {renderContent()}
-          </div>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div
+        className="relative max-w-3xl w-full rounded-2xl shadow-2xl overflow-hidden"
+        style={{ background: theme.surface }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: theme.border }}>
+          <h3 className="font-medium text-sm truncate pr-4" style={{ color: theme.text }}>{attachment.name}</h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-black/5 transition-colors">
+            <X className="w-4 h-4" style={{ color: theme.textMuted }} />
+          </button>
         </div>
+        <div className="p-4">{renderContent()}</div>
       </div>
-
       {showEditor && attachment.type === "image" && (
         <ImageEditor
-          src={attachment.dataUrl || attachment.thumbnail || attachment.url || ""}
-          onSave={(dataUrl) => {
-            onUpdate(attachment.id, { dataUrl, thumbnail: dataUrl });
-            setShowEditor(false);
-          }}
+          imageUrl={attachment.dataUrl || attachment.thumbnail || ""}
           onClose={() => setShowEditor(false)}
+          onSave={(dataUrl) => { onUpdate(attachment.id, { dataUrl, thumbnail: dataUrl }); setShowEditor(false); }}
           theme={theme}
         />
       )}
-    </>
+    </div>
   );
 }

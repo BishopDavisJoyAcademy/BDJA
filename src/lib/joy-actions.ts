@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from "./supabase-server";
+import { createClient } from "@supabase/supabase-js";
 import { getErrorMessage } from "./errors";
 
 export interface ActionPayload {
@@ -15,11 +15,26 @@ export interface ActionResult {
   error?: string;
 }
 
+// Untyped admin client for generic CRUD operations.
+// The typed getSupabaseAdmin() client has strict table/schema types
+// that prevent generic table names at compile time.
+// This untyped client uses the same credentials but accepts any table name.
+function getUntypedAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error("Supabase admin credentials not configured");
+  }
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 export async function executeJoyAction(
   actionType: string,
   actionPayload: ActionPayload
 ): Promise<ActionResult> {
-  const admin = getSupabaseAdmin();
+  const admin = getUntypedAdmin();
 
   try {
     switch (actionType) {

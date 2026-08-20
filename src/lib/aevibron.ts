@@ -16,71 +16,20 @@ export function getAevibronKey(): string {
   return key;
 }
 
-export interface TimetableEntry {
-  day_of_week: string;
-  subject?: string;
-  subjects?: { name: string } | null;
-  start_time: string;
-  end_time: string;
-}
-
-export interface GradeEntry {
-  subject?: string;
-  subjects?: { name: string } | null;
-  score: number;
-  max_score?: number;
-}
-
-export interface AssignmentEntry {
-  subject?: string;
-  subjects?: { name: string } | null;
-  title: string;
-  due_date: string;
-}
-
-export interface FeeEntry {
-  amount_paid?: number;
-  balance?: number;
-}
-
-export interface AttendanceEntry {
-  status: string;
-}
-
-export interface CalendarEventEntry {
-  title: string;
-  date: string;
-}
-
-export interface VoraResultEntry {
-  title: string;
-  subject: string;
-  grade_level: string;
-  video_url: string;
-}
-
-export interface ChildEntry {
-  students?: {
-    admission_number?: string;
-    classes?: { name: string } | null;
-    grade_level?: string;
-  } | null;
-}
-
 export interface AevibronContext {
   userName?: string;
   userCategory?: string;
   gradeLevel?: string;
   designation?: string;
   campusId?: string;
-  timetable?: TimetableEntry[];
-  grades?: GradeEntry[];
-  assignments?: AssignmentEntry[];
-  fees?: FeeEntry[];
-  attendance?: AttendanceEntry[];
-  calendarEvents?: CalendarEventEntry[];
-  voraResults?: VoraResultEntry[];
-  children?: ChildEntry[];
+  timetable?: Array<Record<string, unknown>>;
+  grades?: Array<Record<string, unknown>>;
+  assignments?: Array<Record<string, unknown>>;
+  fees?: Array<Record<string, unknown>>;
+  attendance?: Array<Record<string, unknown>>;
+  calendarEvents?: Array<Record<string, unknown>>;
+  voraResults?: Array<Record<string, unknown>>;
+  children?: Array<Record<string, unknown>>;
   availableActions?: string[];
   personality?: string;
   language?: string;
@@ -101,6 +50,21 @@ interface AevibronResponse {
   }>;
   content?: string;
   reply?: string;
+}
+
+function getString(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  return undefined;
+}
+
+function getRecord(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value === "object" && value !== null) return value as Record<string, unknown>;
+  return undefined;
+}
+
+function getNumber(value: unknown): number | undefined {
+  if (typeof value === "number") return value;
+  return undefined;
 }
 
 export function buildSystemPrompt(ctx?: AevibronContext): string {
@@ -170,32 +134,57 @@ DESIGNATION: ${ctx.designation}`;
     prompt += `
 
 TIMETABLE (next few classes):
-${ctx.timetable.slice(0, 5).map((t) => `- ${t.day_of_week}: ${t.subjects?.name || t.subject || "Unknown"} (${t.start_time}-${t.end_time})`).join("\n")}`;
+${ctx.timetable.slice(0, 5).map((t) => {
+      const subjects = getRecord(t.subjects);
+      const subjectName = getString(subjects?.name) || getString(t.subject) || "Unknown";
+      const day = getString(t.day_of_week) || "Unknown";
+      const start = getString(t.start_time) || "";
+      const end = getString(t.end_time) || "";
+      return `- ${day}: ${subjectName} (${start}-${end})`;
+    }).join("\n")}`;
   }
 
   if (ctx?.grades && ctx.grades.length > 0) {
     prompt += `
 
 RECENT GRADES:
-${ctx.grades.slice(0, 5).map((g) => `- ${g.subjects?.name || g.subject || "Unknown"}: ${g.score}/${g.max_score || 100}`).join("\n")}`;
+${ctx.grades.slice(0, 5).map((g) => {
+      const subjects = getRecord(g.subjects);
+      const subjectName = getString(subjects?.name) || getString(g.subject) || "Unknown";
+      const score = getNumber(g.score) ?? 0;
+      const max = getNumber(g.max_score) || 100;
+      return `- ${subjectName}: ${score}/${max}`;
+    }).join("\n")}`;
   }
 
   if (ctx?.assignments && ctx.assignments.length > 0) {
     prompt += `
 
 PENDING ASSIGNMENTS:
-${ctx.assignments.slice(0, 5).map((a) => `- ${a.subjects?.name || a.subject || "Unknown"}: ${a.title} (Due: ${a.due_date})`).join("\n")}`;
+${ctx.assignments.slice(0, 5).map((a) => {
+      const subjects = getRecord(a.subjects);
+      const subjectName = getString(subjects?.name) || getString(a.subject) || "Unknown";
+      const title = getString(a.title) || "Untitled";
+      const due = getString(a.due_date) || "Unknown";
+      return `- ${subjectName}: ${title} (Due: ${due})`;
+    }).join("\n")}`;
   }
 
   if (ctx?.fees && ctx.fees.length > 0) {
     prompt += `
 
 FEE RECORDS:
-${ctx.fees.slice(0, 3).map((f) => `- ${f.amount_paid ? `Paid: KES ${f.amount_paid}` : `Balance: KES ${f.balance || 0}`}`).join("\n")}`;
+${ctx.fees.slice(0, 3).map((f) => {
+      const amount = getNumber(f.amount_paid);
+      const balance = getNumber(f.balance);
+      if (amount !== undefined) return `- Paid: KES ${amount}`;
+      if (balance !== undefined) return `- Balance: KES ${balance}`;
+      return `- Fee record`;
+    }).join("\n")}`;
   }
 
   if (ctx?.attendance && ctx.attendance.length > 0) {
-    const present = ctx.attendance.filter((a) => a.status === "present").length;
+    const present = ctx.attendance.filter((a) => getString(a.status) === "present").length;
     const total = ctx.attendance.length;
     prompt += `
 
@@ -206,14 +195,24 @@ ATTENDANCE: ${present}/${total} days present recently.`;
     prompt += `
 
 UPCOMING EVENTS:
-${ctx.calendarEvents.slice(0, 3).map((e) => `- ${e.title}: ${e.date}`).join("\n")}`;
+${ctx.calendarEvents.slice(0, 3).map((e) => {
+      const title = getString(e.title) || "Event";
+      const date = getString(e.date) || "Unknown";
+      return `- ${title}: ${date}`;
+    }).join("\n")}`;
   }
 
   if (ctx?.voraResults && ctx.voraResults.length > 0) {
     prompt += `
 
 RELEVANT LEARNING VIDEOS:
-${ctx.voraResults.slice(0, 3).map((v) => `- ${v.title} (${v.subject}, ${v.grade_level}): ${v.video_url}`).join("\n")}`;
+${ctx.voraResults.slice(0, 3).map((v) => {
+      const title = getString(v.title) || "Video";
+      const subject = getString(v.subject) || "";
+      const grade = getString(v.grade_level) || "";
+      const url = getString(v.video_url) || "";
+      return `- ${title} (${subject}, ${grade}): ${url}`;
+    }).join("\n")}`;
   }
 
   if (ctx?.children && ctx.children.length > 0) {
@@ -221,9 +220,10 @@ ${ctx.voraResults.slice(0, 3).map((v) => `- ${v.title} (${v.subject}, ${v.grade_
 
 CHILDREN:
 ${ctx.children.slice(0, 3).map((c) => {
-      const s = c.students;
-      const id = s?.admission_number || "Student";
-      const grade = s?.classes?.name || s?.grade_level || "Unknown";
+      const students = getRecord(c.students);
+      const id = getString(students?.admission_number) || "Student";
+      const classes = getRecord(students?.classes);
+      const grade = getString(classes?.name) || getString(students?.grade_level) || "Unknown";
       return `- ${id}: Grade ${grade}`;
     }).join("\n")}`;
   }
@@ -335,24 +335,23 @@ export async function streamJoy(
 
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No response body");
-  const decoder = new TextDecoder();
 
-  let buffer = "";
+  const decoder = new TextDecoder();
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
+    const chunk = decoder.decode(value);
+    const lines = chunk.split("\n");
     for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const dataStr = line.slice(6);
-        if (dataStr === "[DONE]") continue;
-        try {
-          const parsed = JSON.parse(dataStr) as AevibronResponse;
-          const chunk = parsed.choices?.[0]?.delta?.content || "";
-          if (chunk) onChunk(chunk);
-        } catch { /* ignore malformed chunks */ }
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6);
+      if (data === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(data) as { chunk?: string; error?: string };
+        if (parsed.error) throw new Error(parsed.error);
+        if (parsed.chunk) onChunk(parsed.chunk);
+      } catch {
+        // ignore malformed lines
       }
     }
   }

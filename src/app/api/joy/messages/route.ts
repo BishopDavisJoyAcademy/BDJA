@@ -23,7 +23,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "conversation_id required" }, { status: 400 });
     }
 
-    // Verify conversation belongs to user
     const { data: conv } = await admin
       .from("conversations")
       .select("id")
@@ -66,7 +65,6 @@ export async function POST(req: NextRequest) {
 
     const { conversation_id, role, content, metadata } = parseResult.data;
 
-    // Verify conversation belongs to user
     const { data: conv } = await admin
       .from("conversations")
       .select("id")
@@ -78,18 +76,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
     }
 
-    const insertData: Record<string, unknown> = {
-      conversation_id,
-      role,
-      content,
-    };
-    if (metadata) {
-      insertData.metadata = metadata;
-    }
-
     const { data, error } = await admin
       .from("conversation_messages")
-      .insert(insertData)
+      .insert({
+        conversation_id,
+        role,
+        content,
+        ...(metadata ? { metadata } : {}),
+      })
       .select()
       .single();
 

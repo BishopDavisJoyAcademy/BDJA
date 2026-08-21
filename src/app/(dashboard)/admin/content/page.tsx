@@ -104,7 +104,7 @@ export default function ContentPage() {
     }
     try {
       if (cmsForm.id) {
-        await apiPut("/api/admin/pages", { id: cmsForm.id, ...cmsForm });
+        await apiPut("/api/admin/pages", cmsForm);
         toast.success("Page updated");
       } else {
         await apiPost("/api/admin/pages", cmsForm);
@@ -142,7 +142,7 @@ export default function ContentPage() {
     }
     try {
       if (libForm.id) {
-        await apiPut("/api/library", { id: libForm.id, ...libForm });
+        await apiPut("/api/library", libForm);
         toast.success("Resource updated");
       } else {
         await apiPost("/api/library", libForm);
@@ -189,7 +189,7 @@ export default function ContentPage() {
     }
     try {
       if (voraForm.id) {
-        await apiPut("/api/admin/vora", { id: voraForm.id, ...voraForm });
+        await apiPut("/api/admin/vora", voraForm);
         toast.success("Video updated");
       } else {
         await apiPost("/api/admin/vora", voraForm);

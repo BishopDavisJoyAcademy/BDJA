@@ -11,6 +11,36 @@ import { JOY_TOOLS, executeTool } from "@/lib/joy-tools";
 
 export const dynamic = "force-dynamic";
 
+interface SseChunk {
+  choices?: Array<{
+    delta?: {
+      content?: string;
+      role?: string;
+      tool_calls?: Array<{
+        index?: number;
+        id?: string;
+        type?: string;
+        function?: { name?: string; arguments?: string };
+      }>;
+    };
+    finish_reason?: string | null;
+  }>;
+  error?: { message?: string };
+}
+
+interface ChatResponse {
+  reply?: string;
+  content?: string;
+  choices?: Array<{
+    message?: {
+      content?: string;
+      tool_calls?: Array<Record<string, unknown>>;
+    };
+  }>;
+  actions?: Array<Record<string, unknown>>;
+  toolCalls?: Array<Record<string, unknown>>;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(req);
@@ -33,7 +63,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { messages, conversationId, stream, attachments } = parseResult.data;
+    const { messages, stream } = parseResult.data;
+    const conversationId = body.conversationId as string | undefined;
+    const attachments = body.attachments as Array<{ name: string; type: string; url?: string; extractedContent?: string }> | undefined;
     const preferences = body.preferences as { personality_mode?: string; language_preference?: string } | undefined;
 
     const endpoint = getAevibronEndpoint();
@@ -107,9 +139,16 @@ export async function POST(req: NextRequest) {
             });
 
             if (!res.ok) {
-              const errData = await res.json().catch(() => ({}));
+              let errMessage = `AI service error: ${res.status}`;
+              try {
+                const errData = await res.json() as { error?: { message?: string } | string };
+                if (typeof errData.error === "string") errMessage = errData.error;
+                else if (errData.error?.message) errMessage = errData.error.message;
+              } catch {
+                // ignore parse errors on error response
+              }
               controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ error: errData.error || `AI service error: ${res.status}` })}\n\n`)
+                encoder.encode(`data: ${JSON.stringify({ error: errMessage })}\n\n`)
               );
               controller.close();
               return;
@@ -125,35 +164,36 @@ export async function POST(req: NextRequest) {
             }
 
             let assistantText = "";
-            let toolCalls: Array<Record<string, unknown>> = [];
             const decoder = new TextDecoder();
+            let buffer = "";
 
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
-              const chunk = decoder.decode(value);
-              const lines = chunk.split("\n");
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+
               for (const line of lines) {
                 if (!line.startsWith("data: ")) continue;
                 const data = line.slice(6);
-                if (data === "[DONE]") {
-                  controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-                  continue;
-                }
+                if (data === "[DONE]") continue;
+
                 try {
-                  const parsed = JSON.parse(data) as Record<string, unknown>;
+                  const parsed = JSON.parse(data) as SseChunk;
                   if (parsed.error) {
                     controller.enqueue(
                       encoder.encode(`data: ${JSON.stringify({ error: String(parsed.error) })}\n\n`)
                     );
                     continue;
                   }
-                  if (typeof parsed.chunk === "string") {
-                    assistantText += parsed.chunk;
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk: parsed.chunk })}\n\n`));
-                  }
-                  if (Array.isArray(parsed.toolCalls)) {
-                    toolCalls = parsed.toolCalls as Array<Record<string, unknown>>;
+
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (typeof content === "string" && content.length > 0) {
+                    assistantText += content;
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({ chunk: content })}\n\n`)
+                    );
                   }
                 } catch {
                   // Ignore parse errors for malformed SSE lines
@@ -161,63 +201,21 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            // Execute tools if any
-            if (toolCalls.length > 0) {
-              const toolResults = [];
-              for (const tc of toolCalls) {
-                const result = await executeTool(tc as { id: string; type: "function"; function: { name: string; arguments: string } });
-                toolResults.push(result);
-              }
-              // Send tool results back to gateway for final response
-              const toolMessages = toolResults.map((tr) => ({
-                role: "tool" as const,
-                content: tr.content,
-                tool_call_id: tr.tool_call_id,
-              }));
-
-              const finalRes = await fetch(`${endpoint}/api/v1/chat`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-Aevibron-Key": apiKey,
-                },
-                body: JSON.stringify({
-                  model: "aevibron-core-v3",
-                  messages: [
-                    ...fullMessages,
-                    { role: "assistant", content: assistantText },
-                    ...toolMessages,
-                  ],
-                  temperature: 0.7,
-                  max_tokens: 4096,
-                  stream: true,
-                }),
-              });
-
-              if (finalRes.ok && finalRes.body) {
-                const finalReader = finalRes.body.getReader();
-                while (true) {
-                  const { done, value } = await finalReader.read();
-                  if (done) break;
-                  const chunk = decoder.decode(value);
-                  const lines = chunk.split("\n");
-                  for (const line of lines) {
-                    if (!line.startsWith("data: ")) continue;
-                    const data = line.slice(6);
-                    if (data === "[DONE]") {
-                      controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-                      continue;
-                    }
-                    try {
-                      const parsed = JSON.parse(data) as Record<string, unknown>;
-                      if (typeof parsed.chunk === "string") {
-                        assistantText += parsed.chunk;
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk: parsed.chunk })}\n\n`));
-                      }
-                    } catch {
-                      // ignore
-                    }
+            // Process any remaining data in buffer
+            if (buffer.startsWith("data: ")) {
+              const data = buffer.slice(6);
+              if (data !== "[DONE]") {
+                try {
+                  const parsed = JSON.parse(data) as SseChunk;
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (typeof content === "string" && content.length > 0) {
+                    assistantText += content;
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({ chunk: content })}\n\n`)
+                    );
                   }
+                } catch {
+                  // ignore
                 }
               }
             }
@@ -269,27 +267,23 @@ export async function POST(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      return NextResponse.json(
-        { error: errorData.error || `AI service error: ${res.status}` },
-        { status: res.status }
-      );
+      let errMessage = `AI service error: ${res.status}`;
+      try {
+        const errData = await res.json() as { error?: { message?: string } | string };
+        if (typeof errData.error === "string") errMessage = errData.error;
+        else if (errData.error?.message) errMessage = errData.error.message;
+      } catch {
+        // ignore
+      }
+      return NextResponse.json({ error: errMessage }, { status: res.status });
     }
 
-    const data = await res.json() as Record<string, unknown>;
-    let replyText = "";
-    if (typeof data.reply === "string") replyText = data.reply;
-    else if (typeof data.content === "string") replyText = data.content;
-    else if (Array.isArray(data.choices) && data.choices[0] && typeof (data.choices[0] as Record<string, unknown>).message === "object") {
-      const msg = (data.choices[0] as Record<string, unknown>).message as Record<string, unknown>;
-      if (typeof msg.content === "string") replyText = msg.content;
-    }
+    const data = (await res.json()) as ChatResponse;
+    let replyText = data.reply ?? data.content ?? data.choices?.[0]?.message?.content ?? "";
+    const actions = Array.isArray(data.actions) ? data.actions : [];
 
-    let actions: Array<Record<string, unknown>> = [];
-    if (Array.isArray(data.actions)) actions = data.actions as Array<Record<string, unknown>>;
-
-    // Handle tool calls in non-streaming
-    const rawToolCalls = data.toolCalls;
+    // Handle tool calls from either top-level or choices[0].message
+    const rawToolCalls = data.toolCalls ?? data.choices?.[0]?.message?.tool_calls;
     if (Array.isArray(rawToolCalls) && rawToolCalls.length > 0) {
       const toolResults = [];
       for (const tc of rawToolCalls) {
@@ -323,14 +317,8 @@ export async function POST(req: NextRequest) {
       });
 
       if (finalRes.ok) {
-        const finalData = await finalRes.json() as Record<string, unknown>;
-        if (typeof finalData.reply === "string") replyText = finalData.reply;
-        else if (typeof finalData.content === "string") replyText = finalData.content;
-        else if (Array.isArray(finalData.choices) && finalData.choices[0]) {
-          const msg = (finalData.choices[0] as Record<string, unknown>).message as Record<string, unknown>;
-          if (typeof msg.content === "string") replyText = msg.content;
-        }
-        if (Array.isArray(finalData.actions)) actions = finalData.actions as Array<Record<string, unknown>>;
+        const finalData = (await finalRes.json()) as ChatResponse;
+        replyText = finalData.reply ?? finalData.content ?? finalData.choices?.[0]?.message?.content ?? replyText;
       }
     }
 

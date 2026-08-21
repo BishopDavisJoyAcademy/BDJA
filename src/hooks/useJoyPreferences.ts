@@ -37,7 +37,7 @@ export function useJoyPreferences() {
       } else if (json.error) {
         console.error("[useJoyPreferences] fetch error:", json.error);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[useJoyPreferences] fetch error:", err);
     } finally {
       setLoading(false);
@@ -45,9 +45,14 @@ export function useJoyPreferences() {
   }, []);
 
   const updatePreferences = useCallback(async (updates: Partial<JoyUserPreferences>) => {
+    // Optimistic update for instant UI feedback (theme, font size, etc.)
+    setPreferences((prev) => ({ ...prev, ...updates }));
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        toast.error("Session expired. Please log in again.");
+        return;
+      }
 
       const res = await fetch("/api/joy/preferences", {
         method: "POST",
@@ -64,9 +69,10 @@ export function useJoyPreferences() {
         toast.error(json.error);
         console.error("[useJoyPreferences] update error:", json.error);
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update preferences";
+      toast.error(msg);
       console.error("[useJoyPreferences] update error:", err);
-      toast.error("Failed to update preferences");
     }
   }, []);
 

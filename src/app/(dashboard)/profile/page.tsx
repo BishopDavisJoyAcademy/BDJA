@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { apiGet, apiPost } from "@/lib/api-client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { User, MessageSquare, Send, Lightbulb, Bug, ThumbsUp } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errors";
 
 interface Suggestion {
   id: string;
@@ -31,31 +32,25 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ type: "feedback", title: "", description: "" });
+  const [form, setForm] = useState({ type: "feedback", title: "", description: "", priority: "medium" });
   const [submitting, setSubmitting] = useState(false);
   const [related, setRelated] = useState<RelatedData | null>(null);
 
   const fetchRelatedData = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch(`/api/profile/related?id=${user.id}&category=${user.user_category}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRelated(data);
-      }
-    } catch (err) {
+      const data = await apiGet<RelatedData>(`/api/profile/related?id=${user.id}&category=${user.user_category}`);
+      setRelated(data);
+    } catch (err: unknown) {
       console.error("Failed to fetch related data:", err);
     }
   }, [user]);
 
   const fetchSuggestions = useCallback(async () => {
     try {
-      const res = await fetch("/api/suggestions");
-      if (res.ok) {
-        const data = await res.json();
-        setSuggestions(data.suggestions || []);
-      }
-    } catch (err) {
+      const data = await apiGet<{ suggestions: Suggestion[] }>("/api/suggestions");
+      setSuggestions(data.suggestions || []);
+    } catch (err: unknown) {
       console.error("Failed to fetch suggestions:", err);
     }
   }, []);
@@ -75,22 +70,18 @@ export default function ProfilePage() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/suggestions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+      await apiPost("/api/suggestions", {
+        title: form.title.trim(),
+        description: form.description.trim(),
+        type: form.type,
+        priority: form.priority,
       });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success("Suggestion submitted!");
-        setForm({ type: "feedback", title: "", description: "" });
-        setShowForm(false);
-        fetchSuggestions();
-      } else {
-        toast.error(data.error || "Failed to submit");
-      }
+      toast.success("Suggestion submitted!");
+      setForm({ type: "feedback", title: "", description: "", priority: "medium" });
+      setShowForm(false);
+      fetchSuggestions();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to submit");
+      toast.error(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -129,7 +120,6 @@ export default function ProfilePage() {
         <p className="text-gray-500">View and manage your profile information</p>
       </div>
 
-      {/* Profile Card */}
       <Card className="p-6">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 bg-bdja-primary/10 rounded-full flex items-center justify-center">
@@ -163,7 +153,6 @@ export default function ProfilePage() {
         </div>
       </Card>
 
-      {/* Suggestions Section */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -177,18 +166,34 @@ export default function ProfilePage() {
 
         {showForm && (
           <form onSubmit={handleSubmit} className="mb-6 p-4 bg-gray-50 rounded-lg space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-              <Select
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-              >
-                <option value="idea">Idea</option>
-                <option value="feedback">Feedback</option>
-                <option value="bug">Bug Report</option>
-                <option value="improvement">Improvement</option>
-                <option value="complaint">Complaint</option>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-bdja-primary"
+                >
+                  <option value="idea">Idea</option>
+                  <option value="feedback">Feedback</option>
+                  <option value="bug">Bug Report</option>
+                  <option value="improvement">Improvement</option>
+                  <option value="complaint">Complaint</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <select
+                  value={form.priority}
+                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-bdja-primary"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -197,6 +202,7 @@ export default function ProfilePage() {
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="Short title..."
                 maxLength={200}
+                required
               />
             </div>
             <div>
@@ -207,12 +213,13 @@ export default function ProfilePage() {
                 placeholder="Describe your suggestion in detail..."
                 rows={4}
                 maxLength={5000}
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-bdja-primary"
+                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-bdja-primary resize-y"
+                required
               />
             </div>
             <Button type="submit" disabled={submitting} className="flex items-center gap-2">
               <Send className="w-4 h-4" />
-              {submitting ? "Submitting..." : "Submit"}
+              {submitting ? "Submitting..." : "Submit Suggestion"}
             </Button>
           </form>
         )}
@@ -240,6 +247,7 @@ export default function ProfilePage() {
                 </div>
                 <p className="text-xs text-gray-400 mt-2">
                   Submitted {new Date(s.created_at).toLocaleDateString()}
+                  {s.priority && ` • Priority: ${s.priority}`}
                 </p>
               </div>
             ))

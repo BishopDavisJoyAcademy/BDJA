@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { apiGet } from "@/lib/api-client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +14,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
-import { useRouter } from "next/navigation";
 
 interface DashboardStats {
   totalStudents: number;
@@ -56,7 +56,6 @@ const QUICK_ACTIONS = [
 ];
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -76,9 +75,7 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  useEffect(() => { fetchStats(); }, [fetchStats]);
 
   if (loading) {
     return (
@@ -116,7 +113,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
@@ -127,7 +123,6 @@ export default function AdminDashboard() {
         </Button>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {statCards.map((card) => (
           <Card key={card.label} className="p-4">
@@ -148,14 +143,13 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Quick Actions */}
       <div>
         <h2 className="text-lg font-semibold text-white mb-3">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {QUICK_ACTIONS.map((action) => (
-            <button
+            <Link
               key={action.label}
-              onClick={() => router.push(action.href)}
+              href={action.href}
               className="flex items-center gap-3 p-4 rounded-xl bg-slate-800/50 border border-gray-700/50 hover:bg-slate-800 hover:border-gray-600 transition-all text-left group"
             >
               <div className={`p-2 rounded-lg ${action.color} group-hover:scale-110 transition-transform`}>
@@ -165,14 +159,12 @@ export default function AdminDashboard() {
                 <p className="text-sm font-medium text-white">{action.label}</p>
                 <ArrowRight className="w-3 h-3 text-gray-500 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
               </div>
-            </button>
+            </Link>
           ))}
         </div>
       </div>
 
-      {/* Two Column: Recent Activity + Upcoming Events */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Recent Activity */}
         <Card className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-white flex items-center gap-2">
@@ -204,16 +196,17 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        {/* Upcoming Events */}
         <Card className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-white flex items-center gap-2">
               <Calendar className="w-4 h-4 text-emerald-400" />
               Upcoming Events
             </h3>
-            <Button size="sm" variant="ghost" onClick={() => router.push("/calendar")}>
-              View All <ArrowRight className="w-3 h-3 ml-1" />
-            </Button>
+            <Link href="/calendar">
+              <Button size="sm" variant="ghost">
+                View All <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </Link>
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {stats?.upcomingEvents && stats.upcomingEvents.length > 0 ? (
@@ -239,7 +232,6 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* System Health */}
       <Card className="p-4">
         <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
           <CheckCircle className="w-4 h-4 text-emerald-400" />

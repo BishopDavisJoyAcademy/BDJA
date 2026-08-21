@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import {
   Loader2, FileText, BookOpen, Video, Plus, Trash2, Edit3, X, Save, Search,
-  ExternalLink, Eye, EyeOff, CheckCircle, AlertCircle
+  ExternalLink, Eye, EyeOff
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
@@ -61,17 +61,14 @@ export default function ContentPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  // CMS
   const [cmsPages, setCmsPages] = useState<CmsPage[]>([]);
   const [showCmsForm, setShowCmsForm] = useState(false);
   const [cmsForm, setCmsForm] = useState({ id: "", slug: "", title: "", content: "", is_published: true });
 
-  // Library
   const [libraryResources, setLibraryResources] = useState<LibraryResource[]>([]);
   const [showLibForm, setShowLibForm] = useState(false);
   const [libForm, setLibForm] = useState({ id: "", title: "", description: "", file_url: "", file_type: "pdf", subject: "Mathematics", grade_level: "Grade 1", is_public: true });
 
-  // VORA
   const [voraVideos, setVoraVideos] = useState<VoraVideo[]>([]);
   const [showVoraForm, setShowVoraForm] = useState(false);
   const [voraForm, setVoraForm] = useState({ id: "", title: "", description: "", video_url: "", subject: "Mathematics", grade_level: "Grade 1", topic: "", duration: "", thumbnail_url: "", is_public: true });
@@ -96,8 +93,8 @@ export default function ContentPage() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // ── CMS CRUD ──
-  const saveCms = async () => {
+  const saveCms = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!cmsForm.slug.trim() || !cmsForm.title.trim()) {
       toast.error("Slug and title are required");
       return;
@@ -134,8 +131,8 @@ export default function ContentPage() {
     setShowCmsForm(true);
   };
 
-  // ── Library CRUD ──
-  const saveLib = async () => {
+  const saveLib = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!libForm.title.trim() || !libForm.file_url.trim()) {
       toast.error("Title and file URL are required");
       return;
@@ -181,8 +178,8 @@ export default function ContentPage() {
     setShowLibForm(true);
   };
 
-  // ── VORA CRUD ──
-  const saveVora = async () => {
+  const saveVora = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!voraForm.title.trim() || !voraForm.video_url.trim()) {
       toast.error("Title and video URL are required");
       return;
@@ -267,7 +264,6 @@ export default function ContentPage() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-700 pb-1">
         {[
           { key: "cms" as TabKey, label: "CMS Pages", icon: FileText },
@@ -289,12 +285,12 @@ export default function ContentPage() {
         ))}
       </div>
 
-      {/* ── CMS Pages Tab ── */}
+      {/* CMS Pages */}
       {activeTab === "cms" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-white">CMS Pages ({filteredCms.length})</h2>
-            <Button onClick={() => { setCmsForm({ id: "", slug: "", title: "", content: "", is_published: true }); setShowCmsForm(true); }}>
+            <Button type="button" onClick={() => { setCmsForm({ id: "", slug: "", title: "", content: "", is_published: true }); setShowCmsForm(true); }}>
               <Plus className="w-4 h-4 mr-2" /> New Page
             </Button>
           </div>
@@ -303,42 +299,44 @@ export default function ContentPage() {
             <Card className="p-6 space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-semibold text-white">{cmsForm.id ? "Edit Page" : "New Page"}</h3>
-                <button onClick={() => setShowCmsForm(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setShowCmsForm(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-400 mb-1 block">Slug</label>
-                  <Input value={cmsForm.slug} onChange={(e) => setCmsForm((p) => ({ ...p, slug: e.target.value }))} placeholder="about-us" />
+              <form onSubmit={saveCms} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Slug</label>
+                    <Input value={cmsForm.slug} onChange={(e) => setCmsForm((p) => ({ ...p, slug: e.target.value }))} placeholder="about-us" required />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Title</label>
+                    <Input value={cmsForm.title} onChange={(e) => setCmsForm((p) => ({ ...p, title: e.target.value }))} placeholder="About Us" required />
+                  </div>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">Title</label>
-                  <Input value={cmsForm.title} onChange={(e) => setCmsForm((p) => ({ ...p, title: e.target.value }))} placeholder="About Us" />
+                  <label className="text-sm text-gray-400 mb-1 block">Content (Markdown/HTML supported)</label>
+                  <textarea
+                    value={cmsForm.content}
+                    onChange={(e) => setCmsForm((p) => ({ ...p, content: e.target.value }))}
+                    rows={6}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm focus:ring-2 focus:ring-amber-400 outline-none resize-y"
+                    placeholder="# About Us\n\nWrite your page content here..."
+                  />
                 </div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-400 mb-1 block">Content (Markdown/HTML supported)</label>
-                <textarea
-                  value={cmsForm.content}
-                  onChange={(e) => setCmsForm((p) => ({ ...p, content: e.target.value }))}
-                  rows={6}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm focus:ring-2 focus:ring-amber-400 outline-none resize-y"
-                  placeholder="# About Us\n\nWrite your page content here..."
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="cms-pub"
-                  checked={cmsForm.is_published}
-                  onChange={(e) => setCmsForm((p) => ({ ...p, is_published: e.target.checked }))}
-                  className="w-4 h-4 rounded border-gray-600 text-amber-400 focus:ring-amber-400"
-                />
-                <label htmlFor="cms-pub" className="text-sm text-gray-300">Published</label>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={saveCms}><Save className="w-4 h-4 mr-2" />{cmsForm.id ? "Update" : "Create"}</Button>
-                <Button variant="outline" onClick={() => setShowCmsForm(false)}>Cancel</Button>
-              </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="cms-pub"
+                    checked={cmsForm.is_published}
+                    onChange={(e) => setCmsForm((p) => ({ ...p, is_published: e.target.checked }))}
+                    className="w-4 h-4 rounded border-gray-600 text-amber-400 focus:ring-amber-400"
+                  />
+                  <label htmlFor="cms-pub" className="text-sm text-gray-300">Published</label>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit"><Save className="w-4 h-4 mr-2" />{cmsForm.id ? "Update Page" : "Create Page"}</Button>
+                  <Button type="button" variant="outline" onClick={() => setShowCmsForm(false)}>Cancel</Button>
+                </div>
+              </form>
             </Card>
           )}
 
@@ -357,8 +355,8 @@ export default function ContentPage() {
                   <p className="text-xs text-gray-600 mt-1">Updated {new Date(page.updated_at).toLocaleDateString()}</p>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <Button size="sm" variant="ghost" onClick={() => editCms(page)}><Edit3 className="w-4 h-4" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => deleteCms(page.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => editCms(page)}><Edit3 className="w-4 h-4" /></Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => deleteCms(page.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></Button>
                 </div>
               </Card>
             ))}
@@ -373,12 +371,12 @@ export default function ContentPage() {
         </div>
       )}
 
-      {/* ── Library Tab ── */}
+      {/* Library */}
       {activeTab === "library" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-white">Library Resources ({filteredLib.length})</h2>
-            <Button onClick={() => { setLibForm({ id: "", title: "", description: "", file_url: "", file_type: "pdf", subject: "Mathematics", grade_level: "Grade 1", is_public: true }); setShowLibForm(true); }}>
+            <Button type="button" onClick={() => { setLibForm({ id: "", title: "", description: "", file_url: "", file_type: "pdf", subject: "Mathematics", grade_level: "Grade 1", is_public: true }); setShowLibForm(true); }}>
               <Plus className="w-4 h-4 mr-2" /> Add Resource
             </Button>
           </div>
@@ -387,32 +385,34 @@ export default function ContentPage() {
             <Card className="p-6 space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-semibold text-white">{libForm.id ? "Edit Resource" : "New Resource"}</h3>
-                <button onClick={() => setShowLibForm(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setShowLibForm(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input value={libForm.title} onChange={(e) => setLibForm((p) => ({ ...p, title: e.target.value }))} placeholder="Resource title" />
-                <Input value={libForm.file_url} onChange={(e) => setLibForm((p) => ({ ...p, file_url: e.target.value }))} placeholder="File URL" />
-              </div>
-              <Input value={libForm.description} onChange={(e) => setLibForm((p) => ({ ...p, description: e.target.value }))} placeholder="Description" />
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <select value={libForm.file_type} onChange={(e) => setLibForm((p) => ({ ...p, file_type: e.target.value }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm">
-                  {FILE_TYPES.map((t) => <option key={t} value={t}>{t.toUpperCase()}</option>)}
-                </select>
-                <select value={libForm.subject} onChange={(e) => setLibForm((p) => ({ ...p, subject: e.target.value }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm">
-                  {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <select value={libForm.grade_level} onChange={(e) => setLibForm((p) => ({ ...p, grade_level: e.target.value }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm">
-                  {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="lib-pub" checked={libForm.is_public} onChange={(e) => setLibForm((p) => ({ ...p, is_public: e.target.checked }))} className="w-4 h-4 rounded border-gray-600 text-amber-400" />
-                <label htmlFor="lib-pub" className="text-sm text-gray-300">Public</label>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={saveLib}><Save className="w-4 h-4 mr-2" />{libForm.id ? "Update" : "Add"}</Button>
-                <Button variant="outline" onClick={() => setShowLibForm(false)}>Cancel</Button>
-              </div>
+              <form onSubmit={saveLib} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input value={libForm.title} onChange={(e) => setLibForm((p) => ({ ...p, title: e.target.value }))} placeholder="Resource title" required />
+                  <Input value={libForm.file_url} onChange={(e) => setLibForm((p) => ({ ...p, file_url: e.target.value }))} placeholder="File URL" required />
+                </div>
+                <Input value={libForm.description} onChange={(e) => setLibForm((p) => ({ ...p, description: e.target.value }))} placeholder="Description" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <select value={libForm.file_type} onChange={(e) => setLibForm((p) => ({ ...p, file_type: e.target.value }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm">
+                    {FILE_TYPES.map((t) => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+                  </select>
+                  <select value={libForm.subject} onChange={(e) => setLibForm((p) => ({ ...p, subject: e.target.value }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm">
+                    {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <select value={libForm.grade_level} onChange={(e) => setLibForm((p) => ({ ...p, grade_level: e.target.value }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm">
+                    {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="lib-pub" checked={libForm.is_public} onChange={(e) => setLibForm((p) => ({ ...p, is_public: e.target.checked }))} className="w-4 h-4 rounded border-gray-600 text-amber-400" />
+                  <label htmlFor="lib-pub" className="text-sm text-gray-300">Public</label>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit"><Save className="w-4 h-4 mr-2" />{libForm.id ? "Update Resource" : "Add Resource"}</Button>
+                  <Button type="button" variant="outline" onClick={() => setShowLibForm(false)}>Cancel</Button>
+                </div>
+              </form>
             </Card>
           )}
 
@@ -432,8 +432,8 @@ export default function ContentPage() {
                   </a>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <Button size="sm" variant="ghost" onClick={() => editLib(res)}><Edit3 className="w-4 h-4" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => deleteLib(res.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => editLib(res)}><Edit3 className="w-4 h-4" /></Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => deleteLib(res.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></Button>
                 </div>
               </Card>
             ))}
@@ -447,12 +447,12 @@ export default function ContentPage() {
         </div>
       )}
 
-      {/* ── VORA Videos Tab ── */}
+      {/* VORA */}
       {activeTab === "vora" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-white">VORA Videos ({filteredVora.length})</h2>
-            <Button onClick={() => { setVoraForm({ id: "", title: "", description: "", video_url: "", subject: "Mathematics", grade_level: "Grade 1", topic: "", duration: "", thumbnail_url: "", is_public: true }); setShowVoraForm(true); }}>
+            <Button type="button" onClick={() => { setVoraForm({ id: "", title: "", description: "", video_url: "", subject: "Mathematics", grade_level: "Grade 1", topic: "", duration: "", thumbnail_url: "", is_public: true }); setShowVoraForm(true); }}>
               <Plus className="w-4 h-4 mr-2" /> Add Video
             </Button>
           </div>
@@ -461,34 +461,36 @@ export default function ContentPage() {
             <Card className="p-6 space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-semibold text-white">{voraForm.id ? "Edit Video" : "New Video"}</h3>
-                <button onClick={() => setShowVoraForm(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setShowVoraForm(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input value={voraForm.title} onChange={(e) => setVoraForm((p) => ({ ...p, title: e.target.value }))} placeholder="Video title" />
-                <Input value={voraForm.video_url} onChange={(e) => setVoraForm((p) => ({ ...p, video_url: e.target.value }))} placeholder="YouTube / Video URL" />
-              </div>
-              <Input value={voraForm.description} onChange={(e) => setVoraForm((p) => ({ ...p, description: e.target.value }))} placeholder="Description" />
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <select value={voraForm.subject} onChange={(e) => setVoraForm((p) => ({ ...p, subject: e.target.value }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm">
-                  {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <select value={voraForm.grade_level} onChange={(e) => setVoraForm((p) => ({ ...p, grade_level: e.target.value }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm">
-                  {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
-                </select>
-                <Input value={voraForm.duration} onChange={(e) => setVoraForm((p) => ({ ...p, duration: e.target.value }))} placeholder="Duration (e.g. 10:30)" />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input value={voraForm.topic} onChange={(e) => setVoraForm((p) => ({ ...p, topic: e.target.value }))} placeholder="Topic / Unit" />
-                <Input value={voraForm.thumbnail_url} onChange={(e) => setVoraForm((p) => ({ ...p, thumbnail_url: e.target.value }))} placeholder="Thumbnail URL (optional)" />
-              </div>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="vora-pub" checked={voraForm.is_public} onChange={(e) => setVoraForm((p) => ({ ...p, is_public: e.target.checked }))} className="w-4 h-4 rounded border-gray-600 text-amber-400" />
-                <label htmlFor="vora-pub" className="text-sm text-gray-300">Public</label>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={saveVora}><Save className="w-4 h-4 mr-2" />{voraForm.id ? "Update" : "Add"}</Button>
-                <Button variant="outline" onClick={() => setShowVoraForm(false)}>Cancel</Button>
-              </div>
+              <form onSubmit={saveVora} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input value={voraForm.title} onChange={(e) => setVoraForm((p) => ({ ...p, title: e.target.value }))} placeholder="Video title" required />
+                  <Input value={voraForm.video_url} onChange={(e) => setVoraForm((p) => ({ ...p, video_url: e.target.value }))} placeholder="YouTube / Video URL" required />
+                </div>
+                <Input value={voraForm.description} onChange={(e) => setVoraForm((p) => ({ ...p, description: e.target.value }))} placeholder="Description" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <select value={voraForm.subject} onChange={(e) => setVoraForm((p) => ({ ...p, subject: e.target.value }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm">
+                    {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <select value={voraForm.grade_level} onChange={(e) => setVoraForm((p) => ({ ...p, grade_level: e.target.value }))} className="px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm">
+                    {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                  <Input value={voraForm.duration} onChange={(e) => setVoraForm((p) => ({ ...p, duration: e.target.value }))} placeholder="Duration (e.g. 10:30)" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input value={voraForm.topic} onChange={(e) => setVoraForm((p) => ({ ...p, topic: e.target.value }))} placeholder="Topic / Unit" />
+                  <Input value={voraForm.thumbnail_url} onChange={(e) => setVoraForm((p) => ({ ...p, thumbnail_url: e.target.value }))} placeholder="Thumbnail URL (optional)" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="vora-pub" checked={voraForm.is_public} onChange={(e) => setVoraForm((p) => ({ ...p, is_public: e.target.checked }))} className="w-4 h-4 rounded border-gray-600 text-amber-400" />
+                  <label htmlFor="vora-pub" className="text-sm text-gray-300">Public</label>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit"><Save className="w-4 h-4 mr-2" />{voraForm.id ? "Update Video" : "Add Video"}</Button>
+                  <Button type="button" variant="outline" onClick={() => setShowVoraForm(false)}>Cancel</Button>
+                </div>
+              </form>
             </Card>
           )}
 
@@ -517,10 +519,10 @@ export default function ContentPage() {
                   <p className="text-xs text-gray-500 line-clamp-2 mt-1">{vid.description}</p>
                   <div className="flex gap-1 mt-3">
                     <a href={vid.video_url} target="_blank" rel="noopener noreferrer" className="flex-1">
-                      <Button size="sm" variant="outline" className="w-full text-xs"><ExternalLink className="w-3 h-3 mr-1" />Watch</Button>
+                      <Button type="button" size="sm" variant="outline" className="w-full text-xs"><ExternalLink className="w-3 h-3 mr-1" />Watch</Button>
                     </a>
-                    <Button size="sm" variant="ghost" onClick={() => editVora(vid)}><Edit3 className="w-4 h-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => deleteVora(vid.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => editVora(vid)}><Edit3 className="w-4 h-4" /></Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => deleteVora(vid.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 </div>
               </Card>

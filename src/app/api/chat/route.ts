@@ -41,6 +41,13 @@ interface ChatResponse {
   toolCalls?: Array<Record<string, unknown>>;
 }
 
+function resolveEndpoint(raw: string): string {
+  // If the env var already includes the full path, use it as-is.
+  // Otherwise append /api/v1/chat for backward compatibility.
+  if (raw.endsWith("/api/v1/chat")) return raw;
+  return `${raw.replace(/\/$/, "")}/api/v1/chat`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(req);
@@ -68,7 +75,7 @@ export async function POST(req: NextRequest) {
     const attachments = body.attachments as Array<{ name: string; type: string; url?: string; extractedContent?: string }> | undefined;
     const preferences = body.preferences as { personality_mode?: string; language_preference?: string } | undefined;
 
-    const endpoint = getAevibronEndpoint();
+    const endpoint = resolveEndpoint(getAevibronEndpoint());
     const apiKey = getAevibronKey();
 
     // Build rich user context
@@ -122,7 +129,7 @@ export async function POST(req: NextRequest) {
       const readable = new ReadableStream({
         async start(controller) {
           try {
-            const res = await fetch(`${endpoint}/api/v1/chat`, {
+            const res = await fetch(endpoint, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -250,7 +257,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Non-streaming path
-    const res = await fetch(`${endpoint}/api/v1/chat`, {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -297,7 +304,7 @@ export async function POST(req: NextRequest) {
         tool_call_id: tr.tool_call_id,
       }));
 
-      const finalRes = await fetch(`${endpoint}/api/v1/chat`, {
+      const finalRes = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

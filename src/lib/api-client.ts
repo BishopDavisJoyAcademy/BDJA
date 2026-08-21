@@ -1,3 +1,6 @@
+"use client";
+
+import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "./errors";
 
 const API_BASE = "";
@@ -16,6 +19,18 @@ class ApiError extends Error {
   }
 }
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function apiRequest<T>(
   method: string,
   endpoint: string,
@@ -23,9 +38,11 @@ async function apiRequest<T>(
   options?: RequestInit
 ): Promise<T> {
   const url = endpoint.startsWith("http") ? endpoint : `${API_BASE}${endpoint}`;
+  const authHeaders = await getAuthHeaders();
+
   const res = await fetch(url, {
     method,
-    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+    headers: { ...authHeaders, ...(options?.headers || {}) },
     body: body ? JSON.stringify(body) : undefined,
     ...options,
   });
@@ -56,9 +73,13 @@ export const apiDelete = <T>(endpoint: string, options?: RequestInit) =>
   apiRequest<T>("DELETE", endpoint, undefined, options);
 
 export async function apiFetch(endpoint: string, options?: RequestInit) {
+  const authHeaders = await getAuthHeaders();
   const res = await fetch(
     endpoint.startsWith("http") ? endpoint : `${API_BASE}${endpoint}`,
-    options
+    {
+      ...options,
+      headers: { ...authHeaders, ...(options?.headers || {}) },
+    }
   );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

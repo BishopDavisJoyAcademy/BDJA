@@ -134,6 +134,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch("/api/auth/me", {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           full_name: profileForm.full_name,
@@ -162,7 +163,7 @@ export default function ProfilePage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
       if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
       setAvatarUrl(data.url);
@@ -195,6 +196,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch("/api/auth/change-password", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           current_password: passwordForm.current,
@@ -216,6 +218,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch("/api/auth/me", {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notification_prefs: prefs }),
       });

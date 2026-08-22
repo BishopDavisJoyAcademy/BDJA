@@ -43,6 +43,7 @@ export default function EditStudentPage() {
     try {
       const res = await fetch(`/api/admin/students?id=${id}`, {
         method: "PUT",
+        credentials: "include",
         body: JSON.stringify(body),
         headers: { "Content-Type": "application/json" },
       });

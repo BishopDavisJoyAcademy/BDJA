@@ -65,6 +65,7 @@ export default function EditStaffPage() {
     try {
       const res = await fetch(`/api/admin/staff?id=${id}`, {
         method: "PUT",
+        credentials: "include",
         body: JSON.stringify({ ...body, permissionIds: selectedPerms }),
         headers: { "Content-Type": "application/json" },
       });

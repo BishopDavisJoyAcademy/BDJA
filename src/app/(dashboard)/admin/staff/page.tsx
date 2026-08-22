@@ -56,7 +56,7 @@ export default function StaffPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this staff member permanently?")) return;
     try {
-      const res = await fetch(`/api/admin/staff?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/staff?id=${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Failed to delete");
       setStaff((prev) => prev.filter((s) => s.id !== id));
       toast.success("Staff member deleted");

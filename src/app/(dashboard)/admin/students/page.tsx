@@ -60,7 +60,7 @@ export default function StudentsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this student permanently? This cannot be undone.")) return;
     try {
-      const res = await fetch(`/api/admin/students?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/students?id=${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Failed to delete");
       setStudents((prev) => prev.filter((s) => s.id !== id));
       toast.success("Student deleted");
@@ -74,6 +74,7 @@ export default function StudentsPage() {
     try {
       const res = await fetch("/api/admin/students", {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, new_grade_level: newGrade }),
       });
@@ -91,6 +92,7 @@ export default function StudentsPage() {
     try {
       const res = await fetch("/api/admin/students", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "generate_credentials",

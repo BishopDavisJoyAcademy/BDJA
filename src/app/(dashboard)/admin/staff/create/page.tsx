@@ -39,6 +39,7 @@ export default function CreateStaffPage() {
     try {
       const res = await fetch("/api/admin/staff", {
         method: "POST",
+        credentials: "include",
         body: JSON.stringify({ ...body, permissionIds: selectedPerms }),
         headers: { "Content-Type": "application/json" },
       });

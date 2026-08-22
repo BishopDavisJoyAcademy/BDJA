@@ -94,6 +94,7 @@ export default function SettingsPage() {
     try {
       const res = await fetch("/api/admin/settings", {
         method: "PUT",
+        credentials: "include",
         body: JSON.stringify(settings),
         headers: { "Content-Type": "application/json" },
       });

@@ -104,6 +104,7 @@ export default function CalendarPage() {
       const url = editingId ? `/api/calendar?id=${editingId}` : "/api/calendar";
       const res = await fetch(url, {
         method,
+        credentials: "include",
         body: JSON.stringify(body),
         headers: { "Content-Type": "application/json" },
       });
@@ -120,7 +121,7 @@ export default function CalendarPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this event?")) return;
     try {
-      const res = await fetch(`/api/calendar?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/calendar?id=${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Failed to delete");
       setEvents((prev) => prev.filter((e) => e.id !== id));
       toast.success("Event deleted");

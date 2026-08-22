@@ -3,11 +3,20 @@ import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/security";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,10 +48,13 @@ export async function POST(req: NextRequest) {
     const safeName = `${Date.now()}_${session.userId.slice(0, 8)}.${ext}`;
     const path = `${folder}/${safeName}`;
 
+    // Convert File to ArrayBuffer — Supabase storage upload requires this in Node.js
+    const buffer = await file.arrayBuffer();
+
     const admin = getSupabaseAdmin();
     const { data, error } = await admin.storage
       .from("bdja-uploads")
-      .upload(path, file, { contentType: file.type, upsert: false });
+      .upload(path, buffer, { contentType: file.type, upsert: false });
 
     if (error) {
       return NextResponse.json({ error: "Upload failed: " + error.message }, { status: 500 });
@@ -58,11 +70,11 @@ export async function POST(req: NextRequest) {
       size: file.size,
       type: file.type,
     });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: 401 });
     }
     console.error("[upload] Error:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    return NextResponse.json({ error: "Upload failed: " + getErrorMessage(error) }, { status: 500 });
   }
 }

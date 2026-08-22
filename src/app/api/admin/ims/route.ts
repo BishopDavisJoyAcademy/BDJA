@@ -6,19 +6,24 @@ import { getErrorMessage, AuthRequiredError, PermissionDeniedError } from "@/lib
 
 export const dynamic = "force-dynamic";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL || !SERVICE_KEY) {
-  throw new Error("Missing Supabase server environment variables");
+function getSupabaseConfig(): { url: string; key: string } {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error("Missing Supabase server environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  }
+  return { url, key };
 }
 
-const BASE_URL = SUPABASE_URL! + "/rest/v1/inventory_items";
+function getBaseUrl(): string {
+  return getSupabaseConfig().url + "/rest/v1/inventory_items";
+}
 
 function getHeaders(): Record<string, string> {
+  const cfg = getSupabaseConfig();
   return {
-    "apikey": SERVICE_KEY!,
-    "Authorization": "Bearer " + SERVICE_KEY!,
+    "apikey": cfg.key,
+    "Authorization": "Bearer " + cfg.key,
     "Content-Type": "application/json",
   };
 }
@@ -31,7 +36,7 @@ export async function GET(req: NextRequest) {
     const id = searchParams.get("id");
 
     if (id) {
-      const res = await fetch(BASE_URL + "?id=eq." + encodeURIComponent(id) + "&limit=1", {
+      const res = await fetch(getBaseUrl() + "?id=eq." + encodeURIComponent(id) + "&limit=1", {
         headers: getHeaders(),
       });
       if (!res.ok) return NextResponse.json({ error: "Item not found" }, { status: 404 });
@@ -39,7 +44,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ item: data[0] || null });
     }
 
-    const res = await fetch(BASE_URL + "?order=created_at.desc", { headers: getHeaders() });
+    const res = await fetch(getBaseUrl() + "?order=created_at.desc", { headers: getHeaders() });
     if (!res.ok) return NextResponse.json({ error: "Failed to fetch inventory" }, { status: 500 });
     const data = await res.json();
     return NextResponse.json({ items: data || [] });
@@ -82,7 +87,7 @@ export async function POST(req: NextRequest) {
       created_by: session.userId,
     };
 
-    const res = await fetch(BASE_URL, {
+    const res = await fetch(getBaseUrl(), {
       method: "POST",
       headers: { ...getHeaders(), "Prefer": "return=representation" },
       body: JSON.stringify(payload),
@@ -125,7 +130,7 @@ export async function PUT(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "Item ID required" }, { status: 400 });
     const body = await req.json();
 
-    const getRes = await fetch(BASE_URL + "?id=eq." + encodeURIComponent(id) + "&limit=1", {
+    const getRes = await fetch(getBaseUrl() + "?id=eq." + encodeURIComponent(id) + "&limit=1", {
       headers: getHeaders(),
     });
     if (!getRes.ok) return NextResponse.json({ error: "Item not found" }, { status: 404 });
@@ -147,10 +152,9 @@ export async function PUT(req: NextRequest) {
       serial_number: body.serial_number || existing.serial_number,
       barcode: body.barcode || existing.barcode,
       is_active: body.is_active ?? existing.is_active,
-      updated_at: new Date().toISOString(),
     };
 
-    const res = await fetch(BASE_URL + "?id=eq." + encodeURIComponent(id), {
+    const res = await fetch(getBaseUrl() + "?id=eq." + encodeURIComponent(id), {
       method: "PATCH",
       headers: { ...getHeaders(), "Prefer": "return=minimal" },
       body: JSON.stringify(payload),
@@ -188,7 +192,7 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Item ID required" }, { status: 400 });
 
-    const res = await fetch(BASE_URL + "?id=eq." + encodeURIComponent(id), {
+    const res = await fetch(getBaseUrl() + "?id=eq." + encodeURIComponent(id), {
       method: "DELETE",
       headers: getHeaders(),
     });

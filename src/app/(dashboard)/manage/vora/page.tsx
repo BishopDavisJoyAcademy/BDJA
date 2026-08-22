@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
-import { supabase } from "@/lib/supabase-client";
+import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "@/lib/errors";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";

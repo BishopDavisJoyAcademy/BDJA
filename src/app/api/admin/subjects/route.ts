@@ -48,7 +48,6 @@ export async function POST(req: NextRequest) {
       name: body.name,
       code: body.code || null,
       grade_levels: body.grade_levels || null,
-      created_by: session.userId,
     }]).select().single();
 
     if (error) return NextResponse.json({ error: error.message || "Failed to create subject" }, { status: 500 });
@@ -91,7 +90,6 @@ export async function PUT(req: NextRequest) {
       name: body.name,
       code: body.code || null,
       grade_levels: body.grade_levels || null,
-      updated_at: new Date().toISOString(),
     }).eq("id", id);
 
     if (error) return NextResponse.json({ error: "Failed to update subject" }, { status: 500 });

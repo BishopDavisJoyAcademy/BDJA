@@ -13,12 +13,12 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
   throw new Error("Missing Supabase server environment variables");
 }
 
-const BASE_URL = SUPABASE_URL + "/rest/v1/inventory_items";
+const BASE_URL = SUPABASE_URL! + "/rest/v1/inventory_items";
 
 function getHeaders(): Record<string, string> {
   return {
-    "apikey": SERVICE_KEY,
-    "Authorization": "Bearer " + SERVICE_KEY,
+    "apikey": SERVICE_KEY!,
+    "Authorization": "Bearer " + SERVICE_KEY!,
     "Content-Type": "application/json",
   };
 }

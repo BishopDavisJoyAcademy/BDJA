@@ -26,7 +26,7 @@ export default function SubjectsPage() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", code: "", description: "", grade_levels: [] as string[], is_active: true });
+  const [form, setForm] = useState({ name: "", code: "", grade_levels: [] as string[] });
 
   useEffect(() => {
     fetchSubjects();
@@ -45,7 +45,7 @@ export default function SubjectsPage() {
   };
 
   const resetForm = () => {
-    setForm({ name: "", code: "", description: "", grade_levels: [], is_active: true });
+    setForm({ name: "", code: "", grade_levels: [] });
     setEditingId(null);
   };
 
@@ -100,8 +100,7 @@ export default function SubjectsPage() {
 
   const filtered = subjects.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
-    (s.code || "").toLowerCase().includes(search.toLowerCase()) ||
-    (s.description || "").toLowerCase().includes(search.toLowerCase())
+    (s.code || "").toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) {

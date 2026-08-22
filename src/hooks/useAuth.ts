@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { UserRole, UserCategory } from "@/types";
+import { getErrorMessage } from "@/lib/errors";
 
 export interface AuthUser {
   id: string;

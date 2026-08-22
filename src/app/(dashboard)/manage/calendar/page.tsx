@@ -152,20 +152,9 @@ export default function CalendarPage() {
       const end = evt.end_date
         ? new Date(evt.end_date).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
         : start;
-      return `BEGIN:VEVENT
-UID:${evt.id}@school.ac.ke
-DTSTART:${start}
-DTEND:${end}
-SUMMARY:${evt.title}
-DESCRIPTION:${evt.description || ""}
-END:VEVENT`;
-    }).join("
-");
-    const ics = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//BDJA//Calendar//EN
-${icsEvents}
-END:VCALENDAR`;
+      return "BEGIN:VEVENT\nUID:" + evt.id + "@school.ac.ke\nDTSTART:" + start + "\nDTEND:" + end + "\nSUMMARY:" + evt.title + "\nDESCRIPTION:" + (evt.description || "") + "\nEND:VEVENT";
+    }).join("\n");
+    const ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//BDJA//Calendar//EN\n" + icsEvents + "\nEND:VCALENDAR";
     const blob = new Blob([ics], { type: "text/calendar" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

@@ -39,7 +39,10 @@ const PUBLIC_API_PREFIXES = [
 
 const STATIC_ASSETS = ["/_next", "/static", "/favicon.ico", "/logo", "/images", "/grades", "/slides", "/manifest.json"];
 
-const ADMIN_SEGMENT = process.env.NEXT_PUBLIC_ADMIN_SEGMENT || "admin";
+const ADMIN_SEGMENT = process.env.NEXT_PUBLIC_ADMIN_SEGMENT;
+if (!ADMIN_SEGMENT) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_ADMIN_SEGMENT");
+}
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
         .from("profiles")
         .select("*, students(*)")
         .eq("id", id)
-        .eq("role", "student")
+        .eq("user_category", "student")
         .maybeSingle();
       if (error || !data) return NextResponse.json({ error: "Student not found" }, { status: 404 });
       return NextResponse.json({ student: data });
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await admin
       .from("profiles")
       .select("*, students(*)")
-      .eq("role", "student")
+      .eq("user_category", "student")
       .order("created_at", { ascending: false });
     if (error) return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 });
     return NextResponse.json({ students: data || [] });
@@ -51,10 +51,16 @@ export async function POST(req: NextRequest) {
     const admin = getSupabaseAdmin();
     const body = await req.json();
 
-    // Create auth user first so we have an ID for the profile
+    if (!body.email || !body.full_name || !body.admission_number || !body.grade_level) {
+      return NextResponse.json({ error: "Email, full name, admission number, and grade level are required" }, { status: 400 });
+    }
+
+    // Generate temp password
+    const tempPassword = Math.random().toString(36).slice(2, 10) + "A1!";
+
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
       email: body.email,
-      password: Math.random().toString(36).slice(2, 10) + "A1!",
+      password: tempPassword,
       email_confirm: true,
     });
     if (authError || !authData.user) {
@@ -101,11 +107,11 @@ export async function POST(req: NextRequest) {
       action: "STUDENT_CREATED",
       table_name: "students",
       record_id: userId,
-      new_data: body,
+      new_data: { full_name: body.full_name, admission_number: body.admission_number, grade_level: body.grade_level },
       ip_address: getClientIP(req),
     });
 
-    return NextResponse.json({ success: true, student: profile });
+    return NextResponse.json({ success: true, student: profile, tempPassword });
   } catch (error: unknown) {
     if (error instanceof AuthRequiredError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
@@ -132,7 +138,7 @@ export async function PUT(req: NextRequest) {
       email: body.email,
       phone: body.phone || null,
       campus_id: body.campus_id || null,
-      is_active: body.is_active,
+      is_active: body.is_active ?? true,
       updated_at: new Date().toISOString(),
     }).eq("id", id);
 
@@ -142,10 +148,11 @@ export async function PUT(req: NextRequest) {
       admission_number: body.admission_number,
       grade_level: body.grade_level,
       class_id: body.class_id || null,
+      campus_id: body.campus_id || null,
       updated_at: new Date().toISOString(),
     }).eq("id", id);
 
-    if (studentError) return NextResponse.json({ error: "Failed to update student" }, { status: 500 });
+    if (studentError) return NextResponse.json({ error: "Failed to update student record" }, { status: 500 });
 
     await logAudit({
       user_id: session.userId,
@@ -177,18 +184,61 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Student ID required" }, { status: 400 });
 
-    const { error } = await admin.from("profiles").update({
-      is_active: false,
-      updated_at: new Date().toISOString(),
-    }).eq("id", id).eq("role", "student");
+    const { error: studentError } = await admin.from("students").delete().eq("id", id);
+    if (studentError) return NextResponse.json({ error: "Failed to delete student record" }, { status: 500 });
 
-    if (error) return NextResponse.json({ error: "Failed to deactivate student" }, { status: 500 });
+    const { error: profileError } = await admin.from("profiles").delete().eq("id", id);
+    if (profileError) return NextResponse.json({ error: "Failed to delete profile" }, { status: 500 });
+
+    await admin.auth.admin.deleteUser(id);
 
     await logAudit({
       user_id: session.userId,
-      action: "STUDENT_DEACTIVATED",
-      table_name: "profiles",
+      action: "STUDENT_DELETED",
+      table_name: "students",
       record_id: id,
+      ip_address: getClientIP(req),
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    if (error instanceof AuthRequiredError) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
+    }
+    if (error instanceof PermissionDeniedError) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 403 });
+    }
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await requireAuth(req);
+    requirePermission(session, "students.promote");
+    const admin = getSupabaseAdmin();
+    const body = await req.json();
+    const { id, new_grade_level, new_class_id } = body;
+    if (!id || !new_grade_level) return NextResponse.json({ error: "Student ID and new grade level required" }, { status: 400 });
+
+    const { data: current } = await admin.from("students").select("grade_level").eq("id", id).single();
+    const oldGrade = current?.grade_level || "";
+
+    const { error } = await admin.from("students").update({
+      grade_level: new_grade_level,
+      class_id: new_class_id || null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+
+    if (error) return NextResponse.json({ error: "Failed to promote student" }, { status: 500 });
+
+    await logAudit({
+      user_id: session.userId,
+      action: "STUDENT_PROMOTED",
+      table_name: "students",
+      record_id: id,
+      old_data: { grade_level: oldGrade },
+      new_data: { grade_level: new_grade_level, class_id: new_class_id },
       ip_address: getClientIP(req),
     });
 

@@ -55,7 +55,7 @@ const ROLES: RoleConfig[] = [
     borderColor: "border-amber-500/30",
     bgTint: "bg-amber-500/10",
     idLabel: "Official Email",
-    idPlaceholder: "you@bdja.ac.ke",
+    idPlaceholder: "staff@school.ac.ke",
     idType: "email",
     credentialLabel: "Password",
     credentialPlaceholder: "Enter your password",

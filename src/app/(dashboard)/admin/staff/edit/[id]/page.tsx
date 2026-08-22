@@ -6,8 +6,10 @@ import { apiGet } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 interface StaffMember {
   id: string;
@@ -32,18 +34,20 @@ interface Permission {
 export default function EditStaffPage() {
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
   const [staff, setStaff] = useState<StaffMember | null>(null);
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     Promise.all([
-      apiGet<{ staffMember: StaffMember | null }>(`/api/admin/staff?id=${id}`),
+      apiGet<{ staff: StaffMember | null }>(`/api/admin/staff?id=${id}`),
       apiGet<{ permissions: Permission[] }>("/api/admin/staff/permissions"),
     ])
       .then(([staffData, permsData]) => {
-        setStaff(staffData.staffMember);
+        setStaff(staffData.staff);
         setPermissions(permsData.permissions || []);
         setLoading(false);
       })
@@ -61,11 +65,12 @@ export default function EditStaffPage() {
     try {
       const res = await fetch(`/api/admin/staff?id=${id}`, {
         method: "PUT",
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, permissionIds: selectedPerms }),
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error("Failed to update staff");
       toast.success("Staff updated successfully");
+      router.push(`/${ADMIN_SEGMENT}/staff`);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -78,6 +83,9 @@ export default function EditStaffPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm">
+        <ArrowLeft className="w-4 h-4" /> Back to Staff
+      </button>
       <h1 className="text-2xl font-bold text-white">Edit Staff</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -89,6 +97,10 @@ export default function EditStaffPage() {
           <Input name="email" type="email" defaultValue={staff.email} required />
         </div>
         <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
+          <Input name="phone" defaultValue={staff.phone || ""} />
+        </div>
+        <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Department</label>
           <Input name="department" defaultValue={staff.staff?.department || ""} required />
         </div>
@@ -96,8 +108,32 @@ export default function EditStaffPage() {
           <label className="block text-sm font-medium text-gray-300 mb-1">Designation</label>
           <Input name="designation" defaultValue={staff.staff?.designation || ""} required />
         </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="is_active" name="is_active" defaultChecked={staff.is_active} className="w-4 h-4 rounded border-gray-600 text-amber-400" />
+          <label htmlFor="is_active" className="text-sm text-gray-300">Active</label>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Permissions</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+            {permissions.map((p) => (
+              <label key={p.id} className="flex items-center gap-2 p-2 rounded-lg bg-slate-800 border border-gray-700 cursor-pointer hover:bg-slate-700 transition-colors">
+                <input
+                  type="checkbox"
+                  value={p.id}
+                  checked={selectedPerms.includes(p.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedPerms((prev) => [...prev, p.id]);
+                    else setSelectedPerms((prev) => prev.filter((id) => id !== p.id));
+                  }}
+                  className="w-4 h-4 rounded border-gray-600 text-amber-400"
+                />
+                <span className="text-sm text-gray-300">{p.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
         <Button type="submit" disabled={saving}>
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : "Save Changes"}
         </Button>
       </form>
     </div>

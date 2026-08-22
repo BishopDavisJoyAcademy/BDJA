@@ -5,10 +5,10 @@ import { apiGet } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ADMIN_SEGMENT } from "@/lib/constants";
 
 interface Permission {
   id: string;
@@ -22,6 +22,7 @@ export default function CreateStaffPage() {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
 
   useEffect(() => {
     apiGet<{ permissions: Permission[] }>("/api/admin/staff/permissions")
@@ -36,10 +37,15 @@ export default function CreateStaffPage() {
     const formData = new FormData(e.currentTarget);
     const body = Object.fromEntries(formData);
     try {
-      const res = await fetch("/api/admin/staff", { method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
+      const res = await fetch("/api/admin/staff", {
+        method: "POST",
+        body: JSON.stringify({ ...body, permissionIds: selectedPerms }),
+        headers: { "Content-Type": "application/json" },
+      });
       if (!res.ok) throw new Error("Failed to create staff");
-      toast.success("Staff created successfully");
-      router.push("/admin/staff");
+      const data = await res.json();
+      toast.success(`Staff created! Temp password: ${data.tempPassword || "sent to email"}`);
+      router.push(`/${ADMIN_SEGMENT}/staff`);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -51,34 +57,53 @@ export default function CreateStaffPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm">
+        <ArrowLeft className="w-4 h-4" /> Back to Staff
+      </button>
       <h1 className="text-2xl font-bold text-white">Create Staff</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
-          <Input name="full_name" required />
+          <label className="block text-sm font-medium text-gray-300 mb-1">Full Name *</label>
+          <Input name="full_name" required placeholder="John Doe" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
-          <Input name="email" type="email" required />
+          <label className="block text-sm font-medium text-gray-300 mb-1">Email *</label>
+          <Input name="email" type="email" required placeholder="staff@school.ac.ke" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Department</label>
-          <Input name="department" required />
+          <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
+          <Input name="phone" placeholder="+254..." />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Designation</label>
-          <Input name="designation" required />
+          <label className="block text-sm font-medium text-gray-300 mb-1">Department *</label>
+          <Input name="department" required placeholder="e.g. Mathematics" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Designation *</label>
+          <Input name="designation" required placeholder="e.g. Teacher" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Permissions</label>
-          <Select name="permissions" multiple>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
             {permissions.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <label key={p.id} className="flex items-center gap-2 p-2 rounded-lg bg-slate-800 border border-gray-700 cursor-pointer hover:bg-slate-700 transition-colors">
+                <input
+                  type="checkbox"
+                  value={p.id}
+                  checked={selectedPerms.includes(p.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedPerms((prev) => [...prev, p.id]);
+                    else setSelectedPerms((prev) => prev.filter((id) => id !== p.id));
+                  }}
+                  className="w-4 h-4 rounded border-gray-600 text-amber-400"
+                />
+                <span className="text-sm text-gray-300">{p.name}</span>
+              </label>
             ))}
-          </Select>
+          </div>
         </div>
         <Button type="submit" disabled={submitting}>
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Staff"}
+          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : "Create Staff"}
         </Button>
       </form>
     </div>

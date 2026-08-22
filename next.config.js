@@ -1,25 +1,36 @@
 /** @type {import('next').NextConfig} */
+
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}. Please set it in your .env file.`);
+  }
+  return value;
+}
+
+const adminSegment = requireEnv("NEXT_PUBLIC_ADMIN_SEGMENT");
+const appUrl = requireEnv("NEXT_PUBLIC_APP_URL");
+
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      bodySizeLimit: "10mb",
     },
   },
   images: {
-    domains: ['localhost'],
+    domains: ["localhost"],
     unoptimized: true,
     remotePatterns: [
       { protocol: "https", hostname: "**" },
     ],
   },
   async rewrites() {
-    const segment = process.env.NEXT_PUBLIC_ADMIN_SEGMENT || "admin";
     return [
-      { source: `/${segment}/:path*`, destination: "/admin/:path*" },
-      { source: `/${segment}`, destination: "/admin" },
-      { source: `/api/${segment}/:path*`, destination: "/api/admin/:path*" },
-      { source: `/api/${segment}`, destination: "/api/admin" },
+      { source: `/${adminSegment}/:path*`, destination: "/admin/:path*" },
+      { source: `/${adminSegment}`, destination: "/admin" },
+      { source: `/api/${adminSegment}/:path*`, destination: "/api/admin/:path*" },
+      { source: `/api/${adminSegment}`, destination: "/api/admin" },
     ];
   },
   async headers() {
@@ -27,7 +38,7 @@ const nextConfig = {
       {
         source: "/api/:path*",
         headers: [
-          { key: "Access-Control-Allow-Origin", value: process.env.NEXT_PUBLIC_APP_URL || "https://bdja.ac.ke" },
+          { key: "Access-Control-Allow-Origin", value: appUrl },
           { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,PATCH,DELETE,OPTIONS" },
           { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization, X-Aevibron-Key" },
           { key: "Access-Control-Allow-Credentials", value: "true" },

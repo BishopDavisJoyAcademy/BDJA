@@ -232,11 +232,11 @@ export default function CalendarPage() {
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Start Date *</label>
-                <Input type="datetime-local" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} required />
+                <Input type="datetime-local" value={form.start_date ?? ""} onChange={(e) => setForm({ ...form, start_date: e.target.value })} required />
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-1">End Date</label>
-                <Input type="datetime-local" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+                <Input type="datetime-local" value={form.end_date ?? ""} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Event Type</label>

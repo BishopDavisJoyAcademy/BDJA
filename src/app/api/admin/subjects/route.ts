@@ -47,9 +47,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await admin.from("subjects").insert([{
       name: body.name,
       code: body.code || null,
-      description: body.description || null,
       grade_levels: body.grade_levels || null,
-      is_active: body.is_active ?? true,
       created_by: session.userId,
     }]).select().single();
 
@@ -92,9 +90,7 @@ export async function PUT(req: NextRequest) {
     const { error } = await admin.from("subjects").update({
       name: body.name,
       code: body.code || null,
-      description: body.description || null,
       grade_levels: body.grade_levels || null,
-      is_active: body.is_active ?? existing.is_active,
       updated_at: new Date().toISOString(),
     }).eq("id", id);
 

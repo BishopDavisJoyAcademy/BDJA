@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import {
-  User, Camera, Mail, Phone, MapPin, Shield, Bell, Moon, Sun,
+  User, Camera, Mail, Phone, MapPin, Shield, Bell, Moon, Sun, Pencil,
   MessageSquare, Send, Lightbulb, Bug, ThumbsUp, Loader2, Save, Lock, Activity
 } from "lucide-react";
 import { toast } from "sonner";
@@ -379,10 +379,10 @@ export default function ProfilePage() {
               </div>
               <button
                 type="button"
-                onClick={() => setPrefs((prev) => ({ ...prev, [item.key]: !(prev as any)[item.key] }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${(prefs as any)[item.key] ? "bg-emerald-500" : "bg-gray-300"}`}
+                onClick={() => setPrefs((prev) => ({ ...prev, [item.key]: !prev[item.key as keyof NotificationPrefs] }))}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${prefs[item.key as keyof NotificationPrefs] ? "bg-emerald-500" : "bg-gray-300"}`}
               >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${(prefs as any)[item.key] ? "translate-x-6" : "translate-x-1"}`} />
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${prefs[item.key as keyof NotificationPrefs] ? "translate-x-6" : "translate-x-1"}`} />
               </button>
             </div>
           ))}

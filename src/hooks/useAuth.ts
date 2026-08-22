@@ -19,6 +19,7 @@ export interface AuthUser {
   designation?: string | null;
   admission_number?: string | null;
   grade_level?: string | null;
+  avatar_url?: string | null;
   permissions?: string[];
 }
 
@@ -102,9 +103,9 @@ export function useAuth() {
         loading: false,
         error: null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[useAuth] Error:", error);
-      setState({ user: null, loading: false, error: { type: "unknown", message: error.message } });
+      setState({ user: null, loading: false, error: { type: "unknown", message: getErrorMessage(error) } });
     }
   }, []);
 
@@ -135,8 +136,8 @@ export function useAuth() {
       }
       await fetchUser();
       return { success: true, error: null };
-    } catch (err: any) {
-      return { success: false, error: err.message || "Login failed" };
+    } catch (err: unknown) {
+      return { success: false, error: getErrorMessage(err) || "Login failed" };
     }
   }, [fetchUser]);
 
@@ -159,8 +160,8 @@ export function useAuth() {
       }
       await fetchUser();
       return { success: true, error: null };
-    } catch (err: any) {
-      return { success: false, error: err.message || "Login failed" };
+    } catch (err: unknown) {
+      return { success: false, error: getErrorMessage(err) || "Login failed" };
     }
   }, [fetchUser]);
 

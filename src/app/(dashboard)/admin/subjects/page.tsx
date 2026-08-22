@@ -14,9 +14,7 @@ interface Subject {
   id: string;
   name: string;
   code: string | null;
-  description: string | null;
   grade_levels: string[] | null;
-  is_active: boolean;
   created_at: string;
 }
 
@@ -85,9 +83,7 @@ export default function SubjectsPage() {
     setForm({
       name: sub.name,
       code: sub.code || "",
-      description: sub.description || "",
       grade_levels: sub.grade_levels || [],
-      is_active: sub.is_active,
     });
     setEditingId(sub.id);
     setShowForm(true);
@@ -142,10 +138,6 @@ export default function SubjectsPage() {
                 <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="e.g. MATH-101" />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm text-gray-400 mb-1">Description</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-gray-700 text-white text-sm resize-y" placeholder="Brief description..." />
-              </div>
-              <div className="md:col-span-2">
                 <label className="block text-sm text-gray-400 mb-2">Grade Levels</label>
                 <div className="flex flex-wrap gap-2">
                   {ALL_GRADES.map((g) => (
@@ -163,10 +155,6 @@ export default function SubjectsPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-              <div className="flex items-center gap-2 md:col-span-2">
-                <input type="checkbox" id="sub-active" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="w-4 h-4 rounded border-gray-600 text-amber-400" />
-                <label htmlFor="sub-active" className="text-sm text-gray-300">Active</label>
               </div>
             </div>
             <div className="flex gap-2">
@@ -189,7 +177,6 @@ export default function SubjectsPage() {
                 <th className="px-4 py-3 text-left">Name</th>
                 <th className="px-4 py-3 text-left">Code</th>
                 <th className="px-4 py-3 text-left">Grades</th>
-                <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -201,7 +188,6 @@ export default function SubjectsPage() {
                       <BookOpen className="w-4 h-4 text-amber-400" />
                       <span className="font-medium">{s.name}</span>
                     </div>
-                    {s.description && <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>}
                   </td>
                   <td className="px-4 py-3 text-gray-400">{s.code || "—"}</td>
                   <td className="px-4 py-3">
@@ -213,13 +199,6 @@ export default function SubjectsPage() {
                         <Badge className="bg-slate-700 text-gray-300 text-[10px] border-0">+{(s.grade_levels || []).length - 3}</Badge>
                       )}
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {s.is_active ? (
-                      <Badge className="bg-emerald-500/10 text-emerald-400 border-0 text-xs"><CheckCircle className="w-3 h-3 mr-1" />Active</Badge>
-                    ) : (
-                      <Badge className="bg-red-500/10 text-red-400 border-0 text-xs"><XCircle className="w-3 h-3 mr-1" />Inactive</Badge>
-                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">

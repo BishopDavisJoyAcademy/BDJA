@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { apiGet } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -41,11 +42,13 @@ export default function EditStudentPage() {
     const formData = new FormData(e.currentTarget);
     const body = Object.fromEntries(formData);
     try {
+      const { data: { session: editSession2 } } = await supabase.auth.getSession();
+      const editToken2 = editSession2?.access_token || "";
       const res = await fetch(`/api/admin/students?id=${id}`, {
         method: "PUT",
         credentials: "include",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${editToken2}` },
         body: JSON.stringify(body),
-        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error("Failed to update student");
       toast.success("Student updated successfully");

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiGet } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -56,7 +57,9 @@ export default function StaffPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this staff member permanently?")) return;
     try {
-      const res = await fetch(`/api/admin/staff?id=${id}`, { method: "DELETE", credentials: "include" });
+      const { data: { session: delSession } } = await supabase.auth.getSession();
+      const delToken = delSession?.access_token || "";
+      const res = await fetch(`/api/admin/staff?id=${id}`, { method: "DELETE", credentials: "include", headers: { "Authorization": `Bearer ${delToken}` } });
       if (!res.ok) throw new Error("Failed to delete");
       setStaff((prev) => prev.filter((s) => s.id !== id));
       toast.success("Staff member deleted");

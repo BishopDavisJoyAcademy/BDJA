@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiGet } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -92,11 +93,13 @@ export default function SettingsPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const { data: { session: setSession } } = await supabase.auth.getSession();
+      const setToken = setSession?.access_token || "";
       const res = await fetch("/api/admin/settings", {
         method: "PUT",
         credentials: "include",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${setToken}` },
         body: JSON.stringify(settings),
-        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error("Failed to save settings");
       toast.success("Settings saved successfully");

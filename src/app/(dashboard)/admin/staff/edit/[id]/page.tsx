@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { apiGet } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -63,11 +64,13 @@ export default function EditStaffPage() {
     const formData = new FormData(e.currentTarget);
     const body = Object.fromEntries(formData);
     try {
+      const { data: { session: editSession } } = await supabase.auth.getSession();
+      const editToken = editSession?.access_token || "";
       const res = await fetch(`/api/admin/staff?id=${id}`, {
         method: "PUT",
         credentials: "include",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${editToken}` },
         body: JSON.stringify({ ...body, permissionIds: selectedPerms }),
-        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error("Failed to update staff");
       toast.success("Staff updated successfully");

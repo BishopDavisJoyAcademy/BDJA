@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase-client";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -132,10 +133,12 @@ export default function ProfilePage() {
     if (!user) return;
     setSavingProfile(true);
     try {
+      const { data: { session: meSession } } = await supabase.auth.getSession();
+      const meToken = meSession?.access_token || "";
       const res = await fetch("/api/auth/me", {
         method: "PATCH",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${meToken}` },
         body: JSON.stringify({
           full_name: profileForm.full_name,
           phone: profileForm.phone,
@@ -163,7 +166,14 @@ export default function ProfilePage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
+      const { data: { session: uploadSession } } = await supabase.auth.getSession();
+      const uploadToken = uploadSession?.access_token || "";
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Authorization": `Bearer ${uploadToken}` },
+        body: formData,
+      });
       if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
       setAvatarUrl(data.url);
@@ -194,10 +204,12 @@ export default function ProfilePage() {
     }
     setChangingPassword(true);
     try {
+      const { data: { session: pwdSession } } = await supabase.auth.getSession();
+      const pwdToken = pwdSession?.access_token || "";
       const res = await fetch("/api/auth/change-password", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${pwdToken}` },
         body: JSON.stringify({
           current_password: passwordForm.current,
           new_password: passwordForm.newPass,
@@ -216,10 +228,12 @@ export default function ProfilePage() {
   const handleSavePrefs = async () => {
     setSavingPrefs(true);
     try {
+      const { data: { session: prefSession } } = await supabase.auth.getSession();
+      const prefToken = prefSession?.access_token || "";
       const res = await fetch("/api/auth/me", {
         method: "PATCH",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${prefToken}` },
         body: JSON.stringify({ notification_prefs: prefs }),
       });
       if (!res.ok) throw new Error("Failed to save preferences");

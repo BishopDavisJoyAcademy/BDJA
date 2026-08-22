@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiGet, apiPost } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -60,7 +61,9 @@ export default function StudentsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this student permanently? This cannot be undone.")) return;
     try {
-      const res = await fetch(`/api/admin/students?id=${id}`, { method: "DELETE", credentials: "include" });
+      const { data: { session: delSession2 } } = await supabase.auth.getSession();
+      const delToken2 = delSession2?.access_token || "";
+      const res = await fetch(`/api/admin/students?id=${id}`, { method: "DELETE", credentials: "include", headers: { "Authorization": `Bearer ${delToken2}` } });
       if (!res.ok) throw new Error("Failed to delete");
       setStudents((prev) => prev.filter((s) => s.id !== id));
       toast.success("Student deleted");
@@ -72,10 +75,12 @@ export default function StudentsPage() {
   const handlePromote = async (id: string) => {
     if (!newGrade) { toast.error("Select a new grade level"); return; }
     try {
+      const { data: { session: promSession } } = await supabase.auth.getSession();
+      const promToken = promSession?.access_token || "";
       const res = await fetch("/api/admin/students", {
         method: "PATCH",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${promToken}` },
         body: JSON.stringify({ id, new_grade_level: newGrade }),
       });
       if (!res.ok) throw new Error("Failed to promote");
@@ -90,10 +95,12 @@ export default function StudentsPage() {
 
   const handleGenerateCredentials = async (student: StudentProfile) => {
     try {
+      const { data: { session: credSession2 } } = await supabase.auth.getSession();
+      const credToken2 = credSession2?.access_token || "";
       const res = await fetch("/api/admin/students", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${credToken2}` },
         body: JSON.stringify({
           action: "generate_credentials",
           id: student.id,

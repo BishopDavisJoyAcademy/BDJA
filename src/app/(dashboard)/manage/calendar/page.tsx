@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiGet } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -102,11 +103,13 @@ export default function CalendarPage() {
       };
       const method = editingId ? "PUT" : "POST";
       const url = editingId ? `/api/calendar?id=${editingId}` : "/api/calendar";
+      const { data: { session: calSession } } = await supabase.auth.getSession();
+      const calToken = calSession?.access_token || "";
       const res = await fetch(url, {
         method,
         credentials: "include",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${calToken}` },
         body: JSON.stringify(body),
-        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error(editingId ? "Failed to update event" : "Failed to create event");
       toast.success(editingId ? "Event updated" : "Event created");
@@ -121,7 +124,9 @@ export default function CalendarPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this event?")) return;
     try {
-      const res = await fetch(`/api/calendar?id=${id}`, { method: "DELETE", credentials: "include" });
+      const { data: { session: delCalSession } } = await supabase.auth.getSession();
+      const delCalToken = delCalSession?.access_token || "";
+      const res = await fetch(`/api/calendar?id=${id}`, { method: "DELETE", credentials: "include", headers: { "Authorization": `Bearer ${delCalToken}` } });
       if (!res.ok) throw new Error("Failed to delete");
       setEvents((prev) => prev.filter((e) => e.id !== id));
       toast.success("Event deleted");

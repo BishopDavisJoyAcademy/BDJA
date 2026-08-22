@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiGet } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -37,11 +38,13 @@ export default function CreateStaffPage() {
     const formData = new FormData(e.currentTarget);
     const body = Object.fromEntries(formData);
     try {
+      const { data: { session: createSession } } = await supabase.auth.getSession();
+      const createToken = createSession?.access_token || "";
       const res = await fetch("/api/admin/staff", {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${createToken}` },
         body: JSON.stringify({ ...body, permissionIds: selectedPerms }),
-        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error("Failed to create staff");
       const data = await res.json();

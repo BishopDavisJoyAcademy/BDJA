@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { CheckCircle, AlertCircle } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -45,8 +46,8 @@ export default function OnboardingPage() {
       setTimeout(() => {
         router.push("/dashboard");
       }, 1500);
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || "An error occurred");
     } finally {
       setLoading(false);
     }

@@ -5,6 +5,7 @@ import { createStaff } from "@/lib/auth";
 import { grantPermissions } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
+import { getErrorMessage, isAuthError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -49,9 +50,9 @@ export async function GET(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: "Failed to fetch staff" }, { status: 500 });
     return NextResponse.json({ staff: staff || [] });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[staff GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -89,12 +90,12 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(result);
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[staff POST] Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create staff" }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) || "Failed to create staff" }, { status: 500 });
   }
 }
 
@@ -142,12 +143,12 @@ export async function PUT(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, message: "Staff updated" });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[staff PUT] Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update staff" }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) || "Failed to update staff" }, { status: 500 });
   }
 }
 
@@ -178,11 +179,11 @@ export async function PATCH(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[staff PATCH] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

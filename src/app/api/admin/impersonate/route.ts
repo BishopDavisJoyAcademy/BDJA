@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { logImpersonation } from "@/lib/audit";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/security";
+import { getErrorMessage, isAuthError } from "@/lib/errors";
 
 interface ProfileRow {
   id: string;
@@ -122,9 +123,9 @@ export async function POST(req: NextRequest) {
         grade_level: student?.grade_level || null,
       },
     });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[impersonate POST] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -157,9 +158,9 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ users: (users) || [] });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[impersonate GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

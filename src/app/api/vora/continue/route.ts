@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { getErrorMessage, isAuthError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +43,9 @@ export async function GET(req: NextRequest) {
     }));
 
     return NextResponse.json({ items });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[vora/continue] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ grades: grades || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/parent/grades] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

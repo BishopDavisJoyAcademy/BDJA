@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { z } from "zod";
+import { getErrorMessage, isAuthError, getErrorStatusCode } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -69,8 +70,8 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({ grades: data || [] });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[grades GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -110,8 +111,8 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ success: true, grade: data });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[grades POST] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -157,8 +158,8 @@ export async function PUT(req: NextRequest) {
     }
     return NextResponse.json({ success: true, grade: data });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[grades PUT] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -184,8 +185,8 @@ export async function DELETE(req: NextRequest) {
     }
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[grades DELETE] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { getErrorMessage, isAuthError, getErrorStatusCode } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -71,8 +72,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ students: formatted });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[teacher/students GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ children: children || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/parent/children] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

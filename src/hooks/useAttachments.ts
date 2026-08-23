@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { AttachmentFile, PollData, WhiteboardData, SearchQueryData } from "@/types/attachments";
 import toast from "react-hot-toast";
+import { getErrorMessage } from "@/lib/errors";
 
 export function useAttachments() {
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
@@ -58,7 +59,7 @@ export function useAttachments() {
       const json = await res.json();
       if (!json.url) throw new Error("No URL returned from server");
       return json.url;
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw err;
     }
   };
@@ -97,12 +98,12 @@ export function useAttachments() {
         setAttachments((prev) =>
           prev.map((a) => (a.id === att.id ? { ...a, status: "success", progress: 100, url: url || undefined } : a))
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("[useAttachments] Upload failed:", err);
         setAttachments((prev) =>
-          prev.map((a) => (a.id === att.id ? { ...a, status: "error", errorMessage: err.message, progress: 0 } : a))
+          prev.map((a) => (a.id === att.id ? { ...a, status: "error", errorMessage: getErrorMessage(err), progress: 0 } : a))
         );
-        toast.error(`Failed to upload ${att.name}: ${err.message}`);
+        toast.error(`Failed to upload ${att.name}: ${getErrorMessage(err)}`);
       }
     }
     setIsUploading(false);
@@ -200,9 +201,9 @@ export function useAttachments() {
       const url = await performUpload(attachment);
       updateAttachment(attachment.id, { status: "success", progress: 100, url: url || undefined, errorMessage: undefined });
       return url;
-    } catch (err: any) {
-      updateAttachment(attachment.id, { status: "error", errorMessage: err.message, progress: 0 });
-      toast.error(`Upload failed: ${err.message}`);
+    } catch (err: unknown) {
+      updateAttachment(attachment.id, { status: "error", errorMessage: getErrorMessage(err), progress: 0 });
+      toast.error(`Upload failed: ${getErrorMessage(err)}`);
       return null;
     }
   }, [updateAttachment]);

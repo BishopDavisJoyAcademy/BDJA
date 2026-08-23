@@ -140,7 +140,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
     };
 
     return { session, error: null };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[validateSession] Validation error:", error);
     return { session: null, error: { code: "INTERNAL_ERROR", message: "Session validation failed. Please try again." } };
   }

@@ -3,6 +3,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { BookOpen, Calendar, AlertCircle, Loader2 } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
 
 interface Assignment {
   id: string;
@@ -26,8 +27,8 @@ export default function StudentAssignmentsPage() {
         if (!res.ok) throw new Error("Failed to fetch assignments");
         const data = await res.json();
         setAssignments(data.assignments || []);
-      } catch (err: any) {
-        setError(err.message || "Could not load assignments");
+      } catch (err: unknown) {
+        setError(getErrorMessage(err) || "Could not load assignments");
       } finally {
         setLoading(false);
       }

@@ -3,6 +3,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { Bell, CheckCheck, MailOpen, Trash2, AlertCircle, Info, CheckCircle, Calendar, Loader2 } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
 
 interface Notification {
   id: string;
@@ -33,8 +34,8 @@ export default function NotificationsPage() {
       if (!res.ok) throw new Error("Failed to fetch notifications");
       const data = await res.json();
       setNotifications(data.notifications || []);
-    } catch (err: any) {
-      setError(err.message || "Could not load notifications");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || "Could not load notifications");
     } finally {
       setLoading(false);
     }

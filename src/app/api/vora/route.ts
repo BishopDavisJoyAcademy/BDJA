@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { voraSearchSchema } from "@/lib/validation";
 import { z } from "zod";
 import type { Database } from "@/types/database";
+import { getErrorMessage, isAuthError, getErrorStatusCode } from "@/lib/errors";
 
 type Json = Database["public"]["Tables"]["vora_content"]["Row"]["captions"];
 type VoraInsert = Database["public"]["Tables"]["vora_content"]["Insert"];
@@ -74,8 +75,8 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({ content: data || [] });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[vora GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -116,8 +117,8 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ success: true, content: data });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[vora POST] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

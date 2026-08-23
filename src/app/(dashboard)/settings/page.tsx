@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+type BooleanSettingKey = {
+  [K in keyof PlatformSettings]: PlatformSettings[K] extends boolean ? K : never;
+}[keyof PlatformSettings];
+
 interface PlatformSettings {
   school_name: string;
   contact_email: string;
@@ -291,24 +295,26 @@ export default function SettingsPage() {
           <Card className="p-5 space-y-4 max-w-xl">
             <h3 className="font-semibold text-white flex items-center gap-2"><Bell className="w-4 h-4 text-amber-400" /> Module Toggles</h3>
             <div className="space-y-3">
-              {[
-                { key: "enable_vora", label: "VORA Learning Videos" },
-                { key: "enable_library", label: "Digital Library" },
-                { key: "enable_parent_portal", label: "Parent Portal" },
-                { key: "enable_email_notifications", label: "Email Notifications" },
-                { key: "enable_sms_notifications", label: "SMS Notifications" },
-              ].map((item) => (
+              {(
+                [
+                  { key: "enable_vora", label: "VORA Learning Videos" },
+                  { key: "enable_library", label: "Digital Library" },
+                  { key: "enable_parent_portal", label: "Parent Portal" },
+                  { key: "enable_email_notifications", label: "Email Notifications" },
+                  { key: "enable_sms_notifications", label: "SMS Notifications" },
+                ] as { key: BooleanSettingKey; label: string }[]
+              ).map((item) => (
                 <div key={item.key} className="flex items-center justify-between py-2 border-b border-gray-700/50 last:border-0">
                   <span className="text-sm text-gray-300">{item.label}</span>
                   <button
                     type="button"
-                    onClick={() => handleChange(item.key as keyof PlatformSettings, !(settings as any)[item.key])}
+                    onClick={() => handleChange(item.key, !settings[item.key])}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      (settings as any)[item.key] ? "bg-emerald-500" : "bg-gray-600"
+                      settings[item.key] ? "bg-emerald-500" : "bg-gray-600"
                     }`}
                   >
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      (settings as any)[item.key] ? "translate-x-6" : "translate-x-1"
+                      settings[item.key] ? "translate-x-6" : "translate-x-1"
                     }`} />
                   </button>
                 </div>

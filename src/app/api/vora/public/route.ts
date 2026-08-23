@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const results = searchVoraContent(query, { grade_level, subject, limit });
     return NextResponse.json({ results });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/vora/public] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

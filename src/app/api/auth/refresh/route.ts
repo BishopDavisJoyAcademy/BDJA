@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       refresh_token: data.session.refresh_token,
       expires_at: data.session.expires_at,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[refresh] Error:", error);
     return NextResponse.json({ error: "Refresh failed" }, { status: 500 });
   }

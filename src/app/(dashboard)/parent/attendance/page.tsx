@@ -3,6 +3,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { Users, Calendar, CheckCircle, XCircle, Clock, Loader2, AlertCircle } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
 
 interface AttendanceRecord {
   id: string;
@@ -32,8 +33,8 @@ export default function ParentAttendancePage() {
           if (r.status in s) s[r.status as keyof typeof s]++;
         });
         setStats(s);
-      } catch (err: any) {
-        setError(err.message || "Could not load attendance");
+      } catch (err: unknown) {
+        setError(getErrorMessage(err) || "Could not load attendance");
       } finally {
         setLoading(false);
       }

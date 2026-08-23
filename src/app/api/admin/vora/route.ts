@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { hasPermission } from "@/lib/permissions";
+import { getErrorMessage } from "@/lib/errors";
 
 interface VoraAdminProfile {
   user_category: string;
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
     return NextResponse.json({ videos: videos || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[vora GET] Error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
@@ -71,9 +72,9 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[vora POST] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -111,9 +112,9 @@ export async function PUT(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[vora PUT] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -139,8 +140,8 @@ export async function DELETE(req: NextRequest) {
     const { error } = await admin.from("vora_content").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[vora DELETE] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

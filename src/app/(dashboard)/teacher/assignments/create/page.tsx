@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, Plus, Calendar, Users, Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getErrorMessage } from "@/lib/errors";
 
 export default function CreateAssignmentPage() {
   const { user } = useAuth();
@@ -45,8 +46,8 @@ export default function CreateAssignmentPage() {
 
       setSuccess("Assignment created successfully!");
       setTimeout(() => router.push("/teacher/assignments"), 1500);
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || "Something went wrong");
     } finally {
       setLoading(false);
     }

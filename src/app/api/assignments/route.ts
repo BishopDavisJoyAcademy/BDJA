@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { getErrorMessage, isAuthError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +18,9 @@ export async function GET(req: NextRequest) {
     const { data, error } = await query.order("due_date", { ascending: true });
     if (error) return NextResponse.json({ error: "Failed to fetch assignments" }, { status: 500 });
     return NextResponse.json({ assignments: data || [] });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[assignments GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -40,9 +41,9 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: "Failed to create assignment" }, { status: 500 });
     return NextResponse.json({ success: true, assignment: data });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[assignments POST] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

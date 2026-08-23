@@ -3,6 +3,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { ClipboardList, TrendingUp, Award, BookOpen, Loader2, AlertCircle } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
 
 interface Grade {
   id: string;
@@ -30,8 +31,8 @@ export default function StudentGradesPage() {
         if (!res.ok) throw new Error("Failed to fetch grades");
         const data = await res.json();
         setGrades(data.grades || data.assessments || []);
-      } catch (err: any) {
-        setError(err.message || "Could not load grades");
+      } catch (err: unknown) {
+        setError(getErrorMessage(err) || "Could not load grades");
       } finally {
         setLoading(false);
       }

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { Permission, PermissionCategory } from "@/types";
 import { supabase } from "@/lib/supabase";
+import { getErrorMessage } from "@/lib/errors";
 
 interface PermissionState {
   permissions: string[];
@@ -45,8 +46,8 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
       }
       const data = await res.json();
       set({ permissions: data.permissions || [], allPermissions: data.allPermissions || [], categories: data.categories || [], isLoading: false });
-    } catch (err: any) {
-      set({ error: err.message, isLoading: false });
+    } catch (err: unknown) {
+      set({ error: getErrorMessage(err), isLoading: false });
     }
   },
 

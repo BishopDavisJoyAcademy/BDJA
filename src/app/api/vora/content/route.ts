@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ content: data || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/vora/content] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

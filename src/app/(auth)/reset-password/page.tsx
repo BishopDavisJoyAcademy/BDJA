@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { AlertCircle, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -76,8 +77,8 @@ export default function ResetPasswordPage() {
       setTimeout(() => {
         router.push("/login");
       }, 2000);
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || "An error occurred");
     } finally {
       setLoading(false);
     }

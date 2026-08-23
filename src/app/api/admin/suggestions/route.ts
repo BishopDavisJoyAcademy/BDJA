@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ suggestions: data || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/admin/suggestions] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -90,7 +90,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/admin/suggestions] PATCH Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

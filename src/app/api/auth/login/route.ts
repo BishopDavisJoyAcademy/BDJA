@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
         onboarding_completed: profile.onboarding_completed,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/auth/login] Error:", error);
     return NextResponse.json({ error: "Login failed" }, { status: 500 });
   }

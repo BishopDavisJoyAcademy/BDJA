@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { hashPassword, addPasswordToHistory } from "@/lib/security";
 import { firstLoginPasswordSchema, firstLoginPinSchema } from "@/lib/validation";
 import { restoreMissingProfile } from "@/lib/auth";
+import { getErrorMessage, isAuthError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -89,9 +90,9 @@ export async function POST(req: NextRequest) {
       message: isStudent ? "PIN set successfully" : "Password set successfully",
       user_category: profile.user_category,
     });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[first-login] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

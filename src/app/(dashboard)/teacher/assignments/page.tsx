@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { BookOpen, Plus, Calendar, Users, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { getErrorMessage } from "@/lib/errors";
 
 interface Assignment {
   id: string;
@@ -28,8 +29,8 @@ export default function TeacherAssignmentsPage() {
         if (!res.ok) throw new Error("Failed to fetch assignments");
         const data = await res.json();
         setAssignments(data.assignments || []);
-      } catch (err: any) {
-        setError(err.message || "Could not load assignments");
+      } catch (err: unknown) {
+        setError(getErrorMessage(err) || "Could not load assignments");
       } finally {
         setLoading(false);
       }

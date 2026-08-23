@@ -3,6 +3,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { Calendar, Clock, MapPin, User, Loader2, AlertCircle } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
 
 interface TimetableEntry {
   id: string;
@@ -30,8 +31,8 @@ export default function StudentTimetablePage() {
         if (!res.ok) throw new Error("Failed to fetch timetable");
         const data = await res.json();
         setEntries(data.events || []);
-      } catch (err: any) {
-        setError(err.message || "Could not load timetable");
+      } catch (err: unknown) {
+        setError(getErrorMessage(err) || "Could not load timetable");
       } finally {
         setLoading(false);
       }

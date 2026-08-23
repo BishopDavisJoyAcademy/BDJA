@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ announcements: announcements || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/parent/announcements] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

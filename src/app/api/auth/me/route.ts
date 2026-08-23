@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { getUserPermissions } from "@/lib/permissions";
+import { getErrorMessage, isAuthError } from "@/lib/errors";
 
 /**
  * Type-safe runtime check for account suspension.
@@ -70,9 +71,9 @@ export async function GET(req: NextRequest) {
       },
       permissions,
     });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[api/auth/me] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

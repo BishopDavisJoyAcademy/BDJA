@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { logImpersonation } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
+import { getErrorMessage, isAuthError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +19,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[impersonate exit] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

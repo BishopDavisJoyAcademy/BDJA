@@ -3,6 +3,7 @@ import { requireAuth, requirePermission } from "@/lib/session";
 import { grantPermissions, getAllPermissions, getPermissionCategories } from "@/lib/permissions";
 import { logPermissionChange } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
+import { getErrorMessage, isAuthError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +18,9 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json({ permissions: allPermissions, categories });
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[permissions GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -45,11 +46,11 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(result);
-  } catch (error: any) {
-    if (error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
+  } catch (error: unknown) {
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
     }
     console.error("[permissions POST] Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update permissions" }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) || "Failed to update permissions" }, { status: 500 });
   }
 }

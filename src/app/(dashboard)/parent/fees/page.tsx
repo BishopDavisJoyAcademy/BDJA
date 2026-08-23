@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Loader2, DollarSign, ArrowLeft, CheckCircle, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { getErrorMessage } from "@/lib/errors";
 
 interface FeePayment {
   id: string;
@@ -43,8 +44,8 @@ export default function ParentFeesPage() {
           setTotalPaid(data.total_paid || 0);
           setTotalPending(data.total_pending || 0);
         } else throw new Error(data.error);
-      } catch (err: any) {
-        if (!cancelled) toast.error(err.message || "Failed to load fees");
+      } catch (err: unknown) {
+        if (!cancelled) toast.error(getErrorMessage(err) || "Failed to load fees");
       } finally {
         if (!cancelled) setLoading(false);
       }

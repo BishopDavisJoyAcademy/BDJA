@@ -3,6 +3,7 @@ import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { z } from "zod";
 import type { Database } from "@/types/database";
+import { getErrorMessage, isAuthError, getErrorStatusCode } from "@/lib/errors";
 
 type Json = Database["public"]["Tables"]["admissions"]["Row"]["documents"];
 type AdmissionInsert = Database["public"]["Tables"]["admissions"]["Insert"];
@@ -60,8 +61,8 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({ admissions: data || [] });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[admissions GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -128,8 +129,8 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ success: true, admission: data });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[admissions POST] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -179,8 +180,8 @@ export async function PUT(req: NextRequest) {
     }
     return NextResponse.json({ success: true, admission: data });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[admissions PUT] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -206,8 +207,8 @@ export async function DELETE(req: NextRequest) {
     }
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AuthRequiredError") {
-      return NextResponse.json({ error: error.message }, { status: (error as any).statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
     console.error("[admissions DELETE] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

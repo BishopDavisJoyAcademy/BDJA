@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { recordFailedLogin, recordSuccessfulLogin, checkAccountLockout, extractDeviceInfo, getClientIP, recordSession } from "@/lib/security";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -85,8 +86,8 @@ export async function POST(req: NextRequest) {
       },
       user: { id: userId, email },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[student-login] Error:", error);
-    return NextResponse.json({ error: error.message || "Login failed" }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) || "Login failed" }, { status: 500 });
   }
 }

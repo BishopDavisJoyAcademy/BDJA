@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Loader2, GraduationCap, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { getErrorMessage } from "@/lib/errors";
 
 interface Grade {
   id: string;
@@ -41,8 +42,8 @@ export default function ParentGradesPage() {
           setGrades(data.grades || []);
           setChildName(data.child_name || "");
         } else throw new Error(data.error);
-      } catch (err: any) {
-        if (!cancelled) toast.error(err.message || "Failed to load grades");
+      } catch (err: unknown) {
+        if (!cancelled) toast.error(getErrorMessage(err) || "Failed to load grades");
       } finally {
         if (!cancelled) setLoading(false);
       }

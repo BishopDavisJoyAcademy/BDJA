@@ -60,7 +60,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 });
     }
 
-    const formatted = (students || []).map((s: any) => ({
+    interface StudentWithProfile {
+  id: string;
+  profile_id: string;
+  admission_number: string | null;
+  status: string | null;
+  profiles?: { full_name: string | null; email: string | null; phone: string | null } | null;
+}
+
+    const formatted = (students || []).map((s: StudentWithProfile) => ({
       id: s.id,
       profile_id: s.profile_id,
       full_name: s.profiles?.full_name || "Unknown",

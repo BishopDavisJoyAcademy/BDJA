@@ -71,7 +71,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Suggestion ID required" }, { status: 400 });
     }
 
-    const updates: any = {};
+    const updates: Record<string, string | boolean | null | undefined> = {};
     if (status) updates.status = status;
     if (priority) updates.priority = priority;
     if (admin_response !== undefined) {

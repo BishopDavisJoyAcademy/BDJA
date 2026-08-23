@@ -143,7 +143,7 @@ export async function addPasswordToHistory(userId: string, passwordHash: string)
       .order("changed_at", { ascending: false })
       .limit(100);
     if (old && old.length > SECURITY_CONFIG.PASSWORD_HISTORY_COUNT) {
-      const toDelete = old.slice(SECURITY_CONFIG.PASSWORD_HISTORY_COUNT).map((r: any) => r.id);
+      const toDelete = old.slice(SECURITY_CONFIG.PASSWORD_HISTORY_COUNT).map((r: { id: string }) => r.id);
       await admin.from("password_history").delete().in("id", toDelete);
     }
   } catch (error) {

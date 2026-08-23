@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
         user_category: string;
         campus_id: string | null;
         is_active: boolean;
-        staff: { department: string | null; designation: string | null; [key: string]: any }[] | null;
-        [key: string]: any;
+        staff: { department: string | null; designation: string | null; [key: string]: unknown }[] | null;
+        [key: string]: unknown;
       }
 
       const { data: staffRaw, error } = await admin

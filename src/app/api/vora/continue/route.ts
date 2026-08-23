@@ -32,7 +32,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch continue watching" }, { status: 500 });
     }
 
-    const items = (rows || []).map((r: any) => ({
+    interface SavedVideoRow {
+  video_id: string;
+  title: string;
+  thumbnail_url: string | null;
+  subject: string | null;
+  grade_level: string | null;
+  duration_seconds: number | null;
+  saved_at: string;
+}
+
+    const items = (rows || []).map((r: SavedVideoRow) => ({
       id: r.video_id,
       title: r.title,
       thumbnail_url: r.thumbnail_url,

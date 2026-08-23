@@ -6,6 +6,12 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { ClipboardList, CheckCircle, XCircle, Clock, AlertTriangle, Loader2, Save, CalendarDays } from "lucide-react";
 import toast from "react-hot-toast";
+interface AttendanceRecord {
+  id: string;
+  student_id: string;
+}
+
+
 
 interface ClassItem {
   id: string;
@@ -74,7 +80,7 @@ export default function AttendanceRegisters() {
         const data = await res.json();
         if (cancelled) return;
         const existing: Record<string, string> = {};
-        (data.attendance || []).forEach((a: any) => {
+        (data.attendance || []).forEach((a: AttendanceRecord) => {
           existing[a.student_id] = a.id;
         });
         setExistingAttendance(existing);
@@ -206,7 +212,7 @@ export default function AttendanceRegisters() {
           if (!res.ok) return;
           const data = await res.json();
           const existing: Record<string, string> = {};
-          (data.attendance || []).forEach((a: any) => {
+          (data.attendance || []).forEach((a: AttendanceRecord) => {
             existing[a.student_id] = a.id;
           });
           setExistingAttendance(existing);

@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from "./supabase-server";
 import { Database } from "@/types/database";
 import { hashPassword, generateTempPassword, generatePIN } from "./security";
 import { logAudit } from "./audit";
+import { getErrorMessage } from "@/lib/errors";
 
 function mapOldRole(oldRole: string): "student" | "parent" | "staff" | "admin" {
   switch (oldRole) {
@@ -107,13 +108,13 @@ export async function createUser(options: CreateUserOptions): Promise<CreateUser
     }).catch(() => {});
 
     return { userId: authUserId, email: options.email, tempPassword: password, success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (authUserId) {
-      await admin.auth.admin.deleteUser(authUserId).catch((err: any) => {
+      await admin.auth.admin.deleteUser(authUserId).catch((err: unknown) => {
         console.error("[auth] Cleanup failed:", err);
       });
     }
-    throw new Error(error.message || "Failed to create user");
+    throw new Error(getErrorMessage(error) || "Failed to create user");
   }
 }
 
@@ -313,7 +314,7 @@ export async function restoreMissingProfile(userId: string, email?: string): Pro
 
     console.log("[restoreMissingProfile] Profile inserted successfully");
     return true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[restoreMissingProfile] Exception:", getErrorMessage(err), err instanceof Error ? err.stack : undefined);
     return false;
   }

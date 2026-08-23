@@ -69,7 +69,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { id, title, is_pinned } = body;
 
-    const update: any = {};
+    const update: Record<string, string | boolean | null | undefined> = {};
     if (title !== undefined) update.title = title;
     if (is_pinned !== undefined) update.is_pinned = is_pinned;
 

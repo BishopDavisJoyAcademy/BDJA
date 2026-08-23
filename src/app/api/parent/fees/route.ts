@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       .select("student_id")
       .eq("parent_id", user.id);
 
-    const studentIds = (children || []).map((c: any) => c.student_id);
+    const studentIds = (children || []).map((c: { student_id: string }) => c.student_id);
     if (studentIds.length === 0) {
       return NextResponse.json({ fees: [] });
     }

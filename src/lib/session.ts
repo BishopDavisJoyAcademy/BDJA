@@ -124,7 +124,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
     }
 
     const { data: permsData } = await admin.rpc("get_user_permissions", { p_user_id: profile.id });
-    const permissions = (permsData || []).map((p: any) => p.permission_key || p);
+    const permissions = (permsData || []).map((p: { permission_key?: string } | string) => typeof p === "string" ? p : (p.permission_key || String(p)));
 
     const session: ValidatedSession = {
       userId: profile.id,

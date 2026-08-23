@@ -6,12 +6,6 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { ClipboardList, CheckCircle, XCircle, Clock, AlertTriangle, Loader2, Save, CalendarDays } from "lucide-react";
 import toast from "react-hot-toast";
-interface AttendanceRecord {
-  id: string;
-  student_id: string;
-}
-
-
 
 interface ClassItem {
   id: string;

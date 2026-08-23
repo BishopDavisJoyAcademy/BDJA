@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { Database } from "@/types/database";
 import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +70,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { id, title, is_pinned } = body;
 
-    const update: Record<string, string | boolean | null | undefined> = {};
+    const update: Database["public"]["Tables"]["conversations"]["Update"] = {};
     if (title !== undefined) update.title = title;
     if (is_pinned !== undefined) update.is_pinned = is_pinned;
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { Database } from "@/types/database";
 import { hasPermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +72,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Suggestion ID required" }, { status: 400 });
     }
 
-    const updates: Record<string, string | boolean | null | undefined> = {};
+    const updates: Database["public"]["Tables"]["suggestions"]["Update"] = {};
     if (status) updates.status = status;
     if (priority) updates.priority = priority;
     if (admin_response !== undefined) {

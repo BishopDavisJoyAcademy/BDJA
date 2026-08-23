@@ -1457,6 +1457,84 @@ export type Database = {
           },
         ]
       }
+      inventory_items: {
+        Row: {
+          assigned_to: string | null
+          barcode: string | null
+          category: string
+          condition: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          location: string | null
+          name: string
+          purchase_cost: number | null
+          purchase_date: string | null
+          quantity: number | null
+          serial_number: string | null
+          supplier: string | null
+          unit: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          barcode?: string | null
+          category: string
+          condition?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          name: string
+          purchase_cost?: number | null
+          purchase_date?: string | null
+          quantity?: number | null
+          serial_number?: string | null
+          supplier?: string | null
+          unit?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          barcode?: string | null
+          category?: string
+          condition?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          name?: string
+          purchase_cost?: number | null
+          purchase_date?: string | null
+          quantity?: number | null
+          serial_number?: string | null
+          supplier?: string | null
+          unit?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       joy_actions: {
         Row: {
           action_data: Json | null
@@ -2086,6 +2164,99 @@ export type Database = {
             referencedColumns: ["key"]
           },
         ]
+      }
+      platform_settings: {
+        Row: {
+          academic_year: string | null
+          accent_color: string | null
+          address: string | null
+          auto_backup: boolean | null
+          city: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          country: string | null
+          created_at: string | null
+          currency: string | null
+          email_notifications: boolean | null
+          favicon_url: string | null
+          grading_system: string | null
+          id: string
+          logo_url: string | null
+          maintenance_mode: boolean | null
+          max_class_size: number | null
+          primary_color: string | null
+          registration_open: boolean | null
+          school_code: string | null
+          school_name: string | null
+          sms_notifications: boolean | null
+          term: string | null
+          term_end_date: string | null
+          term_start_date: string | null
+          theme: string | null
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          academic_year?: string | null
+          accent_color?: string | null
+          address?: string | null
+          auto_backup?: boolean | null
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          email_notifications?: boolean | null
+          favicon_url?: string | null
+          grading_system?: string | null
+          id?: string
+          logo_url?: string | null
+          maintenance_mode?: boolean | null
+          max_class_size?: number | null
+          primary_color?: string | null
+          registration_open?: boolean | null
+          school_code?: string | null
+          school_name?: string | null
+          sms_notifications?: boolean | null
+          term?: string | null
+          term_end_date?: string | null
+          term_start_date?: string | null
+          theme?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          academic_year?: string | null
+          accent_color?: string | null
+          address?: string | null
+          auto_backup?: boolean | null
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          email_notifications?: boolean | null
+          favicon_url?: string | null
+          grading_system?: string | null
+          id?: string
+          logo_url?: string | null
+          maintenance_mode?: boolean | null
+          max_class_size?: number | null
+          primary_color?: string | null
+          registration_open?: boolean | null
+          school_code?: string | null
+          school_name?: string | null
+          sms_notifications?: boolean | null
+          term?: string | null
+          term_end_date?: string | null
+          term_start_date?: string | null
+          theme?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

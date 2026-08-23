@@ -21,6 +21,7 @@ interface StudentItem {
 }
 
 interface AttendanceRecord {
+  id?: string;
   student_id: string;
   status: "present" | "absent" | "late" | "excused";
   notes: string;

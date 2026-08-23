@@ -21,7 +21,6 @@ interface StudentItem {
 }
 
 interface AttendanceRecord {
-  id?: string;
   student_id: string;
   status: "present" | "absent" | "late" | "excused";
   notes: string;
@@ -75,8 +74,8 @@ export default function AttendanceRegisters() {
         const data = await res.json();
         if (cancelled) return;
         const existing: Record<string, string> = {};
-        (data.attendance || []).forEach((a: AttendanceRecord) => {
-          existing[a.student_id] = a.id;
+        (data.attendance || []).forEach((a: any) => {
+          existing[a.student_id] = a.id!;
         });
         setExistingAttendance(existing);
       } catch (err) {
@@ -207,8 +206,8 @@ export default function AttendanceRegisters() {
           if (!res.ok) return;
           const data = await res.json();
           const existing: Record<string, string> = {};
-          (data.attendance || []).forEach((a: AttendanceRecord) => {
-            existing[a.student_id] = a.id;
+          (data.attendance || []).forEach((a: any) => {
+            existing[a.student_id] = a.id!;
           });
           setExistingAttendance(existing);
         } catch (err) {

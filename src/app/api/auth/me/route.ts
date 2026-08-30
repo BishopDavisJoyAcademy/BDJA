@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/session";
+import { requireAuth, validateSession } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { getUserPermissions } from "@/lib/permissions";
 import { getErrorMessage, isAuthError } from "@/lib/errors";
+import { createClient } from "@/lib/supabase-client";
+import { cookies } from "next/headers";
 
-/**
- * Type-safe runtime check for account suspension.
- * Supabase generated types may narrow `is_active` to `true | null`,
- * but the database column is `boolean | null`. We accept `unknown`
- * and use strict equality to safely detect explicit `false`.
- */
 function isAccountSuspended(value: unknown): value is false {
   return value === false;
 }
 
 export const dynamic = "force-dynamic";
 
+/* ─── GET: Return current user profile ─── */
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
@@ -31,6 +28,7 @@ export async function GET(req: NextRequest) {
       is_active: boolean | null;
       password_changed: boolean;
       onboarding_completed: boolean;
+      avatar_url: string | null;
       staff: { department: string | null; designation: string | null }[] | null;
       students: { admission_number: string | null; grade_level: string | null }[] | null;
     }
@@ -46,7 +44,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    // Only explicit false means inactive. NULL/true = active.
     if (isAccountSuspended(profile.is_active)) {
       return NextResponse.json({ error: "Account suspended" }, { status: 403 });
     }
@@ -64,6 +61,7 @@ export async function GET(req: NextRequest) {
         is_active: !isAccountSuspended(profile.is_active),
         password_changed: profile.password_changed,
         onboarding_completed: profile.onboarding_completed,
+        avatar_url: profile.avatar_url,
         department: profile.staff?.[0]?.department || null,
         designation: profile.staff?.[0]?.designation || null,
         admission_number: profile.students?.[0]?.admission_number || null,
@@ -73,9 +71,89 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: unknown) {
     if (isAuthError(error)) {
-      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: (error as { statusCode?: number }).statusCode || 401 });
     }
-    console.error("[api/auth/me] Error:", error);
+    console.error("[api/auth/me GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+/* ─── PATCH: Update user profile ─── */
+export async function PATCH(req: NextRequest) {
+  try {
+    // Dual auth: try header first, fall back to cookies (same as upload route)
+    let userId: string | null = null;
+
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (token) {
+      const { session, error } = await validateSession(token);
+      if (session && !error) userId = session.userId;
+    }
+
+    if (!userId) {
+      try {
+        const supabase = await createClient();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (!userError && user) userId = user.id;
+      } catch {
+        // cookie auth failed
+      }
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const admin = getSupabaseAdmin();
+
+    // Allowed fields for self-update
+    const allowedFields = [
+      "full_name",
+      "phone",
+      "bio",
+      "address",
+      "emergency_contact",
+      "emergency_phone",
+      "avatar_url",
+      "notification_prefs",
+    ];
+
+    const updates: Record<string, unknown> = {};
+    for (const key of allowedFields) {
+      if (key in body) {
+        updates[key] = body[key];
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+
+    updates.updated_at = new Date().toISOString();
+
+    const { error: updateError } = await admin
+      .from("profiles")
+      .update(updates)
+      .eq("id", userId);
+
+    if (updateError) {
+      console.error("[api/auth/me PATCH] Update failed:", updateError);
+      return NextResponse.json(
+        { error: `Update failed: ${updateError.message}` },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, updated: Object.keys(updates) });
+
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error("[api/auth/me PATCH] Error:", err);
+    return NextResponse.json(
+      { error: `Update failed: ${err.message}` },
+      { status: 500 }
+    );
   }
 }

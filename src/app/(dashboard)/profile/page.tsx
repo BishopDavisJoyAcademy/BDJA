@@ -1,21 +1,24 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, FormEvent, ChangeEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
-import { apiGet, apiPost } from "@/lib/api-client";
+import { apiGet } from "@/lib/api-client";
+import { compressImage, formatFileSize } from "@/lib/image-utils";
+import { requestSignedUploadUrl, uploadFileToSignedUrl } from "@/lib/upload-client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import {
-  User, Camera, Mail, Phone, MapPin, Shield, Bell, Moon, Sun, Pencil,
-  MessageSquare, Send, Lightbulb, Bug, ThumbsUp, Loader2, Save, Lock, Activity
+  User, Camera, Mail, Phone, MapPin, Shield, Lock, Pencil,
+  MessageSquare, Send, Lightbulb, Bug, ThumbsUp, Loader2, Save, X,
+  Check, AlertCircle, ChevronRight, Eye, EyeOff, Upload, GraduationCap, Building2
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
-import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 
+/* ─── Types ─── */
 interface Suggestion {
   id: string;
   type: string;
@@ -34,59 +37,101 @@ interface RelatedData {
   designation: string | null;
   grade_level: string | null;
   admission_number: string | null;
-  bio: string | null;
-  address: string | null;
-  emergency_contact: string | null;
-  emergency_phone: string | null;
 }
 
-interface NotificationPrefs {
-  email_notifications: boolean;
-  sms_notifications: boolean;
-  assignment_reminders: boolean;
-  fee_reminders: boolean;
-  event_reminders: boolean;
+type TabKey = "profile" | "security" | "feedback";
+type UploadPhase = "idle" | "preview" | "compressing" | "signing" | "uploading" | "saving" | "done" | "error";
+
+/* ─── Helpers ─── */
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
+function getRoleColor(role: string): string {
+  switch (role) {
+    case "admin": return "bg-purple-100 text-purple-800";
+    case "staff": return "bg-blue-100 text-blue-800";
+    case "student": return "bg-green-100 text-green-800";
+    case "parent": return "bg-orange-100 text-orange-800";
+    default: return "bg-gray-100 text-gray-800";
+  }
+}
+
+function getStatusBadge(status: string): string {
+  const map: Record<string, string> = {
+    open: "bg-amber-100 text-amber-800 border-amber-200",
+    under_review: "bg-blue-100 text-blue-800 border-blue-200",
+    planned: "bg-violet-100 text-violet-800 border-violet-200",
+    implemented: "bg-emerald-100 text-emerald-800 border-emerald-200",
+    declined: "bg-red-100 text-red-800 border-red-200",
+    closed: "bg-gray-100 text-gray-800 border-gray-200",
+  };
+  return map[status] || map.open;
+}
+
+/* ─── Component ─── */
 export default function ProfilePage() {
   const { user, refresh } = useAuth();
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ type: "feedback", title: "", description: "", priority: "medium" });
-  const [submitting, setSubmitting] = useState(false);
+
+  /* Tabs */
+  const [activeTab, setActiveTab] = useState<TabKey>("profile");
+
+  /* Profile data */
   const [related, setRelated] = useState<RelatedData | null>(null);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState({ full_name: "", phone: "", bio: "", address: "", emergency_contact: "", emergency_phone: "" });
   const [savingProfile, setSavingProfile] = useState(false);
+  const hasInitialized = useRef(false);
+
+  /* Avatar upload */
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase>("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [passwordForm, setPasswordForm] = useState({ current: "", newPass: "", confirm: "" });
-  const [changingPassword, setChangingPassword] = useState(false);
-  const [prefs, setPrefs] = useState<NotificationPrefs>({
-    email_notifications: true,
-    sms_notifications: false,
-    assignment_reminders: true,
-    fee_reminders: true,
-    event_reminders: true,
-  });
-  const [savingPrefs, setSavingPrefs] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchRelatedData = useCallback(async () => {
+  /* Password */
+  const [passwordForm, setPasswordForm] = useState({ current: "", newPass: "", confirm: "" });
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+
+  /* Suggestions */
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showSuggestionForm, setShowSuggestionForm] = useState(false);
+  const [suggestionForm, setSuggestionForm] = useState({ type: "feedback", title: "", description: "", priority: "medium" });
+  const [submittingSuggestion, setSubmittingSuggestion] = useState(false);
+
+  /* ─── Initialize once ─── */
+  useEffect(() => {
+    if (user && !hasInitialized.current) {
+      hasInitialized.current = true;
+      setAvatarUrl(user.avatar_url || "");
+      setFullName(user.full_name || "");
+      setPhone(user.phone || "");
+      fetchRelated();
+      fetchSuggestions();
+    }
+  }, [user]);
+
+  const fetchRelated = useCallback(async () => {
     if (!user) return;
     try {
-      const data = await apiGet<RelatedData>(`/api/profile/related?id=${user.id}&category=${user.user_category}`);
+      const data = await apiGet<RelatedData>(
+        `/api/profile/related?id=${user.id}&category=${user.user_category}`
+      );
       setRelated(data);
-      setProfileForm({
-        full_name: user.full_name || "",
-        phone: user.email || "",
-        bio: data.bio || "",
-        address: data.address || "",
-        emergency_contact: data.emergency_contact || "",
-        emergency_phone: data.emergency_phone || "",
-      });
-    } catch (err: unknown) {
-      console.error("Failed to fetch related data:", err);
+    } catch {
+      // non-critical
     }
   }, [user]);
 
@@ -94,64 +139,26 @@ export default function ProfilePage() {
     try {
       const data = await apiGet<{ suggestions: Suggestion[] }>("/api/suggestions");
       setSuggestions(data.suggestions || []);
-    } catch (err: unknown) {
-      console.error("Failed to fetch suggestions:", err);
+    } catch {
+      // non-critical
     }
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      fetchSuggestions();
-      fetchRelatedData();
-      setAvatarUrl(user.avatar_url || "");
-    }
-  }, [user, fetchSuggestions, fetchRelatedData]);
-
-  const handleSuggestionSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title.trim() || !form.description.trim()) {
-      toast.error("Title and description are required");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await apiPost("/api/suggestions", {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        type: form.type,
-        priority: form.priority,
-      });
-      toast.success("Suggestion submitted successfully!");
-      setForm({ type: "feedback", title: "", description: "", priority: "medium" });
-      setShowForm(false);
-      fetchSuggestions();
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
+  /* ─── Profile save ─── */
   const handleProfileSave = async () => {
     if (!user) return;
     setSavingProfile(true);
     try {
-      const { data: { session: meSession } } = await supabase.auth.getSession();
-      const meToken = meSession?.access_token || "";
       const res = await fetch("/api/auth/me", {
         method: "PATCH",
         credentials: "include",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${meToken}` },
-        body: JSON.stringify({
-          full_name: profileForm.full_name,
-          phone: profileForm.phone,
-          bio: profileForm.bio,
-          address: profileForm.address,
-          emergency_contact: profileForm.emergency_contact,
-          emergency_phone: profileForm.emergency_phone,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: fullName, phone: phone || null }),
       });
-      if (!res.ok) throw new Error("Failed to update profile");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update profile");
+      }
       toast.success("Profile updated");
       setEditingProfile(false);
       refresh();
@@ -162,39 +169,95 @@ export default function ProfilePage() {
     }
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    setUploadingAvatar(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const { data: { session: uploadSession } } = await supabase.auth.getSession();
-      const uploadToken = uploadSession?.access_token || "";
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Authorization": `Bearer ${uploadToken}` },
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
-      setAvatarUrl(data.url);
-      await fetch("/api/auth/me", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar_url: data.url }),
-      });
-      toast.success("Avatar updated");
-      refresh();
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setUploadingAvatar(false);
+  const handleCancelEdit = () => {
+    setEditingProfile(false);
+    if (user) {
+      setFullName(user.full_name || "");
+      setPhone(user.phone || "");
     }
   };
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
+  /* ─── Avatar: select file → preview ─── */
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Max 10MB");
+      return;
+    }
+    setPreviewUrl(URL.createObjectURL(file));
+    setPreviewFile(file);
+    setUploadPhase("preview");
+    setUploadError(null);
+  };
+
+  /* ─── Avatar: confirm upload ─── */
+  const handleConfirmUpload = async () => {
+    if (!previewFile || !previewUrl) return;
+    setUploadPhase("compressing");
+    setUploadProgress(0);
+    setUploadError(null);
+
+    try {
+      const compressed = await compressImage(previewFile, {
+        maxWidth: 800, maxHeight: 800, quality: 0.85, format: "image/webp",
+      });
+
+      setUploadPhase("signing");
+      const signed = await requestSignedUploadUrl(previewFile.name, "image/webp");
+
+      setUploadPhase("uploading");
+      await uploadFileToSignedUrl(signed.signedUrl, compressed, "image/webp", {
+        onProgress: (e) => setUploadProgress(e.percentage),
+      });
+
+      setUploadPhase("saving");
+      const patchRes = await fetch("/api/auth/me", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar_url: signed.publicUrl }),
+      });
+      if (!patchRes.ok) {
+        const data = await patchRes.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save avatar");
+      }
+
+      setAvatarUrl(signed.publicUrl);
+      setUploadPhase("done");
+      toast.success("Avatar updated");
+      refresh();
+      setTimeout(() => {
+        setUploadPhase("idle");
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+        setPreviewFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }, 2000);
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err);
+      setUploadError(msg);
+      setUploadPhase("error");
+      toast.error(msg);
+    }
+  };
+
+  const handleCancelPreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPreviewFile(null);
+    setUploadPhase("idle");
+    setUploadError(null);
+    setUploadProgress(0);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  /* ─── Password change ─── */
+  const handlePasswordChange = async (e: FormEvent) => {
     e.preventDefault();
     if (!user) return;
     if (passwordForm.newPass !== passwordForm.confirm) {
@@ -202,24 +265,25 @@ export default function ProfilePage() {
       return;
     }
     if (passwordForm.newPass.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error("Min 8 characters");
       return;
     }
     setChangingPassword(true);
     try {
-      const { data: { session: pwdSession } } = await supabase.auth.getSession();
-      const pwdToken = pwdSession?.access_token || "";
       const res = await fetch("/api/auth/change-password", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${pwdToken}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           current_password: passwordForm.current,
           new_password: passwordForm.newPass,
         }),
       });
-      if (!res.ok) throw new Error("Failed to change password");
-      toast.success("Password changed successfully");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed");
+      }
+      toast.success("Password changed");
       setPasswordForm({ current: "", newPass: "", confirm: "" });
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));
@@ -228,267 +292,391 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSavePrefs = async () => {
-    setSavingPrefs(true);
+  /* ─── Suggestions ─── */
+  const handleSuggestionSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!suggestionForm.title.trim() || !suggestionForm.description.trim()) {
+      toast.error("Title and description required");
+      return;
+    }
+    setSubmittingSuggestion(true);
     try {
-      const { data: { session: prefSession } } = await supabase.auth.getSession();
-      const prefToken = prefSession?.access_token || "";
-      const res = await fetch("/api/auth/me", {
-        method: "PATCH",
+      const res = await fetch("/api/suggestions", {
+        method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${prefToken}` },
-        body: JSON.stringify({ notification_prefs: prefs }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: suggestionForm.title.trim(),
+          description: suggestionForm.description.trim(),
+          type: suggestionForm.type,
+          priority: suggestionForm.priority,
+        }),
       });
-      if (!res.ok) throw new Error("Failed to save preferences");
-      toast.success("Preferences saved");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed");
+      }
+      toast.success("Suggestion submitted!");
+      setSuggestionForm({ type: "feedback", title: "", description: "", priority: "medium" });
+      setShowSuggestionForm(false);
+      fetchSuggestions();
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));
     } finally {
-      setSavingPrefs(false);
+      setSubmittingSuggestion(false);
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "bug": return <Bug className="w-4 h-4 text-red-500" />;
-      case "idea": return <Lightbulb className="w-4 h-4 text-yellow-500" />;
-      case "improvement": return <ThumbsUp className="w-4 h-4 text-green-500" />;
-      default: return <MessageSquare className="w-4 h-4 text-blue-500" />;
-    }
-  };
+  /* ─── Render ─── */
+  const initials = getInitials(user?.full_name || "U");
+  const isUploading = uploadPhase === "compressing" || uploadPhase === "signing" || uploadPhase === "uploading" || uploadPhase === "saving";
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      open: "bg-yellow-100 text-yellow-800",
-      under_review: "bg-blue-100 text-blue-800",
-      planned: "bg-purple-100 text-purple-800",
-      implemented: "bg-green-100 text-green-800",
-      declined: "bg-red-100 text-red-800",
-      closed: "bg-gray-100 text-gray-800",
-    };
-    return colors[status] || colors.open;
-  };
-
-  const dept = related?.department || user?.department;
-  const desig = related?.designation || user?.designation;
-  const grade = related?.grade_level || user?.grade_level;
-  const admNo = related?.admission_number || user?.admission_number;
+  const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
+    { key: "profile", label: "Profile", icon: <User className="w-4 h-4" /> },
+    { key: "security", label: "Security", icon: <Lock className="w-4 h-4" /> },
+    { key: "feedback", label: "My Feedback", icon: <MessageSquare className="w-4 h-4" /> },
+  ];
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-        <p className="text-gray-500">View and manage your profile information</p>
+    <div className="min-h-screen bg-gray-50 pb-12">
+      {/* ─── Cover ─── */}
+      <div className="relative h-52 sm:h-64 bg-gradient-to-br from-indigo-600 via-blue-600 to-purple-700">
+        <div className="absolute inset-0 bg-black/5" />
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-gray-50 to-transparent" />
       </div>
 
-      {/* Profile Card */}
-      <Card className="p-6">
-        <div className="flex flex-col sm:flex-row items-start gap-6">
-          <div className="relative">
-            <div className="w-24 h-24 rounded-full overflow-hidden bg-bdja-primary/10 flex items-center justify-center border-2 border-gray-200">
-              {avatarUrl ? (
-                <Image src={avatarUrl} alt="Avatar" width={96} height={96} className="object-cover w-full h-full" />
-              ) : (
-                <User className="w-10 h-10 text-bdja-primary" />
-              )}
-            </div>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-0 right-0 w-8 h-8 bg-bdja-primary rounded-full flex items-center justify-center text-white hover:bg-bdja-primary/90 transition-colors"
-              disabled={uploadingAvatar}
-            >
-              {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-            </button>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-          </div>
-          <div className="flex-1 min-w-0">
-            {editingProfile ? (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <Input value={profileForm.full_name} onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <Input value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                  <textarea value={profileForm.bio} onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })} rows={3} className="w-full px-3 py-2 border rounded-lg text-sm resize-y" placeholder="Tell us about yourself..." />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <Input value={profileForm.address} onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
-                    <Input value={profileForm.emergency_contact} onChange={(e) => setProfileForm({ ...profileForm, emergency_contact: e.target.value })} placeholder="Name" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Phone</label>
-                    <Input value={profileForm.emergency_phone} onChange={(e) => setProfileForm({ ...profileForm, emergency_phone: e.target.value })} placeholder="+254..." />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleProfileSave} disabled={savingProfile}>
-                    {savingProfile ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-                    Save Profile
-                  </Button>
-                  <Button variant="outline" onClick={() => setEditingProfile(false)}>Cancel</Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h2 className="text-xl font-semibold">{user?.full_name}</h2>
-                  <Badge variant={user?.user_category === "admin" ? "destructive" : "default"} className="capitalize">
-                    {user?.user_category}
-                  </Badge>
-                </div>
-                <p className="text-gray-500">{user?.email}</p>
-                <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                  <div><span className="text-gray-500">Department:</span> <span className="font-medium">{dept || "—"}</span></div>
-                  <div><span className="text-gray-500">Designation:</span> <span className="font-medium">{desig || "—"}</span></div>
-                  <div><span className="text-gray-500">Grade Level:</span> <span className="font-medium capitalize">{grade || "—"}</span></div>
-                  <div><span className="text-gray-500">Admission No:</span> <span className="font-medium">{admNo || "—"}</span></div>
-                  <div><span className="text-gray-500">Phone:</span> <span className="font-medium">{profileForm.phone || "—"}</span></div>
-                  <div><span className="text-gray-500">Address:</span> <span className="font-medium">{profileForm.address || "—"}</span></div>
-                </div>
-                {profileForm.bio && <p className="mt-3 text-sm text-gray-600 italic">"{profileForm.bio}"</p>}
-                <Button onClick={() => setEditingProfile(true)} className="mt-4" size="sm" variant="outline">
-                  <Pencil className="w-3 h-3 mr-1" /> Edit Profile
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {/* Password Change */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4"><Lock className="w-5 h-5 text-bdja-primary" /> Change Password</h3>
-        <form onSubmit={handlePasswordChange} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Input type="password" placeholder="Current Password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} required />
-          <Input type="password" placeholder="New Password" value={passwordForm.newPass} onChange={(e) => setPasswordForm({ ...passwordForm, newPass: e.target.value })} required />
-          <Input type="password" placeholder="Confirm New Password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} required />
-          <div className="md:col-span-3">
-            <Button type="submit" disabled={changingPassword}>
-              {changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Lock className="w-4 h-4 mr-1" />}
-              Update Password
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      {/* Notification Preferences */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4"><Bell className="w-5 h-5 text-bdja-primary" /> Notification Preferences</h3>
-        <div className="space-y-3">
-          {[
-            { key: "email_notifications", label: "Email Notifications", icon: Mail },
-            { key: "sms_notifications", label: "SMS Notifications", icon: Phone },
-            { key: "assignment_reminders", label: "Assignment Reminders", icon: Activity },
-            { key: "fee_reminders", label: "Fee Reminders", icon: Shield },
-            { key: "event_reminders", label: "Event Reminders", icon: Bell },
-          ].map((item) => (
-            <div key={item.key} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-              <div className="flex items-center gap-2">
-                <item.icon className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-700">{item.label}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPrefs((prev) => ({ ...prev, [item.key]: !prev[item.key as keyof NotificationPrefs] }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${prefs[item.key as keyof NotificationPrefs] ? "bg-emerald-500" : "bg-gray-300"}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${prefs[item.key as keyof NotificationPrefs] ? "translate-x-6" : "translate-x-1"}`} />
-              </button>
-            </div>
-          ))}
-        </div>
-        <Button onClick={handleSavePrefs} disabled={savingPrefs} className="mt-4" size="sm">
-          {savingPrefs ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-          Save Preferences
-        </Button>
-      </Card>
-
-      {/* Suggestions */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-bdja-primary" />
-            <h2 className="text-lg font-semibold">My Suggestions & Feedback</h2>
-          </div>
-          <Button onClick={() => setShowForm(!showForm)} size="sm">
-            {showForm ? "Cancel" : "Submit New"}
-          </Button>
-        </div>
-
-        {showForm && (
-          <form onSubmit={handleSuggestionSubmit} className="mb-6 p-4 bg-gray-50 rounded-lg space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm">
-                  <option value="idea">Idea</option>
-                  <option value="feedback">Feedback</option>
-                  <option value="bug">Bug Report</option>
-                  <option value="improvement">Improvement</option>
-                  <option value="complaint">Complaint</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm">
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Short summary..." required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
-              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} className="w-full px-3 py-2 border rounded-lg text-sm resize-y" placeholder="Describe your suggestion in detail..." required />
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit" disabled={submitting} className="bg-bdja-primary hover:bg-bdja-primary/90">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
-                Submit Suggestion
-              </Button>
-            </div>
-          </form>
-        )}
-
-        <div className="space-y-3">
-          {suggestions.length === 0 && <p className="text-gray-500 text-sm">No suggestions submitted yet.</p>}
-          {suggestions.map((s) => (
-            <div key={s.id} className="p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                {getTypeIcon(s.type)}
-                <span className="font-medium text-sm">{s.title}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(s.status)}`}>{s.status.replace("_", " ")}</span>
-              </div>
-              <p className="text-sm text-gray-600">{s.description}</p>
-              {s.admin_response && (
-                <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded">
-                  <p className="text-xs text-emerald-700 font-medium mb-0.5">Admin Response</p>
-                  <p className="text-sm text-gray-700">{s.admin_response}</p>
-                  {s.responded_at && (
-                    <p className="text-xs text-gray-400 mt-1">{new Date(s.responded_at).toLocaleDateString()}</p>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-24 relative z-10">
+        {/* ─── Profile Card ─── */}
+        <Card className="p-6 sm:p-8 mb-6 shadow-lg">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+            {/* Avatar */}
+            <div className="relative group shrink-0">
+              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-white p-1.5 shadow-xl ring-4 ring-white/50">
+                <div className="w-full h-full rounded-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                  {avatarUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-4xl sm:text-5xl font-bold text-gray-300">{initials}</span>
                   )}
                 </div>
-              )}
-              <p className="text-xs text-gray-400 mt-1">{new Date(s.created_at).toLocaleDateString()}</p>
+              </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="absolute bottom-1 right-1 bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 disabled:opacity-50"
+                title="Change photo"
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
             </div>
+
+            {/* Info */}
+            <div className="text-center sm:text-left flex-1 pt-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{user?.full_name || "User"}</h1>
+              <p className="text-gray-500 mt-1 flex items-center justify-center sm:justify-start gap-1.5">
+                <Mail className="w-3.5 h-3.5" /> {user?.email}
+              </p>
+              <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-3">
+                <Badge className={getRoleColor(user?.role || "")}>{user?.role}</Badge>
+                <Badge variant="secondary">{user?.user_category}</Badge>
+                {related?.department && <Badge variant="default"><Building2 className="w-3 h-3 mr-1" />{related.department}</Badge>}
+                {related?.designation && <Badge variant="default">{related.designation}</Badge>}
+                {related?.grade_level && <Badge variant="default"><GraduationCap className="w-3 h-3 mr-1" />Grade {related.grade_level}</Badge>}
+                {related?.admission_number && <Badge variant="default">#{related.admission_number}</Badge>}
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="hidden md:flex gap-8 text-center">
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{user?.role === "student" ? related?.grade_level || "—" : related?.designation || "—"}</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wider font-medium mt-0.5">{user?.role === "student" ? "Grade" : "Role"}</div>
+              </div>
+              <div className="w-px bg-gray-200" />
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{related?.department || user?.user_category || "—"}</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wider font-medium mt-0.5">Department</div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* ─── Upload States ─── */}
+        <AnimatePresence mode="wait">
+          {uploadPhase === "preview" && (
+            <motion.div key="preview" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="mb-6">
+              <Card className="p-6 border-2 border-blue-200 bg-blue-50/40">
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg shrink-0">
+                    {previewUrl && <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />}
+                  </div>
+                  <div className="flex-1 text-center sm:text-left">
+                    <h3 className="font-semibold text-gray-900 text-lg">Preview</h3>
+                    <p className="text-sm text-gray-500 mt-1">{previewFile ? `${formatFileSize(previewFile.size)} → compressed to WebP` : ""}</p>
+                    <div className="flex gap-3 mt-4 justify-center sm:justify-start">
+                      <Button onClick={handleConfirmUpload} className="bg-blue-600 hover:bg-blue-700"><Upload className="w-4 h-4 mr-1.5" /> Save Avatar</Button>
+                      <Button variant="outline" onClick={handleCancelPreview}><X className="w-4 h-4 mr-1.5" /> Cancel</Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {isUploading && (
+            <motion.div key="uploading" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="mb-6">
+              <Card className="p-6 border-2 border-blue-200 bg-blue-50/40">
+                <div className="flex items-center gap-5">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                    <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-semibold text-gray-900">
+                        {uploadPhase === "compressing" && "Compressing..."}
+                        {uploadPhase === "signing" && "Preparing upload..."}
+                        {uploadPhase === "uploading" && `Uploading ${uploadProgress}%`}
+                        {uploadPhase === "saving" && "Saving..."}
+                      </span>
+                      <span className="text-sm text-gray-500 font-medium">{uploadPhase === "uploading" ? `${uploadProgress}%` : "..."}</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                      <motion.div className="h-full bg-blue-600 rounded-full" initial={{ width: 0 }} animate={{ width: `${uploadPhase === "uploading" ? uploadProgress : uploadPhase === "saving" ? 95 : uploadPhase === "signing" ? 40 : 20}%` }} transition={{ duration: 0.3 }} />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1.5">
+                      {uploadPhase === "compressing" && "Optimizing image in browser..."}
+                      {uploadPhase === "signing" && "Getting secure upload URL..."}
+                      {uploadPhase === "uploading" && `Sent ${formatFileSize(Math.round((uploadProgress / 100) * (previewFile?.size || 0)))}`}
+                      {uploadPhase === "saving" && "Updating your profile..."}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {uploadPhase === "error" && (
+            <motion.div key="error" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="mb-6">
+              <Card className="p-6 border-2 border-red-200 bg-red-50/40">
+                <div className="flex items-center gap-3 text-red-700">
+                  <AlertCircle className="w-6 h-6 shrink-0" />
+                  <div>
+                    <p className="font-semibold">Upload failed</p>
+                    <p className="text-sm text-red-600">{uploadError}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <Button onClick={() => { setUploadPhase("preview"); setUploadError(null); }} variant="outline">Try Again</Button>
+                  <Button onClick={handleCancelPreview} variant="ghost">Cancel</Button>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {uploadPhase === "done" && (
+            <motion.div key="done" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="mb-6">
+              <Card className="p-6 border-2 border-emerald-200 bg-emerald-50/40">
+                <div className="flex items-center gap-3 text-emerald-700">
+                  <Check className="w-6 h-6 shrink-0" />
+                  <span className="font-semibold">Avatar updated successfully!</span>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── Tabs ─── */}
+        <div className="flex gap-1 bg-white rounded-xl p-1.5 shadow-sm border mb-6 overflow-x-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                activeTab === tab.key ? "bg-blue-600 text-white shadow-md" : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
           ))}
         </div>
-      </Card>
+
+        {/* ─── Tab Content ─── */}
+        <AnimatePresence mode="wait">
+          {activeTab === "profile" && (
+            <motion.div key="profile" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-6">
+              {/* Personal Info */}
+              <Card className="p-6 sm:p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Personal Information</h3>
+                    <p className="text-sm text-gray-500">Manage your profile details</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => editingProfile ? handleCancelEdit() : setEditingProfile(true)}>
+                    {editingProfile ? <><X className="w-4 h-4 mr-1.5" /> Cancel</> : <><Pencil className="w-4 h-4 mr-1.5" /> Edit</>}
+                  </Button>
+                </div>
+
+                {editingProfile ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                      <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Phone</label>
+                      <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Button onClick={handleProfileSave} disabled={savingProfile}>
+                        {savingProfile ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
+                        {savingProfile ? "Saving..." : "Save Changes"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-10">
+                    <InfoRow icon={<User className="w-4 h-4" />} label="Full Name" value={user?.full_name} />
+                    <InfoRow icon={<Mail className="w-4 h-4" />} label="Email" value={user?.email} />
+                    <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone" value={user?.phone || "Not set"} />
+                    <InfoRow icon={<Shield className="w-4 h-4" />} label="Role" value={user?.role} />
+                    <InfoRow icon={<Building2 className="w-4 h-4" />} label="Department" value={related?.department || "—"} />
+                    <InfoRow icon={<MapPin className="w-4 h-4" />} label="Designation" value={related?.designation || "—"} />
+                    {user?.user_category === "student" && (
+                      <>
+                        <InfoRow icon={<GraduationCap className="w-4 h-4" />} label="Grade Level" value={related?.grade_level || "—"} />
+                        <InfoRow icon={<User className="w-4 h-4" />} label="Admission Number" value={related?.admission_number || "—"} />
+                      </>
+                    )}
+                  </div>
+                )}
+              </Card>
+            </motion.div>
+          )}
+
+          {activeTab === "security" && (
+            <motion.div key="security" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+              <Card className="p-6 sm:p-8 max-w-xl">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Change Password</h3>
+                <p className="text-sm text-gray-500 mb-6">Keep your account secure with a strong password</p>
+                <form onSubmit={handlePasswordChange} className="space-y-4">
+                  <div className="relative">
+                    <Input type={showCurrent ? "text" : "password"} placeholder="Current password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} />
+                    <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input type={showNew ? "text" : "password"} placeholder="New password (min 8 characters)" value={passwordForm.newPass} onChange={(e) => setPasswordForm({ ...passwordForm, newPass: e.target.value })} />
+                    <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <Input type="password" placeholder="Confirm new password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} />
+                  <Button type="submit" disabled={changingPassword}>
+                    {changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Lock className="w-4 h-4 mr-1.5" />}
+                    {changingPassword ? "Updating..." : "Update Password"}
+                  </Button>
+                </form>
+              </Card>
+            </motion.div>
+          )}
+
+          {activeTab === "feedback" && (
+            <motion.div key="feedback" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-6">
+              <Card className="p-6 sm:p-8">
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">My Feedback</h3>
+                    <p className="text-sm text-gray-500">Share ideas, report bugs, or suggest improvements</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setShowSuggestionForm(!showSuggestionForm)}>
+                    <Send className="w-4 h-4 mr-1.5" /> {showSuggestionForm ? "Cancel" : "New"}
+                  </Button>
+                </div>
+
+                <AnimatePresence>
+                  {showSuggestionForm && (
+                    <motion.form initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} onSubmit={handleSuggestionSubmit} className="space-y-4 mb-6 overflow-hidden">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <select value={suggestionForm.type} onChange={(e) => setSuggestionForm({ ...suggestionForm, type: e.target.value })} className="border rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                          <option value="feedback">Feedback</option>
+                          <option value="bug">Bug Report</option>
+                          <option value="idea">Idea</option>
+                          <option value="improvement">Improvement</option>
+                        </select>
+                        <select value={suggestionForm.priority} onChange={(e) => setSuggestionForm({ ...suggestionForm, priority: e.target.value })} className="border rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                          <option value="low">Low Priority</option>
+                          <option value="medium">Medium Priority</option>
+                          <option value="high">High Priority</option>
+                        </select>
+                      </div>
+                      <Input placeholder="Title" value={suggestionForm.title} onChange={(e) => setSuggestionForm({ ...suggestionForm, title: e.target.value })} />
+                      <textarea placeholder="Describe your suggestion in detail..." value={suggestionForm.description} onChange={(e) => setSuggestionForm({ ...suggestionForm, description: e.target.value })} className="w-full border rounded-lg px-3 py-2.5 text-sm min-h-[120px] resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+                      <Button type="submit" disabled={submittingSuggestion}>
+                        {submittingSuggestion ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Send className="w-4 h-4 mr-1.5" />}
+                        {submittingSuggestion ? "Submitting..." : "Submit"}
+                      </Button>
+                    </motion.form>
+                  )}
+                </AnimatePresence>
+
+                <div className="space-y-4">
+                  {suggestions.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                      <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                      <p className="text-sm">No feedback yet. Be the first to share your thoughts!</p>
+                    </div>
+                  ) : (
+                    suggestions.map((s) => (
+                      <div key={s.id} className="p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all bg-white">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 shrink-0">
+                            {s.type === "bug" ? <Bug className="w-5 h-5 text-red-500" /> : s.type === "idea" ? <Lightbulb className="w-5 h-5 text-amber-500" /> : s.type === "improvement" ? <ThumbsUp className="w-5 h-5 text-emerald-500" /> : <MessageSquare className="w-5 h-5 text-blue-500" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span className="font-semibold text-sm text-gray-900">{s.title}</span>
+                              <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${getStatusBadge(s.status)}`}>{s.status.replace("_", " ")}</span>
+                            </div>
+                            <p className="text-sm text-gray-600 leading-relaxed">{s.description}</p>
+                            {s.admin_response && (
+                              <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Admin Response</span>
+                                </div>
+                                <p className="text-sm text-gray-800 leading-relaxed">{s.admin_response}</p>
+                                {s.responded_at && <p className="text-xs text-gray-400 mt-1.5">{new Date(s.responded_at).toLocaleDateString()}</p>}
+                              </div>
+                            )}
+                            <p className="text-xs text-gray-400 mt-2">Submitted {new Date(s.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+/* ─── InfoRow ─── */
+function InfoRow({ icon, label, value, className = "" }: { icon: React.ReactNode; label: string; value: string | undefined | null; className?: string }) {
+  return (
+    <div className={`flex items-start gap-3 ${className}`}>
+      <div className="text-gray-400 mt-0.5 shrink-0">{icon}</div>
+      <div>
+        <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">{label}</div>
+        <div className="text-sm text-gray-900 font-semibold mt-0.5">{value || "—"}</div>
+      </div>
     </div>
   );
 }

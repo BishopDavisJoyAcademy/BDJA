@@ -1,25 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { Database } from "@/types/database";
+import { createClient } from "@/lib/supabase-client";
 import { hasPermission } from "@/lib/permissions";
+import { getErrorMessage, isAuthError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Authenticate via header OR cookies (dual auth).
+ * Returns userId or null.
+ */
+async function authenticate(req: NextRequest): Promise<string | null> {
+  // Strategy 1: Authorization header
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  if (token) {
+    const admin = getSupabaseAdmin();
+    const { data: { user }, error } = await admin.auth.getUser(token);
+    if (!error && user) return user.id;
+  }
+
+  // Strategy 2: Cookies
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (!error && user) return user.id;
+  } catch {
+    // ignore
+  }
+
+  return null;
+}
+
+/* ─── GET ─── */
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    const userId = await authenticate(req);
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const token = authHeader.replace("Bearer ", "");
-    const admin = getSupabaseAdmin();
 
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-    }
-
-    if (!(await hasPermission(user.id, "suggestions.manage"))) {
+    if (!(await hasPermission(userId, "suggestions.manage"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -27,7 +48,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
     const type = searchParams.get("type");
 
-    let query = admin
+    let query = getSupabaseAdmin()
       .from("suggestions")
       .select("*, profiles(full_name, email, user_category)")
       .order("created_at", { ascending: false });
@@ -37,31 +58,29 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query;
     if (error) {
+      console.error("[admin/suggestions GET] Query error:", error);
       return NextResponse.json({ error: "Failed to fetch suggestions" }, { status: 500 });
     }
 
     return NextResponse.json({ suggestions: data || [] });
   } catch (error: unknown) {
-    console.error("[api/admin/suggestions] Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("[admin/suggestions GET] Error:", error);
+    return NextResponse.json(
+      { error: getErrorMessage(error) || "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
+/* ─── PATCH ─── */
 export async function PATCH(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    const userId = await authenticate(req);
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const token = authHeader.replace("Bearer ", "");
-    const admin = getSupabaseAdmin();
 
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-    }
-
-    if (!(await hasPermission(user.id, "suggestions.manage"))) {
+    if (!(await hasPermission(userId, "suggestions.manage"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -72,27 +91,78 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Suggestion ID required" }, { status: 400 });
     }
 
-    const updates: Database["public"]["Tables"]["suggestions"]["Update"] = {};
+    interface SuggestionUpdate {
+      status?: string;
+      priority?: string;
+      admin_response?: string;
+      responded_by?: string;
+      responded_at?: string;
+      updated_at?: string;
+    }
+
+    const updates: SuggestionUpdate = {};
     if (status) updates.status = status;
     if (priority) updates.priority = priority;
     if (admin_response !== undefined) {
       updates.admin_response = admin_response;
-      updates.responded_by = user.id;
+      updates.responded_by = userId;
       updates.responded_at = new Date().toISOString();
     }
 
-    const { error } = await admin
+    const { error } = await getSupabaseAdmin()
       .from("suggestions")
       .update(updates)
       .eq("id", id);
 
     if (error) {
+      console.error("[admin/suggestions PATCH] Update error:", error);
       return NextResponse.json({ error: "Failed to update suggestion" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error("[api/admin/suggestions] PATCH Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("[admin/suggestions PATCH] Error:", error);
+    return NextResponse.json(
+      { error: getErrorMessage(error) || "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/* ─── DELETE ─── */
+export async function DELETE(req: NextRequest) {
+  try {
+    const userId = await authenticate(req);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!(await hasPermission(userId, "suggestions.manage"))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ error: "Suggestion ID required" }, { status: 400 });
+    }
+
+    const { error } = await getSupabaseAdmin()
+      .from("suggestions")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("[admin/suggestions DELETE] Error:", error);
+      return NextResponse.json({ error: "Failed to delete suggestion" }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    console.error("[admin/suggestions DELETE] Error:", error);
+    return NextResponse.json(
+      { error: getErrorMessage(error) || "Internal server error" },
+      { status: 500 }
+    );
   }
 }

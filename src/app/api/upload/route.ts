@@ -85,7 +85,7 @@ async function getSessionFromRequest(req: NextRequest): Promise<ValidatedSession
 }
 
 export async function POST(req: NextRequest) {
-  const requestId = req.headers.get("x-request-id") || crypto.randomUUID();
+  const requestId = req.headers.get("x-request-id") || require("crypto").randomUUID();
   console.info(`[${requestId}] [UPLOAD-STEP-1] Request received`);
 
   try {

@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     const student = studentRaw
 
-    const viewToken = crypto.randomUUID();
+    const viewToken = require("crypto").randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
     const sessionPayload: SessionInsert = {

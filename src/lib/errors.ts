@@ -1,4 +1,5 @@
 export class RuntimeError extends Error {
+  readonly kind = "runtime" as const;
   constructor(
     message: string,
     public component?: string,
@@ -10,6 +11,7 @@ export class RuntimeError extends Error {
 }
 
 export class AuthRequiredError extends Error {
+  readonly kind = "auth" as const;
   statusCode: number;
   constructor(message = "Authentication required", statusCode = 401) {
     super(message);
@@ -19,6 +21,7 @@ export class AuthRequiredError extends Error {
 }
 
 export class PermissionDeniedError extends Error {
+  readonly kind = "permission" as const;
   statusCode: number;
   constructor(message = "Permission denied", statusCode = 403) {
     super(message);
@@ -28,6 +31,7 @@ export class PermissionDeniedError extends Error {
 }
 
 export class ValidationError extends Error {
+  readonly kind = "validation" as const;
   statusCode: number;
   field?: string;
   constructor(message: string, field?: string, statusCode = 400) {
@@ -38,31 +42,44 @@ export class ValidationError extends Error {
   }
 }
 
+function errorHasName(err: unknown, name: string): boolean {
+  return err instanceof Error && err.name === name;
+}
+
 export function getErrorMessage(err: unknown): string {
-  if (err instanceof AuthRequiredError) return err.message;
-  if (err instanceof PermissionDeniedError) return err.message;
-  if (err instanceof ValidationError) return err.message;
-  if (err instanceof RuntimeError) return err.message;
+  if (errorHasName(err, "AuthRequiredError")) {
+    return (err as AuthRequiredError).message;
+  }
+  if (errorHasName(err, "PermissionDeniedError")) {
+    return (err as PermissionDeniedError).message;
+  }
+  if (errorHasName(err, "ValidationError")) {
+    return (err as ValidationError).message;
+  }
+  if (errorHasName(err, "RuntimeError")) {
+    return (err as RuntimeError).message;
+  }
   if (err instanceof Error) return err.message;
   if (typeof err === "string") return err;
   return "An unexpected error occurred";
 }
 
 export function getErrorStatusCode(err: unknown): number {
-  if (err instanceof AuthRequiredError) return err.statusCode;
-  if (err instanceof PermissionDeniedError) return err.statusCode;
-  if (err instanceof ValidationError) return err.statusCode;
+  if (typeof err === "object" && err !== null && "statusCode" in err) {
+    const code = (err as Record<string, unknown>)["statusCode"];
+    if (typeof code === "number") return code;
+  }
   return 500;
 }
 
 export function isAuthError(err: unknown): err is AuthRequiredError {
-  return err instanceof AuthRequiredError;
+  return err instanceof AuthRequiredError || errorHasName(err, "AuthRequiredError");
 }
 
 export function isPermissionError(err: unknown): err is PermissionDeniedError {
-  return err instanceof PermissionDeniedError;
+  return err instanceof PermissionDeniedError || errorHasName(err, "PermissionDeniedError");
 }
 
 export function isValidationError(err: unknown): err is ValidationError {
-  return err instanceof ValidationError;
+  return err instanceof ValidationError || errorHasName(err, "ValidationError");
 }

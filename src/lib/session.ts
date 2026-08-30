@@ -4,12 +4,6 @@ import { ValidatedSession, AuthError, UserRole, UserCategory } from "@/types";
 import { restoreMissingProfile } from "./auth";
 import { AuthRequiredError, getErrorMessage } from "@/lib/errors";
 
-/**
- * Type-safe runtime check for account suspension.
- * Supabase generated types may narrow `is_active` to `true | null`,
- * but the database column is `boolean | null`. We accept `unknown`
- * and use strict equality to safely detect explicit `false`.
- */
 function isAccountSuspended(value: unknown): value is false {
   return value === false;
 }
@@ -63,7 +57,6 @@ export async function validateSession(token: string): Promise<{ session: Validat
       onboarding_completed: boolean;
     }
 
-    // Strategy 1: Query by ID (normal path)
     let { data: profileRows, error: profileError } = await admin
       .from("profiles")
       .select("id, email, full_name, role, user_category, campus_id, is_active, password_changed, onboarding_completed")
@@ -73,7 +66,6 @@ export async function validateSession(token: string): Promise<{ session: Validat
 
     console.log("[validateSession] Profile by ID:", profile ? "FOUND" : "MISSING", "error:", profileError?.message || "none");
 
-    // Strategy 2: Query by email (ID mismatch fallback)
     if (!profile && user.email) {
       const { data: emailRows, error: emailError } = await admin
         .from("profiles")
@@ -84,7 +76,6 @@ export async function validateSession(token: string): Promise<{ session: Validat
       console.log("[validateSession] Profile by email:", profile ? "FOUND" : "MISSING", "error:", emailError?.message || "none");
     }
 
-    // Strategy 3: Auto-restore missing profile
     if (!profile) {
       console.log("[validateSession] Attempting restoreMissingProfile for:", user.id);
       const restored = await restoreMissingProfile(user.id);
@@ -105,7 +96,6 @@ export async function validateSession(token: string): Promise<{ session: Validat
       return { session: null, error: { code: "PROFILE_MISSING", message: "Your account profile is missing. Please contact the administrator." } };
     }
 
-    // CRITICAL FIX: Only explicit false means inactive. NULL/true = active.
     if (isAccountSuspended(profile.is_active)) {
       return { session: null, error: { code: "ACCOUNT_SUSPENDED", message: "Your account has been suspended. Please contact the administrator." } };
     }
@@ -140,7 +130,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
 
 export async function requireAuth(req: Request): Promise<ValidatedSession> {
   const authHeader = req.headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "") || "";
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
 
   const { session, error } = await validateSession(token);
   if (!session || error) {

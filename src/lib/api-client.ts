@@ -19,9 +19,23 @@ class ApiError extends Error {
   }
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+async function resolveAuthToken(): Promise<string | null> {
+  // Fast path: read from local session storage
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  if (session?.access_token) return session.access_token;
+
+  // Fallback: validate with Supabase Auth server (refreshes cookies if needed)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: { session: refreshed } } = await supabase.auth.getSession();
+    return refreshed?.access_token || null;
+  }
+
+  return null;
+}
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await resolveAuthToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -44,6 +58,7 @@ async function apiRequest<T>(
     method,
     headers: { ...authHeaders, ...(options?.headers || {}) },
     body: body ? JSON.stringify(body) : undefined,
+    credentials: "include",
     ...options,
   });
 
@@ -77,6 +92,7 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
   const res = await fetch(
     endpoint.startsWith("http") ? endpoint : `${API_BASE}${endpoint}`,
     {
+      credentials: "include",
       ...options,
       headers: { ...authHeaders, ...(options?.headers || {}) },
     }

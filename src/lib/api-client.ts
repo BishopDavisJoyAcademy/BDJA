@@ -20,17 +20,14 @@ class ApiError extends Error {
 }
 
 async function resolveAuthToken(): Promise<string | null> {
-  // Fast path: read from local session storage
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.access_token) return session.access_token;
 
-  // Fallback: validate with Supabase Auth server (refreshes cookies if needed)
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
     const { data: { session: refreshed } } = await supabase.auth.getSession();
     return refreshed?.access_token || null;
   }
-
   return null;
 }
 

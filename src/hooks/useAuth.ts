@@ -21,6 +21,7 @@ export interface AuthUser {
   admission_number?: string | null;
   grade_level?: string | null;
   avatar_url?: string | null;
+  phone?: string | null;
   permissions?: string[];
 }
 

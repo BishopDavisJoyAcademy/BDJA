@@ -10,12 +10,13 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import {
-  User, Camera, Mail, Phone, MapPin, Shield, Lock, Pencil,
+  User, Camera, Mail, Phone, Shield, Lock, Pencil,
   MessageSquare, Send, Lightbulb, Bug, ThumbsUp, Loader2, Save, X,
-  Check, AlertCircle, ChevronRight, Eye, EyeOff, Upload, GraduationCap, Building2
+  Check, AlertCircle, Eye, EyeOff, Upload, GraduationCap, Building2
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ─── Types ─── */
@@ -79,10 +80,7 @@ function getStatusBadge(status: string): string {
 export default function ProfilePage() {
   const { user, refresh } = useAuth();
 
-  /* Tabs */
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
-
-  /* Profile data */
   const [related, setRelated] = useState<RelatedData | null>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -90,7 +88,6 @@ export default function ProfilePage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const hasInitialized = useRef(false);
 
-  /* Avatar upload */
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -99,13 +96,11 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /* Password */
   const [passwordForm, setPasswordForm] = useState({ current: "", newPass: "", confirm: "" });
   const [changingPassword, setChangingPassword] = useState(false);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
 
-  /* Suggestions */
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestionForm, setShowSuggestionForm] = useState(false);
   const [suggestionForm, setSuggestionForm] = useState({ type: "feedback", title: "", description: "", priority: "medium" });
@@ -118,11 +113,10 @@ export default function ProfilePage() {
       setAvatarUrl(user.avatar_url || "");
       setFullName(user.full_name || "");
       setPhone(user.phone || "");
-      fetchRelated();
-      fetchSuggestions();
     }
   }, [user]);
 
+  /* ─── Fetch related data ─── */
   const fetchRelated = useCallback(async () => {
     if (!user) return;
     try {
@@ -133,8 +127,9 @@ export default function ProfilePage() {
     } catch {
       // non-critical
     }
-  }, [user]);
+  }, [user?.id, user?.user_category]);
 
+  /* ─── Fetch suggestions ─── */
   const fetchSuggestions = useCallback(async () => {
     try {
       const data = await apiGet<{ suggestions: Suggestion[] }>("/api/suggestions");
@@ -143,6 +138,14 @@ export default function ProfilePage() {
       // non-critical
     }
   }, []);
+
+  /* ─── Load data once on mount ─── */
+  useEffect(() => {
+    if (user && hasInitialized.current) {
+      fetchRelated();
+      fetchSuggestions();
+    }
+  }, [user, fetchRelated, fetchSuggestions]);
 
   /* ─── Profile save ─── */
   const handleProfileSave = async () => {
@@ -352,10 +355,9 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className="relative group shrink-0">
               <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-white p-1.5 shadow-xl ring-4 ring-white/50">
-                <div className="w-full h-full rounded-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                <div className="w-full h-full rounded-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative">
                   {avatarUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    <Image src={avatarUrl} alt="Avatar" fill className="object-cover" sizes="144px" />
                   ) : (
                     <span className="text-4xl sm:text-5xl font-bold text-gray-300">{initials}</span>
                   )}
@@ -409,8 +411,8 @@ export default function ProfilePage() {
             <motion.div key="preview" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="mb-6">
               <Card className="p-6 border-2 border-blue-200 bg-blue-50/40">
                 <div className="flex flex-col sm:flex-row items-center gap-6">
-                  <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg shrink-0">
-                    {previewUrl && <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />}
+                  <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg shrink-0 relative">
+                    {previewUrl && <Image src={previewUrl} alt="Preview" fill className="object-cover" unoptimized sizes="112px" />}
                   </div>
                   <div className="flex-1 text-center sm:text-left">
                     <h3 className="font-semibold text-gray-900 text-lg">Preview</h3>
@@ -507,7 +509,6 @@ export default function ProfilePage() {
         <AnimatePresence mode="wait">
           {activeTab === "profile" && (
             <motion.div key="profile" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-6">
-              {/* Personal Info */}
               <Card className="p-6 sm:p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -543,7 +544,7 @@ export default function ProfilePage() {
                     <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone" value={user?.phone || "Not set"} />
                     <InfoRow icon={<Shield className="w-4 h-4" />} label="Role" value={user?.role} />
                     <InfoRow icon={<Building2 className="w-4 h-4" />} label="Department" value={related?.department || "—"} />
-                    <InfoRow icon={<MapPin className="w-4 h-4" />} label="Designation" value={related?.designation || "—"} />
+                    <InfoRow icon={<Shield className="w-4 h-4" />} label="Designation" value={related?.designation || "—"} />
                     {user?.user_category === "student" && (
                       <>
                         <InfoRow icon={<GraduationCap className="w-4 h-4" />} label="Grade Level" value={related?.grade_level || "—"} />

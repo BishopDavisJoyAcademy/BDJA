@@ -4,7 +4,6 @@ import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { getUserPermissions } from "@/lib/permissions";
 import { getErrorMessage, isAuthError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase-client";
-import { cookies } from "next/headers";
 
 function isAccountSuspended(value: unknown): value is false {
   return value === false;
@@ -81,7 +80,7 @@ export async function GET(req: NextRequest) {
 /* ─── PATCH: Update user profile ─── */
 export async function PATCH(req: NextRequest) {
   try {
-    // Dual auth: try header first, fall back to cookies (same as upload route)
+    // Dual auth: try header first, fall back to cookies
     let userId: string | null = null;
 
     const authHeader = req.headers.get("authorization");
@@ -108,24 +107,29 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const admin = getSupabaseAdmin();
 
-    // Allowed fields for self-update
-    const allowedFields = [
-      "full_name",
-      "phone",
-      "bio",
-      "address",
-      "emergency_contact",
-      "emergency_phone",
-      "avatar_url",
-      "notification_prefs",
-    ];
-
-    const updates: Record<string, unknown> = {};
-    for (const key of allowedFields) {
-      if (key in body) {
-        updates[key] = body[key];
-      }
+    // Build updates with explicit typing — only known fields
+    interface ProfileUpdate {
+      full_name?: string;
+      phone?: string;
+      bio?: string;
+      address?: string;
+      emergency_contact?: string;
+      emergency_phone?: string;
+      avatar_url?: string | null;
+      notification_prefs?: Record<string, boolean>;
+      updated_at?: string;
     }
+
+    const updates: ProfileUpdate = {};
+
+    if (typeof body.full_name === "string") updates.full_name = body.full_name;
+    if (typeof body.phone === "string") updates.phone = body.phone;
+    if (typeof body.bio === "string") updates.bio = body.bio;
+    if (typeof body.address === "string") updates.address = body.address;
+    if (typeof body.emergency_contact === "string") updates.emergency_contact = body.emergency_contact;
+    if (typeof body.emergency_phone === "string") updates.emergency_phone = body.emergency_phone;
+    if (body.avatar_url === null || typeof body.avatar_url === "string") updates.avatar_url = body.avatar_url;
+    if (body.notification_prefs && typeof body.notification_prefs === "object") updates.notification_prefs = body.notification_prefs;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });

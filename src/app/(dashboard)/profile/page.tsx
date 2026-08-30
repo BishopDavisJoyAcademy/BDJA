@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef, FormEvent, ChangeEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { compressImage, formatFileSize } from "@/lib/image-utils";
+import { requestSignedUploadUrl, uploadFileToSignedUrl } from "@/lib/upload-client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -12,11 +12,10 @@ import { Badge } from "@/components/ui/Badge";
 import {
   User, Camera, Mail, Phone, MapPin, Shield, Bell, Lock, Pencil,
   MessageSquare, Send, Lightbulb, Bug, ThumbsUp, Loader2, Save, X,
-  Check, AlertCircle, ImageIcon, ChevronRight, Eye, EyeOff
+  Check, AlertCircle, ChevronRight, Eye, EyeOff, Upload, Image as ImageIcon
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ─── Types ─── */
@@ -50,6 +49,7 @@ interface NotificationPrefs {
 }
 
 type TabKey = "profile" | "security" | "notifications" | "feedback";
+type UploadPhase = "idle" | "preview" | "compressing" | "signing" | "uploading" | "saving" | "done" | "error";
 
 /* ─── Helpers ─── */
 function getInitials(name: string): string {
@@ -92,12 +92,13 @@ export default function ProfilePage() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
-  /* Avatar */
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  /* Avatar upload state machine */
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* Password */
@@ -144,7 +145,7 @@ export default function ProfilePage() {
         emergency_phone: data.emergency_phone || "",
       });
     } catch {
-      // silently fail — non-critical
+      // non-critical
     }
   }, [user]);
 
@@ -153,7 +154,7 @@ export default function ProfilePage() {
       const data = await apiGet<{ suggestions: Suggestion[] }>("/api/suggestions");
       setSuggestions(data.suggestions || []);
     } catch {
-      // silently fail
+      // non-critical
     }
   }, []);
 
@@ -187,7 +188,7 @@ export default function ProfilePage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to update profile");
       }
-      toast.success("Profile updated successfully");
+      toast.success("Profile updated");
       setEditingProfile(false);
       refresh();
     } catch (err: unknown) {
@@ -197,8 +198,8 @@ export default function ProfilePage() {
     }
   };
 
-  /* ─── Avatar: file selected → show preview ─── */
-  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
+  /* ─── Avatar: file selected → show preview immediately ─── */
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
@@ -211,62 +212,85 @@ export default function ProfilePage() {
       return;
     }
 
-    const preview = URL.createObjectURL(file);
-    setPreviewUrl(preview);
+    // Create blob URL for instant preview
+    const blobUrl = URL.createObjectURL(file);
+    setPreviewUrl(blobUrl);
     setPreviewFile(file);
+    setUploadPhase("preview");
+    setUploadError(null);
   };
 
-  /* ─── Avatar: confirm upload ─── */
+  /* ─── Avatar: confirm upload with REAL progress ─── */
   const handleConfirmUpload = async () => {
-    if (!previewFile || !user) return;
+    if (!previewFile || !user || !previewUrl) return;
 
-    setUploadingAvatar(true);
-    setUploadProgress(10);
+    setUploadPhase("compressing");
+    setUploadProgress(0);
+    setUploadError(null);
 
     try {
       // Step 1: Compress client-side
-      setUploadProgress(30);
       const compressed = await compressImage(previewFile, {
         maxWidth: 800,
         maxHeight: 800,
         quality: 0.85,
         format: "image/webp",
       });
-      setUploadProgress(50);
+      console.log(`[avatar] Compressed ${formatFileSize(previewFile.size)} → ${formatFileSize(compressed.size)}`);
 
-      // Step 2: Build FormData
-      const formData = new FormData();
-      formData.append("file", compressed, "avatar.webp");
-      formData.append("updateProfile", "true");
+      // Step 2: Request signed URL from server (cookie auth)
+      setUploadPhase("signing");
+      const signed = await requestSignedUploadUrl(previewFile.name, "image/webp");
+      console.log("[avatar] Signed URL received");
 
-      // Step 3: Upload — cookies authenticate automatically
-      setUploadProgress(70);
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
+      // Step 3: Upload directly to Supabase Storage via XMLHttpRequest (REAL progress)
+      setUploadPhase("uploading");
+      await uploadFileToSignedUrl(signed.signedUrl, compressed, "image/webp", {
+        onProgress: (event) => {
+          setUploadProgress(event.percentage);
+          console.log(`[avatar] Upload progress: ${event.percentage}% (${formatFileSize(event.loaded)} / ${formatFileSize(event.total)})`);
+        },
+        onError: (err) => {
+          console.error("[avatar] Upload error:", err);
+        },
       });
-      setUploadProgress(90);
+      console.log("[avatar] Upload complete");
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Upload failed (${res.status})`);
+      // Step 4: Update profile with new avatar URL
+      setUploadPhase("saving");
+      const patchRes = await fetch("/api/auth/me", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar_url: signed.publicUrl }),
+      });
+
+      if (!patchRes.ok) {
+        const data = await patchRes.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save avatar");
       }
 
-      const data = await res.json();
-      setAvatarUrl(data.url);
-      setUploadProgress(100);
-      toast.success("Avatar updated");
+      // Step 5: Success
+      setAvatarUrl(signed.publicUrl);
+      setUploadPhase("done");
+      toast.success("Avatar updated successfully");
       refresh();
+
+      // Cleanup
+      setTimeout(() => {
+        setUploadPhase("idle");
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+        setPreviewFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }, 2000);
+
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setUploadingAvatar(false);
-      setUploadProgress(0);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-      setPreviewFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      const msg = getErrorMessage(err);
+      console.error("[avatar] Upload failed:", msg);
+      setUploadError(msg);
+      setUploadPhase("error");
+      toast.error(msg);
     }
   };
 
@@ -274,7 +298,16 @@ export default function ProfilePage() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setPreviewFile(null);
+    setUploadPhase("idle");
+    setUploadError(null);
+    setUploadProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleRetry = () => {
+    setUploadPhase("preview");
+    setUploadError(null);
+    setUploadProgress(0);
   };
 
   /* ─── Password change ─── */
@@ -376,6 +409,8 @@ export default function ProfilePage() {
     { key: "feedback", label: "Feedback", icon: <MessageSquare className="w-4 h-4" /> },
   ];
 
+  const isUploading = uploadPhase === "compressing" || uploadPhase === "signing" || uploadPhase === "uploading" || uploadPhase === "saving";
+
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
       {/* ─── Cover Header ─── */}
@@ -392,12 +427,11 @@ export default function ProfilePage() {
               <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-white p-1 shadow-lg">
                 <div className="w-full h-full rounded-full overflow-hidden bg-gray-100 flex items-center justify-center relative">
                   {avatarUrl ? (
-                    <Image
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
                       src={avatarUrl}
                       alt={user?.full_name || "Avatar"}
-                      fill
-                      className="object-cover"
-                      sizes="144px"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
                     <span className="text-3xl sm:text-4xl font-bold text-gray-400">
@@ -408,11 +442,11 @@ export default function ProfilePage() {
               </div>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingAvatar}
+                disabled={isUploading}
                 className="absolute bottom-1 right-1 bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-full shadow-md transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                 title="Change photo"
               >
-                {uploadingAvatar ? (
+                {isUploading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Camera className="w-4 h-4" />
@@ -456,63 +490,134 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
-
-          {/* Upload progress */}
-          {uploadingAvatar && uploadProgress > 0 && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                <span>Uploading...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-blue-600"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${uploadProgress}%` }}
-                  transition={{ duration: 0.3 }}
-                />
-              </div>
-            </div>
-          )}
         </Card>
 
-        {/* ─── Preview Modal ─── */}
-        <AnimatePresence>
-          {previewUrl && (
+        {/* ─── Upload State Machine UI ─── */}
+        <AnimatePresence mode="wait">
+          {(uploadPhase === "preview" || uploadPhase === "error") && (
             <motion.div
+              key="preview"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.25 }}
+              className="mb-6"
+            >
+              <Card className={`p-6 border-2 ${uploadPhase === "error" ? "border-red-200 bg-red-50/50" : "border-blue-200 bg-blue-50/50"}`}>
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  {/* Preview image — plain <img>, NOT next/image */}
+                  <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg shrink-0">
+                    {previewUrl && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex-1 text-center sm:text-left">
+                    {uploadPhase === "error" ? (
+                      <>
+                        <div className="flex items-center gap-2 justify-center sm:justify-start text-red-700">
+                          <AlertCircle className="w-5 h-5" />
+                          <h3 className="font-semibold">Upload failed</h3>
+                        </div>
+                        <p className="text-sm text-red-600 mt-1">{uploadError}</p>
+                        <div className="flex gap-3 mt-4 justify-center sm:justify-start">
+                          <Button onClick={handleRetry} variant="outline">
+                            Try Again
+                          </Button>
+                          <Button onClick={handleCancelPreview} variant="ghost">
+                            Cancel
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="font-semibold text-gray-900">Preview new avatar</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {previewFile ? `${formatFileSize(previewFile.size)} → will be compressed before upload` : ""}
+                        </p>
+                        <div className="flex gap-3 mt-4 justify-center sm:justify-start">
+                          <Button
+                            onClick={handleConfirmUpload}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            <Upload className="w-4 h-4 mr-1" /> Save Avatar
+                          </Button>
+                          <Button variant="outline" onClick={handleCancelPreview}>
+                            <X className="w-4 h-4 mr-1" /> Cancel
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {isUploading && (
+            <motion.div
+              key="uploading"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.25 }}
               className="mb-6"
             >
               <Card className="p-6 border-2 border-blue-200 bg-blue-50/50">
-                <div className="flex flex-col sm:flex-row items-center gap-6">
-                  <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
-                    <Image src={previewUrl} alt="Preview" fill className="object-cover" />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                    <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
                   </div>
-                  <div className="flex-1 text-center sm:text-left">
-                    <h3 className="font-semibold text-gray-900">Preview new avatar</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {previewFile ? formatFileSize(previewFile.size) : ""} → compressed before upload
-                    </p>
-                    <div className="flex gap-3 mt-4 justify-center sm:justify-start">
-                      <Button
-                        onClick={handleConfirmUpload}
-                        disabled={uploadingAvatar}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {uploadingAvatar ? (
-                          <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                        ) : (
-                          <Check className="w-4 h-4 mr-1" />
-                        )}
-                        {uploadingAvatar ? "Uploading..." : "Save Avatar"}
-                      </Button>
-                      <Button variant="outline" onClick={handleCancelPreview} disabled={uploadingAvatar}>
-                        <X className="w-4 h-4 mr-1" /> Cancel
-                      </Button>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-gray-900">
+                        {uploadPhase === "compressing" && "Compressing image..."}
+                        {uploadPhase === "signing" && "Preparing upload..."}
+                        {uploadPhase === "uploading" && `Uploading... ${uploadProgress}%`}
+                        {uploadPhase === "saving" && "Saving to profile..."}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {uploadPhase === "uploading" ? `${uploadProgress}%` : "Please wait..."}
+                      </span>
                     </div>
+                    <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-blue-600 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${uploadPhase === "uploading" ? uploadProgress : uploadPhase === "saving" ? 95 : uploadPhase === "signing" ? 30 : 15}%` }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1.5">
+                      {uploadPhase === "compressing" && "Reducing image size in your browser..."}
+                      {uploadPhase === "signing" && "Getting secure upload URL from server..."}
+                      {uploadPhase === "uploading" && `Sent ${formatFileSize(Math.round((uploadProgress / 100) * (previewFile?.size || 0)))} of ${formatFileSize(previewFile?.size || 0)}`}
+                      {uploadPhase === "saving" && "Updating your profile..."}
+                    </p>
                   </div>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {uploadPhase === "done" && (
+            <motion.div
+              key="done"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.25 }}
+              className="mb-6"
+            >
+              <Card className="p-6 border-2 border-green-200 bg-green-50/50">
+                <div className="flex items-center gap-3 text-green-700">
+                  <Check className="w-6 h-6" />
+                  <span className="font-medium">Avatar updated successfully!</span>
                 </div>
               </Card>
             </motion.div>
@@ -548,7 +653,6 @@ export default function ProfilePage() {
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              {/* Profile Info Card */}
               <Card className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -560,7 +664,6 @@ export default function ProfilePage() {
                     size="sm"
                     onClick={() => {
                       if (editingProfile) {
-                        // cancel — revert
                         setEditingProfile(false);
                         if (user) {
                           setProfileForm({
@@ -578,13 +681,9 @@ export default function ProfilePage() {
                     }}
                   >
                     {editingProfile ? (
-                      <>
-                        <X className="w-4 h-4 mr-1" /> Cancel
-                      </>
+                      <><X className="w-4 h-4 mr-1" /> Cancel</>
                     ) : (
-                      <>
-                        <Pencil className="w-4 h-4 mr-1" /> Edit
-                      </>
+                      <><Pencil className="w-4 h-4 mr-1" /> Edit</>
                     )}
                   </Button>
                 </div>
@@ -593,59 +692,31 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
-                      <Input
-                        value={profileForm.full_name}
-                        onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
-                        placeholder="Your full name"
-                      />
+                      <Input value={profileForm.full_name} onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })} placeholder="Your full name" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
-                      <Input
-                        value={profileForm.phone}
-                        onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                        placeholder="Phone number"
-                      />
+                      <Input value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} placeholder="Phone number" />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
-                      <Input
-                        value={profileForm.bio}
-                        onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                        placeholder="Short bio about yourself"
-                      />
+                      <Input value={profileForm.bio} onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })} placeholder="Short bio about yourself" />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
-                      <Input
-                        value={profileForm.address}
-                        onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                        placeholder="Your address"
-                      />
+                      <Input value={profileForm.address} onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })} placeholder="Your address" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Emergency Contact</label>
-                      <Input
-                        value={profileForm.emergency_contact}
-                        onChange={(e) => setProfileForm({ ...profileForm, emergency_contact: e.target.value })}
-                        placeholder="Name"
-                      />
+                      <Input value={profileForm.emergency_contact} onChange={(e) => setProfileForm({ ...profileForm, emergency_contact: e.target.value })} placeholder="Name" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Emergency Phone</label>
-                      <Input
-                        value={profileForm.emergency_phone}
-                        onChange={(e) => setProfileForm({ ...profileForm, emergency_phone: e.target.value })}
-                        placeholder="Phone number"
-                      />
+                      <Input value={profileForm.emergency_phone} onChange={(e) => setProfileForm({ ...profileForm, emergency_phone: e.target.value })} placeholder="Phone number" />
                     </div>
                     <div className="md:col-span-2">
                       <Button onClick={handleProfileSave} disabled={savingProfile}>
-                        {savingProfile ? (
-                          <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                        ) : (
-                          <Save className="w-4 h-4 mr-1" />
-                        )}
+                        {savingProfile ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
                         {savingProfile ? "Saving..." : "Save Changes"}
                       </Button>
                     </div>
@@ -675,50 +746,22 @@ export default function ProfilePage() {
               <Card className="p-6 max-w-xl">
                 <h3 className="text-lg font-semibold text-gray-900 mb-1">Change Password</h3>
                 <p className="text-sm text-gray-500 mb-6">Update your password to keep your account secure</p>
-
                 <form onSubmit={handlePasswordChange} className="space-y-4">
                   <div className="relative">
-                    <Input
-                      type={showCurrent ? "text" : "password"}
-                      placeholder="Current password"
-                      value={passwordForm.current}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrent(!showCurrent)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
+                    <Input type={showCurrent ? "text" : "password"} placeholder="Current password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} />
+                    <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                       {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                   <div className="relative">
-                    <Input
-                      type={showNew ? "text" : "password"}
-                      placeholder="New password (min 8 chars)"
-                      value={passwordForm.newPass}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, newPass: e.target.value })}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNew(!showNew)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
+                    <Input type={showNew ? "text" : "password"} placeholder="New password (min 8 chars)" value={passwordForm.newPass} onChange={(e) => setPasswordForm({ ...passwordForm, newPass: e.target.value })} />
+                    <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                       {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  <Input
-                    type="password"
-                    placeholder="Confirm new password"
-                    value={passwordForm.confirm}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-                  />
+                  <Input type="password" placeholder="Confirm new password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} />
                   <Button type="submit" disabled={changingPassword}>
-                    {changingPassword ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                    ) : (
-                      <Lock className="w-4 h-4 mr-1" />
-                    )}
+                    {changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Lock className="w-4 h-4 mr-1" />}
                     {changingPassword ? "Updating..." : "Update Password"}
                   </Button>
                 </form>
@@ -737,25 +780,16 @@ export default function ProfilePage() {
               <Card className="p-6 max-w-xl">
                 <h3 className="text-lg font-semibold text-gray-900 mb-1">Notification Preferences</h3>
                 <p className="text-sm text-gray-500 mb-6">Choose how you want to be notified</p>
-
                 <div className="space-y-4">
-                  {([
+                  {[
                     { key: "email_notifications" as const, label: "Email Notifications", desc: "Receive updates via email" },
                     { key: "sms_notifications" as const, label: "SMS Notifications", desc: "Receive updates via text message" },
                     { key: "assignment_reminders" as const, label: "Assignment Reminders", desc: "Get reminded about upcoming assignments" },
                     { key: "fee_reminders" as const, label: "Fee Reminders", desc: "Get reminded about fee payments" },
                     { key: "event_reminders" as const, label: "Event Reminders", desc: "Get reminded about school events" },
-                  ]).map((item) => (
-                    <label
-                      key={item.key}
-                      className="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={prefs[item.key]}
-                        onChange={(e) => setPrefs({ ...prefs, [item.key]: e.target.checked })}
-                        className="w-5 h-5 text-blue-600 rounded mt-0.5 shrink-0"
-                      />
+                  ].map((item) => (
+                    <label key={item.key} className="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors cursor-pointer">
+                      <input type="checkbox" checked={prefs[item.key]} onChange={(e) => setPrefs({ ...prefs, [item.key]: e.target.checked })} className="w-5 h-5 text-blue-600 rounded mt-0.5 shrink-0" />
                       <div>
                         <div className="font-medium text-gray-900">{item.label}</div>
                         <div className="text-sm text-gray-500">{item.desc}</div>
@@ -763,11 +797,7 @@ export default function ProfilePage() {
                     </label>
                   ))}
                   <Button onClick={handleSavePrefs} disabled={savingPrefs} className="mt-2">
-                    {savingPrefs ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                    ) : (
-                      <Save className="w-4 h-4 mr-1" />
-                    )}
+                    {savingPrefs ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
                     {savingPrefs ? "Saving..." : "Save Preferences"}
                   </Button>
                 </div>
@@ -790,13 +820,8 @@ export default function ProfilePage() {
                     <h3 className="text-lg font-semibold text-gray-900">Suggestions & Feedback</h3>
                     <p className="text-sm text-gray-500">Help us improve BDJA</p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowSuggestionForm(!showSuggestionForm)}
-                  >
-                    <Send className="w-4 h-4 mr-1" />
-                    {showSuggestionForm ? "Cancel" : "New Suggestion"}
+                  <Button variant="outline" size="sm" onClick={() => setShowSuggestionForm(!showSuggestionForm)}>
+                    <Send className="w-4 h-4 mr-1" /> {showSuggestionForm ? "Cancel" : "New Suggestion"}
                   </Button>
                 </div>
 
@@ -810,43 +835,22 @@ export default function ProfilePage() {
                       className="space-y-4 mb-6 overflow-hidden"
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <select
-                          value={suggestionForm.type}
-                          onChange={(e) => setSuggestionForm({ ...suggestionForm, type: e.target.value })}
-                          className="border rounded-lg px-3 py-2.5 text-sm bg-white"
-                        >
+                        <select value={suggestionForm.type} onChange={(e) => setSuggestionForm({ ...suggestionForm, type: e.target.value })} className="border rounded-lg px-3 py-2.5 text-sm bg-white">
                           <option value="feedback">Feedback</option>
                           <option value="bug">Bug Report</option>
                           <option value="idea">Idea</option>
                           <option value="improvement">Improvement</option>
                         </select>
-                        <select
-                          value={suggestionForm.priority}
-                          onChange={(e) => setSuggestionForm({ ...suggestionForm, priority: e.target.value })}
-                          className="border rounded-lg px-3 py-2.5 text-sm bg-white"
-                        >
+                        <select value={suggestionForm.priority} onChange={(e) => setSuggestionForm({ ...suggestionForm, priority: e.target.value })} className="border rounded-lg px-3 py-2.5 text-sm bg-white">
                           <option value="low">Low Priority</option>
                           <option value="medium">Medium Priority</option>
                           <option value="high">High Priority</option>
                         </select>
                       </div>
-                      <Input
-                        placeholder="Title"
-                        value={suggestionForm.title}
-                        onChange={(e) => setSuggestionForm({ ...suggestionForm, title: e.target.value })}
-                      />
-                      <textarea
-                        placeholder="Describe your suggestion..."
-                        value={suggestionForm.description}
-                        onChange={(e) => setSuggestionForm({ ...suggestionForm, description: e.target.value })}
-                        className="w-full border rounded-lg px-3 py-2.5 text-sm min-h-[120px] resize-y"
-                      />
+                      <Input placeholder="Title" value={suggestionForm.title} onChange={(e) => setSuggestionForm({ ...suggestionForm, title: e.target.value })} />
+                      <textarea placeholder="Describe your suggestion..." value={suggestionForm.description} onChange={(e) => setSuggestionForm({ ...suggestionForm, description: e.target.value })} className="w-full border rounded-lg px-3 py-2.5 text-sm min-h-[120px] resize-y" />
                       <Button type="submit" disabled={submittingSuggestion}>
-                        {submittingSuggestion ? (
-                          <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                        ) : (
-                          <Send className="w-4 h-4 mr-1" />
-                        )}
+                        {submittingSuggestion ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
                         {submittingSuggestion ? "Submitting..." : "Submit"}
                       </Button>
                     </motion.form>
@@ -861,33 +865,12 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     suggestions.map((s) => (
-                      <div
-                        key={s.id}
-                        className="flex items-start gap-3 p-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors"
-                      >
-                        {s.type === "bug" ? (
-                          <Bug className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                        ) : s.type === "idea" ? (
-                          <Lightbulb className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
-                        ) : s.type === "improvement" ? (
-                          <ThumbsUp className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                        ) : (
-                          <MessageSquare className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                        )}
+                      <div key={s.id} className="flex items-start gap-3 p-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+                        {s.type === "bug" ? <Bug className="w-5 h-5 text-red-500 shrink-0 mt-0.5" /> : s.type === "idea" ? <Lightbulb className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" /> : s.type === "improvement" ? <ThumbsUp className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /> : <MessageSquare className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-sm text-gray-900">{s.title}</span>
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                s.status === "implemented"
-                                  ? "bg-green-100 text-green-700"
-                                  : s.status === "under_review"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : s.status === "declined"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-yellow-100 text-yellow-700"
-                              }`}
-                            >
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.status === "implemented" ? "bg-green-100 text-green-700" : s.status === "under_review" ? "bg-blue-100 text-blue-700" : s.status === "declined" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
                               {s.status.replace("_", " ")}
                             </span>
                           </div>

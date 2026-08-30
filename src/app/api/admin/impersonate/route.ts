@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
     }
 
-    const profile = profileRaw
+    const profile = profileRaw;
 
     if (profile.user_category === "admin" && targetUserId !== session.userId) {
       return NextResponse.json({ error: "Cannot impersonate other admins" }, { status: 403 });
@@ -79,8 +79,7 @@ export async function POST(req: NextRequest) {
       .eq("id", targetUserId)
       .limit(1);
     const staffRaw = (staffRows?.[0] ?? null) as StaffRow | null;
-
-    const staff = staffRaw
+    const staff = staffRaw;
 
     const { data: studentRows } = await admin
       .from("students")
@@ -88,8 +87,7 @@ export async function POST(req: NextRequest) {
       .eq("id", targetUserId)
       .limit(1);
     const studentRaw = (studentRows?.[0] ?? null) as StudentRow | null;
-
-    const student = studentRaw
+    const student = studentRaw;
 
     const viewToken = require("crypto").randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
@@ -104,7 +102,6 @@ export async function POST(req: NextRequest) {
     };
 
     await getSupabaseAdmin().from("user_sessions").insert(sessionPayload);
-
     await logImpersonation(session.userId, targetUserId, "start", getClientIP(req), req.headers.get("user-agent") || undefined);
 
     return NextResponse.json({
@@ -125,7 +122,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     if (isAuthError(error)) {
-      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: (error as { statusCode?: number }).statusCode || 401 });
     }
     console.error("[impersonate POST] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -160,7 +157,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ users: (users) || [] });
   } catch (error: unknown) {
     if (isAuthError(error)) {
-      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: (error as { statusCode?: number }).statusCode || 401 });
     }
     console.error("[impersonate GET] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

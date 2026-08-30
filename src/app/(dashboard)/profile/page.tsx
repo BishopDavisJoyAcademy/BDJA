@@ -208,7 +208,6 @@ export default function ProfilePage() {
       const data = await res.json();
       setAvatarUrl(data.url);
 
-      // Save avatar URL to profile
       const patchRes = await fetch("/api/auth/me", {
         method: "PATCH",
         credentials: "include",
@@ -334,7 +333,6 @@ export default function ProfilePage() {
         <p className="text-gray-500">View and manage your profile information</p>
       </div>
 
-      {/* Profile Card */}
       <Card className="p-6">
         <div className="flex flex-col sm:flex-row items-start gap-6">
           <div className="relative">
@@ -365,17 +363,16 @@ export default function ProfilePage() {
             <p className="text-gray-500">{user?.email}</p>
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="secondary">{user?.role}</Badge>
-              <Badge variant="outline">{user?.user_category}</Badge>
-              {dept && <Badge variant="outline">{dept}</Badge>}
-              {desig && <Badge variant="outline">{desig}</Badge>}
-              {grade && <Badge variant="outline">Grade {grade}</Badge>}
-              {admNo && <Badge variant="outline">#{admNo}</Badge>}
+              <Badge variant="default">{user?.user_category}</Badge>
+              {dept && <Badge variant="default">{dept}</Badge>}
+              {desig && <Badge variant="default">{desig}</Badge>}
+              {grade && <Badge variant="default">Grade {grade}</Badge>}
+              {admNo && <Badge variant="default">#{admNo}</Badge>}
             </div>
           </div>
         </div>
       </Card>
 
-      {/* Profile Details */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -447,7 +444,6 @@ export default function ProfilePage() {
         )}
       </Card>
 
-      {/* Password Change */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
           <Lock className="w-5 h-5" /> Change Password
@@ -462,7 +458,6 @@ export default function ProfilePage() {
         </form>
       </Card>
 
-      {/* Notification Preferences */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
           <Bell className="w-5 h-5" /> Notification Preferences
@@ -491,7 +486,6 @@ export default function ProfilePage() {
         </div>
       </Card>
 
-      {/* Suggestions */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">

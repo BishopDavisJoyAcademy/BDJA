@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { createClient } from "@/lib/supabase-client";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/security";
-import { getErrorMessage, isAuthError } from "@/lib/errors";
+import { getErrorMessage, isAuthError, AuthRequiredError } from "@/lib/errors";
 import { ValidatedSession, UserRole, UserCategory } from "@/types";
 import { cookies } from "next/headers";
 
@@ -31,7 +31,6 @@ const ALLOWED_FOLDERS = [
 ];
 
 async function getSessionFromRequest(req: NextRequest): Promise<ValidatedSession | null> {
-  // Strategy 1: Authorization header (fastest, preferred)
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
   if (token) {
@@ -40,10 +39,9 @@ async function getSessionFromRequest(req: NextRequest): Promise<ValidatedSession
     console.warn("[upload] Header token invalid, trying cookie fallback. Error:", error?.message);
   }
 
-  // Strategy 2: Cookie-based auth (SSR session)
   try {
     const cookieStore = await cookies();
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       console.warn("[upload] Cookie auth failed:", userError?.message);
@@ -211,8 +209,9 @@ export async function POST(req: NextRequest) {
     console.error(`[${requestId}] [UPLOAD-CATCH] Error message:`, getErrorMessage(error));
     console.error(`[${requestId}] [UPLOAD-CATCH] Full error:`, error);
     if (isAuthError(error)) {
-      console.info(`[${requestId}] [UPLOAD-CATCH] Auth error detected, returning`, (error as AuthRequiredError).statusCode || 401);
-      return NextResponse.json({ error: getErrorMessage(error) }, { status: (error as AuthRequiredError).statusCode || 401 });
+      const status = error instanceof AuthRequiredError ? error.statusCode : 401;
+      console.info(`[${requestId}] [UPLOAD-CATCH] Auth error detected, returning`, status);
+      return NextResponse.json({ error: getErrorMessage(error) }, { status });
     }
     console.error(`[${requestId}] [UPLOAD-CATCH] Non-auth error, returning 500`);
     return NextResponse.json(

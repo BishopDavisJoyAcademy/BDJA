@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from "./supabase-server";
 import { checkAccountLockout } from "./security";
 import { ValidatedSession, AuthError, UserRole, UserCategory } from "@/types";
 import { restoreMissingProfile } from "./auth";
+import { AuthRequiredError, getErrorMessage } from "@/lib/errors";
 
 /**
  * Type-safe runtime check for account suspension.
@@ -11,15 +12,6 @@ import { restoreMissingProfile } from "./auth";
  */
 function isAccountSuspended(value: unknown): value is false {
   return value === false;
-}
-
-export class AuthRequiredError extends Error {
-  statusCode: number;
-  constructor(message: string, statusCode = 401) {
-    super(message);
-    this.name = "AuthRequiredError";
-    this.statusCode = statusCode;
-  }
 }
 
 export async function validateSession(token: string): Promise<{ session: ValidatedSession | null; error: AuthError | null }> {
@@ -142,7 +134,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
     return { session, error: null };
   } catch (error: unknown) {
     console.error("[validateSession] Validation error:", error);
-    return { session: null, error: { code: "INTERNAL_ERROR", message: "Session validation failed. Please try again." } };
+    return { session: null, error: { code: "INTERNAL_ERROR", message: getErrorMessage(error) || "Session validation failed. Please try again." } };
   }
 }
 

@@ -24,10 +24,11 @@ export async function GET(req: NextRequest) {
       role: string;
       user_category: string;
       campus_id: string | null;
-      is_active: boolean | null;
+      is_active: boolean;
       password_changed: boolean;
       onboarding_completed: boolean;
       avatar_url: string | null;
+      phone: string | null;
       staff: { department: string | null; designation: string | null }[] | null;
       students: { admission_number: string | null; grade_level: string | null }[] | null;
     }
@@ -61,6 +62,7 @@ export async function GET(req: NextRequest) {
         password_changed: profile.password_changed,
         onboarding_completed: profile.onboarding_completed,
         avatar_url: profile.avatar_url,
+        phone: profile.phone,
         department: profile.staff?.[0]?.department || null,
         designation: profile.staff?.[0]?.designation || null,
         admission_number: profile.students?.[0]?.admission_number || null,
@@ -107,29 +109,17 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const admin = getSupabaseAdmin();
 
-    // Build updates with explicit typing — only known fields
-    interface ProfileUpdate {
+    // Only fields that ACTUALLY exist in the profiles table
+    const updates: {
       full_name?: string;
-      phone?: string;
-      bio?: string;
-      address?: string;
-      emergency_contact?: string;
-      emergency_phone?: string;
+      phone?: string | null;
       avatar_url?: string | null;
-      notification_prefs?: Record<string, boolean>;
       updated_at?: string;
-    }
-
-    const updates: ProfileUpdate = {};
+    } = {};
 
     if (typeof body.full_name === "string") updates.full_name = body.full_name;
-    if (typeof body.phone === "string") updates.phone = body.phone;
-    if (typeof body.bio === "string") updates.bio = body.bio;
-    if (typeof body.address === "string") updates.address = body.address;
-    if (typeof body.emergency_contact === "string") updates.emergency_contact = body.emergency_contact;
-    if (typeof body.emergency_phone === "string") updates.emergency_phone = body.emergency_phone;
+    if (body.phone === null || typeof body.phone === "string") updates.phone = body.phone;
     if (body.avatar_url === null || typeof body.avatar_url === "string") updates.avatar_url = body.avatar_url;
-    if (body.notification_prefs && typeof body.notification_prefs === "object") updates.notification_prefs = body.notification_prefs;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });

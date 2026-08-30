@@ -2,16 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { createClient } from "@/lib/supabase-client";
 import { hasPermission } from "@/lib/permissions";
-import { getErrorMessage, isAuthError } from "@/lib/errors";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Authenticate via header OR cookies (dual auth).
- * Returns userId or null.
- */
 async function authenticate(req: NextRequest): Promise<string | null> {
-  // Strategy 1: Authorization header
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
   if (token) {
@@ -20,7 +15,6 @@ async function authenticate(req: NextRequest): Promise<string | null> {
     if (!error && user) return user.id;
   }
 
-  // Strategy 2: Cookies
   try {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -50,7 +44,7 @@ export async function GET(req: NextRequest) {
 
     let query = getSupabaseAdmin()
       .from("suggestions")
-      .select("*, profiles(full_name, email, user_category)")
+      .select("*, profiles!suggestions_user_id_fkey(full_name, email, user_category)")
       .order("created_at", { ascending: false });
 
     if (status) query = query.eq("status", status);

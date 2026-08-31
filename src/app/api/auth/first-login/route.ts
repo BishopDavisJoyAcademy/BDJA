@@ -1,89 +1,155 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { hashPassword, addPasswordToHistory } from "@/lib/security";
-import { firstLoginPasswordSchema, firstLoginPinSchema } from "@/lib/validation";
-import { restoreMissingProfile } from "@/lib/auth";
-import { getErrorMessage, isAuthError } from "@/lib/errors";
+import { hashPassword, verifyPassword } from "@/lib/security";
+import { logAudit } from "@/lib/audit";
+import { getClientIP } from "@/lib/security";
+import { firstLoginPasswordSchema, firstLoginPINSchema } from "@/lib/validation";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    console.log("[first-login] Request received");
     const session = await requireAuth(req);
-    console.log("[first-login] Auth success, userId:", session.userId, "passwordChanged:", session.passwordChanged);
     const admin = getSupabaseAdmin();
 
-    let { data: profileRows, error: profileError } = await admin
+    const body = await req.json();
+    const { new_credential, confirm_credential } = body;
+    const isStudent = session.userCategory === "student";
+
+    // 1. Fetch current profile
+    const { data: profileRows, error: profileError } = await admin
       .from("profiles")
-      .select("id, user_category, password_changed")
+      .select("id, email, full_name, user_category, password_changed, temp_password_hash, role")
       .eq("id", session.userId)
       .limit(1);
-    let profile = (profileRows?.[0] ?? null) as { id: string; user_category: string; password_changed: boolean } | null;
 
-    if (profileError || !profile) {
-      const restored = await restoreMissingProfile(session.userId);
-      if (!restored) {
-        return NextResponse.json({ error: "Profile not found and could not be restored" }, { status: 404 });
-      }
-      const { data: restoredRows } = await admin
-        .from("profiles")
-        .select("id, user_category, password_changed")
-        .eq("id", session.userId)
-        .limit(1);
-      profile = (restoredRows?.[0] ?? null) as { id: string; user_category: string; password_changed: boolean } | null;
-      if (!profile) {
-        return NextResponse.json({ error: "Profile restored but still not found" }, { status: 500 });
-      }
+    if (profileError || !profileRows || profileRows.length === 0) {
+      console.error("[first-login] Profile not found:", profileError?.message);
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 });
     }
+
+    const profile = profileRows[0];
 
     if (profile.password_changed === true) {
-      return NextResponse.json({ error: "Password already set. Use change-password instead." }, { status: 403 });
+      return NextResponse.json(
+        { error: "Password already set. Use change-password instead." },
+        { status: 403 }
+      );
     }
 
-    const body = await req.json();
-    const isStudent = profile.user_category === "student";
-
-    const parseResult = isStudent
-      ? firstLoginPinSchema.safeParse(body)
-      : firstLoginPasswordSchema.safeParse(body);
-
+    // 2. Validate new credential
+    const schema = isStudent ? firstLoginPINSchema : firstLoginPasswordSchema;
+    const parseResult = schema.safeParse({ new_credential, confirm_credential });
     if (!parseResult.success) {
       const issues = parseResult.error.issues.map((i) => i.message).join("; ");
       return NextResponse.json({ error: issues }, { status: 400 });
     }
 
-    const newCredential = isStudent
-      ? (parseResult.data as { new_pin: string }).new_pin
-      : (parseResult.data as { new_password: string }).new_password;
+    // 3. Verify current temp password is still valid
+    const { data: authUser } = await admin.auth.admin.getUserById(session.userId);
+    if (!authUser?.user) {
+      return NextResponse.json({ error: "Auth user not found" }, { status: 404 });
+    }
 
-    const passwordHash = await hashPassword(newCredential);
+    const currentTempHash = profile.temp_password_hash;
+    if (!currentTempHash) {
+      return NextResponse.json({ error: "No temporary password on record" }, { status: 400 });
+    }
 
-    // Step 1: Update profile first (so we can rollback if auth fails)
-    const { error: updateError } = await admin
+    const isMatch = await verifyPassword(new_credential, currentTempHash);
+    if (isMatch) {
+      return NextResponse.json(
+        { error: "New password cannot be the same as the temporary password" },
+        { status: 400 }
+      );
+    }
+
+    // 4. Hash new credential
+    const passwordHash = await hashPassword(new_credential);
+    const nowIso = new Date().toISOString();
+
+    // 5. Update profile WITH verification — .select() ensures we know if 0 rows were affected
+    const { data: updatedRows, error: updateError } = await admin
       .from("profiles")
-      .update({ temp_password_hash: passwordHash, password_changed: true, updated_at: new Date().toISOString() })
-      .eq("id", session.userId);
+      .update({
+        temp_password_hash: passwordHash,
+        password_changed: true,
+        last_password_change: nowIso,
+        updated_at: nowIso,
+      })
+      .eq("id", session.userId)
+      .select("id, password_changed, last_password_change");
 
     if (updateError) {
-      return NextResponse.json({ error: "Failed to update password record" }, { status: 500 });
+      console.error("[first-login] Profile update error:", updateError.message);
+      return NextResponse.json(
+        { error: "Failed to update password record: " + updateError.message },
+        { status: 500 }
+      );
     }
 
-    // Step 2: Update Supabase Auth password AND metadata
-    const { data: authUserData, error: authUpdateError } = await admin.auth.admin.updateUserById(session.userId, {
-      password: newCredential,
-      user_metadata: { password_changed: true },
+    if (!updatedRows || updatedRows.length === 0) {
+      console.error("[first-login] Profile update affected 0 rows. UserId:", session.userId);
+      return NextResponse.json(
+        { error: "Profile update failed silently — no rows affected" },
+        { status: 500 }
+      );
+    }
+
+    // 6. Double-verify by fetching the profile back
+    const { data: verifyRows } = await admin
+      .from("profiles")
+      .select("password_changed, last_password_change")
+      .eq("id", session.userId)
+      .limit(1);
+
+    if (!verifyRows || verifyRows.length === 0 || verifyRows[0].password_changed !== true) {
+      console.error(
+        "[first-login] CRITICAL: Profile verification failed after update. " +
+        "Expected password_changed=true, got:",
+        verifyRows?.[0]
+      );
+      return NextResponse.json(
+        { error: "Password change could not be verified. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    // 7. Update auth user password — PRESERVE all existing metadata
+    const existingMetadata = authUser.user.user_metadata || {};
+    const { error: authUpdateError } = await admin.auth.admin.updateUserById(session.userId, {
+      password: new_credential,
+      user_metadata: {
+        ...existingMetadata,
+        password_changed: true,
+        last_password_change: nowIso,
+      },
     });
+
     if (authUpdateError) {
-      // Rollback: revert profile so user can try again
-      await admin.from("profiles").update({ password_changed: false }).eq("id", session.userId);
-      return NextResponse.json({ error: "Failed to update auth password" }, { status: 500 });
+      console.error("[first-login] Auth update failed:", authUpdateError.message);
+      // Rollback profile
+      await admin
+        .from("profiles")
+        .update({ password_changed: false, last_password_change: null, updated_at: nowIso })
+        .eq("id", session.userId);
+      return NextResponse.json(
+        { error: "Failed to update auth password: " + authUpdateError.message },
+        { status: 500 }
+      );
     }
 
-    if (!isStudent) {
-      await addPasswordToHistory(session.userId, passwordHash);
-    }
+    // 8. Audit log
+    await logAudit({
+      user_id: session.userId,
+      action: isStudent ? "STUDENT_FIRST_LOGIN" : "STAFF_FIRST_LOGIN",
+      table_name: "profiles",
+      record_id: session.userId,
+      new_data: { password_changed: true, last_password_change: nowIso },
+      ip_address: getClientIP(req),
+    }).catch((e) => console.error("[first-login] Audit log failed:", e));
 
     return NextResponse.json({
       success: true,
@@ -91,10 +157,10 @@ export async function POST(req: NextRequest) {
       user_category: profile.user_category,
     });
   } catch (error: unknown) {
-    if (isAuthError(error)) {
-      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
-    }
-    console.error("[first-login] Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("[first-login] Unhandled error:", error);
+    return NextResponse.json(
+      { error: getErrorMessage(error) || "Internal server error" },
+      { status: 500 }
+    );
   }
 }

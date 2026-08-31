@@ -42,10 +42,10 @@ export async function POST(req: NextRequest) {
 
     const admissionNumber = studentRecord?.admission_number || "N/A";
 
-    // Generate new temp password
-    const { generateTempPassword, hashPassword } = await import("@/lib/security");
-    const newPassword = generateTempPassword();
-    const passwordHash = await hashPassword(newPassword);
+    // Generate new 4-digit PIN for students
+    const { generatePIN, hashPassword } = await import("@/lib/security");
+    const newPin = generatePIN();
+    const passwordHash = await hashPassword(newPin);
 
     // Update auth user password
     const { error: updateAuthError } = await admin.auth.admin.updateUserById(id, {
@@ -85,10 +85,10 @@ export async function POST(req: NextRequest) {
         id: profile.id,
         fullName: profile.full_name,
         admissionNumber,
-        tempPassword: newPassword,
+        tempPassword: newPin,
         phone: profile.phone,
       },
-      message: "New credentials generated successfully",
+      message: "New PIN generated successfully",
     });
   } catch (error: unknown) {
     if (error instanceof AuthRequiredError) {

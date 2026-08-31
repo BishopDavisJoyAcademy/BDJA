@@ -13,7 +13,7 @@ import { ADMIN_SEGMENT } from "@/lib/constants";
 interface StudentProfile {
   id: string;
   full_name: string;
-  email: string;
+  email: string | null;
   phone: string | null;
   is_active: boolean;
   campus_id: string | null;
@@ -37,7 +37,6 @@ export default function EditStudentPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     full_name: "",
-    email: "",
     phone: "",
     admission_number: "",
     grade_level: "",
@@ -53,7 +52,6 @@ export default function EditStudentPage() {
           setStudent(d.student);
           setForm({
             full_name: d.student.full_name || "",
-            email: d.student.email || "",
             phone: d.student.phone || "",
             admission_number: d.student.students?.admission_number || "",
             grade_level: d.student.students?.grade_level || "",
@@ -75,9 +73,6 @@ export default function EditStudentPage() {
     if (!form.full_name.trim()) newErrors.full_name = "Full name is required";
     if (!form.admission_number.trim()) newErrors.admission_number = "Admission number is required";
     if (!form.grade_level) newErrors.grade_level = "Grade level is required";
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      newErrors.email = "Invalid email format";
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -169,17 +164,6 @@ export default function EditStudentPage() {
                 {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
               {errors.grade_level && <p className="text-xs text-red-400 mt-1">{errors.grade_level}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => { setForm({ ...form, email: e.target.value }); setErrors((p) => ({ ...p, email: "" })); }}
-                className={`w-full px-4 py-2.5 bg-slate-900/50 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-colors ${errors.email ? "border-red-500/50" : "border-slate-700"}`}
-              />
-              {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email}</p>}
             </div>
 
             <div>

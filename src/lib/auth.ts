@@ -142,21 +142,14 @@ export interface CreateStaffResult {
 export async function createStaff(options: CreateStaffOptions): Promise<CreateStaffResult> {
   const admin = getSupabaseAdmin();
 
-  // Ensure email is valid
-  let email = options.email?.trim().toLowerCase();
-  if (!email) {
-    const localPart = options.fullName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30);
-    email = `${localPart || "staff"}-${Date.now().toString(36)}@bdja.staff.local`;
-  }
-
-  // Check email uniqueness via DB
-  const { data: existing } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+  // Check email uniqueness via DB (not listing all users)
+  const { data: existing } = await admin.from("profiles").select("id").eq("email", options.email.toLowerCase()).maybeSingle();
   if (existing) {
-    return { userId: "", staffId: "", email, tempPassword: "", success: false, message: "A user with this email already exists", error: "A user with this email already exists" };
+    return { userId: "", staffId: "", email: options.email, tempPassword: "", success: false, message: "A user with this email already exists", error: "A user with this email already exists" };
   }
 
   const userResult = await createUser({
-    email,
+    email: options.email,
     fullName: options.fullName,
     role: "staff",
     userCategory: "staff",
@@ -203,7 +196,7 @@ export async function createStaff(options: CreateStaffOptions): Promise<CreateSt
 }
 
 interface CreateStudentOptions {
-  email: string;
+  email?: string;
   fullName: string;
   phone?: string;
   admissionNumber: string;
@@ -216,21 +209,18 @@ interface CreateStudentOptions {
 
 export interface CreateStudentResult extends CreateUserResult {
   studentId: string;
+  admissionNumber: string;
 }
 
 export async function createStudent(options: CreateStudentOptions): Promise<CreateStudentResult> {
   const pin = generatePIN();
   const admin = getSupabaseAdmin();
 
-  // Ensure email is valid — auto-generate if empty
-  let email = options.email?.trim();
-  if (!email) {
-    const localPart = options.admissionNumber.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40);
-    email = `${localPart || "student"}-${Date.now().toString(36)}@bdja.student.local`;
-  }
+  // Generate an internal invisible email for Supabase Auth (students never see this)
+  const internalEmail = options.email?.trim() || `student-${crypto.randomUUID()}@internal.bdja.local`;
 
   const userResult = await createUser({
-    email,
+    email: internalEmail,
     password: pin,
     fullName: options.fullName,
     role: "student",
@@ -240,6 +230,16 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
     createdBy: options.createdBy,
     metadata: { admission_number: options.admissionNumber, grade_level: options.gradeLevel },
   });
+
+  // Set profile email to NULL for students — they login with admission number, not email
+  const { error: profileEmailError } = await admin
+    .from("profiles")
+    .update({ email: null })
+    .eq("id", userResult.userId);
+
+  if (profileEmailError) {
+    console.error("[auth] Failed to clear student profile email:", profileEmailError.message);
+  }
 
   const { error: studentError } = await admin.from("students").insert({
     id: userResult.userId,
@@ -254,7 +254,7 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
 
   if (studentError) {
     console.error("[auth] Student record creation failed:", studentError);
-    // Attempt cleanup — wrap each in try/catch since .catch() doesn't exist on PostgrestFilterBuilder
+    // Cleanup
     try { await admin.from("students").delete().eq("id", userResult.userId); } catch { /* ignore */ }
     try { await admin.from("profiles").delete().eq("id", userResult.userId); } catch { /* ignore */ }
     try { await admin.auth.admin.deleteUser(userResult.userId); } catch { /* ignore */ }
@@ -276,10 +276,10 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
     action: "STUDENT_CREATED",
     table_name: "student",
     record_id: userResult.userId,
-    new_data: { admission_number: options.admissionNumber, grade_level: options.gradeLevel, email },
+    new_data: { admission_number: options.admissionNumber, grade_level: options.gradeLevel },
   }).catch(() => {});
 
-  return { ...userResult, studentId: userResult.userId, tempPassword: pin };
+  return { ...userResult, studentId: userResult.userId, admissionNumber: options.admissionNumber, tempPassword: pin };
 }
 
 export async function restoreMissingProfile(userId: string, email?: string): Promise<boolean> {

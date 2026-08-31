@@ -8,15 +8,6 @@ import { getErrorMessage, AuthRequiredError, PermissionDeniedError, ValidationEr
 
 export const dynamic = "force-dynamic";
 
-function sanitizeEmailLocalPart(input: string): string {
-  return input.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40);
-}
-
-function generateStudentEmail(admissionNumber: string): string {
-  const local = sanitizeEmailLocalPart(admissionNumber) || `student-${Date.now()}`;
-  return `${local}@bdja.student.local`;
-}
-
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
@@ -76,9 +67,8 @@ export async function GET(req: NextRequest) {
       const q = searchQuery.toLowerCase();
       result = result.filter((row: Record<string, unknown>) => {
         const fullName = String(row.full_name || "").toLowerCase();
-        const email = String(row.email || "").toLowerCase();
         const admission = String((row.students as Record<string, unknown> | null)?.admission_number || "").toLowerCase();
-        return fullName.includes(q) || email.includes(q) || admission.includes(q);
+        return fullName.includes(q) || admission.includes(q);
       });
     }
 
@@ -137,7 +127,6 @@ async function handleCreateStudent(
   const fullName = String(body.full_name || "").trim();
   const admissionNumber = String(body.admission_number || "").trim();
   const gradeLevel = String(body.grade_level || "").trim();
-  let email = String(body.email || "").trim().toLowerCase();
   const phone = String(body.phone || "").trim() || undefined;
   const classId = body.class_id ? String(body.class_id) : undefined;
   const campusId = body.campus_id ? String(body.campus_id) : undefined;
@@ -153,7 +142,7 @@ async function handleCreateStudent(
     return NextResponse.json({ error: "Grade level is required", field: "grade_level" }, { status: 400 });
   }
 
-  // Check admission number uniqueness
+  // Check admission number uniqueness — NO REGEX, only DB check
   const { data: existingAdmission } = await admin
     .from("students")
     .select("id")
@@ -167,28 +156,8 @@ async function handleCreateStudent(
     );
   }
 
-  // Auto-generate email if not provided
-  if (!email) {
-    email = generateStudentEmail(admissionNumber);
-  }
-
-  // Check email uniqueness
-  const { data: existingEmail } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle();
-
-  if (existingEmail) {
-    return NextResponse.json(
-      { error: `Email "${email}" is already in use`, field: "email" },
-      { status: 409 }
-    );
-  }
-
   try {
     const result = await createStudent({
-      email,
       fullName,
       phone,
       admissionNumber,
@@ -204,7 +173,7 @@ async function handleCreateStudent(
       action: "STUDENT_CREATED",
       table_name: "students",
       record_id: result.studentId,
-      new_data: { full_name: fullName, admission_number: admissionNumber, grade_level: gradeLevel, email },
+      new_data: { full_name: fullName, admission_number: admissionNumber, grade_level: gradeLevel },
       ip_address: getClientIP(req),
     });
 
@@ -212,13 +181,12 @@ async function handleCreateStudent(
       success: true,
       student: {
         id: result.studentId,
-        email: result.email,
         full_name: fullName,
         admission_number: admissionNumber,
         grade_level: gradeLevel,
       },
       credentials: {
-        email: result.email,
+        admissionNumber: result.admissionNumber,
         tempPassword: result.tempPassword,
       },
       message: "Student created successfully. Credentials displayed below.",
@@ -245,7 +213,7 @@ async function handleGenerateCredentials(
   // Verify student exists
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("id, email, full_name, user_category")
+    .select("id, full_name, user_category, phone")
     .eq("id", id)
     .eq("user_category", "student")
     .maybeSingle();
@@ -253,6 +221,15 @@ async function handleGenerateCredentials(
   if (profileError || !profile) {
     return NextResponse.json({ error: "Student not found" }, { status: 404 });
   }
+
+  // Get admission number
+  const { data: studentRecord } = await admin
+    .from("students")
+    .select("admission_number")
+    .eq("id", id)
+    .maybeSingle();
+
+  const admissionNumber = studentRecord?.admission_number || "N/A";
 
   // Generate new temp password
   const { generateTempPassword, hashPassword } = await import("@/lib/security");
@@ -294,8 +271,11 @@ async function handleGenerateCredentials(
   return NextResponse.json({
     success: true,
     credentials: {
-      email: profile.email,
+      id: profile.id,
+      fullName: profile.full_name,
+      admissionNumber,
       tempPassword: newPassword,
+      phone: profile.phone,
     },
     message: "New credentials generated successfully",
   });
@@ -315,21 +295,8 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
 
-    // Check if student exists
-    const { data: existing } = await admin
-      .from("profiles")
-      .select("id")
-      .eq("id", id)
-      .eq("user_category", "student")
-      .maybeSingle();
-
-    if (!existing) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 });
-    }
-
     const { error: profileError } = await admin.from("profiles").update({
       full_name: body.full_name,
-      email: body.email,
       phone: body.phone || null,
       campus_id: body.campus_id || null,
       is_active: body.is_active ?? true,
@@ -388,7 +355,6 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Student ID required" }, { status: 400 });
     }
 
-    // Check if student exists
     const { data: existing } = await admin
       .from("profiles")
       .select("id, full_name")
@@ -400,26 +366,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
-    // Delete in proper order: students record → parent_links → profile → auth
-    const { error: studentDelError } = await admin.from("students").delete().eq("id", id);
-    if (studentDelError) {
-      console.error("[students DELETE] Student record delete error:", studentDelError.message);
-    }
-
-    const { error: parentLinkError } = await admin.from("parent_students").delete().eq("student_id", id);
-    if (parentLinkError) {
-      console.error("[students DELETE] Parent link delete error:", parentLinkError.message);
-    }
-
-    const { error: profileDelError } = await admin.from("profiles").delete().eq("id", id);
-    if (profileDelError) {
-      console.error("[students DELETE] Profile delete error:", profileDelError.message);
-    }
-
-    const { error: authDelError } = await admin.auth.admin.deleteUser(id);
-    if (authDelError) {
-      console.error("[students DELETE] Auth delete error:", authDelError.message);
-    }
+    await admin.from("students").delete().eq("id", id);
+    await admin.from("parent_students").delete().eq("student_id", id);
+    await admin.from("profiles").delete().eq("id", id);
+    await admin.auth.admin.deleteUser(id);
 
     await logAudit({
       user_id: session.userId,
@@ -450,16 +400,15 @@ export async function PATCH(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { id, new_grade_level, new_class_id, is_active } = body;
+    const { id, new_grade_level, is_active } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Student ID required" }, { status: 400 });
     }
 
-    // Check if student exists
     const { data: existing } = await admin
       .from("profiles")
-      .select("id, full_name")
+      .select("id")
       .eq("id", id)
       .eq("user_category", "student")
       .maybeSingle();
@@ -468,7 +417,6 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
-    // Handle status toggle
     if (typeof is_active === "boolean") {
       const { error } = await admin.from("profiles").update({
         is_active: is_active,
@@ -494,7 +442,6 @@ export async function PATCH(req: NextRequest) {
       });
     }
 
-    // Handle promotion
     if (!new_grade_level) {
       return NextResponse.json({ error: "New grade level required for promotion" }, { status: 400 });
     }
@@ -504,7 +451,7 @@ export async function PATCH(req: NextRequest) {
 
     const { error } = await admin.from("students").update({
       grade_level: new_grade_level,
-      class_id: new_class_id || null,
+      class_id: body.new_class_id || null,
       updated_at: new Date().toISOString(),
     }).eq("id", id);
 
@@ -519,7 +466,7 @@ export async function PATCH(req: NextRequest) {
       table_name: "students",
       record_id: id,
       old_data: { grade_level: oldGrade },
-      new_data: { grade_level: new_grade_level, class_id: new_class_id },
+      new_data: { grade_level: new_grade_level, class_id: body.new_class_id },
       ip_address: getClientIP(req),
     });
 

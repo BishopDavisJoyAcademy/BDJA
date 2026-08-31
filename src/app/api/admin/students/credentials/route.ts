@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     // Verify student exists
     const { data: profile, error: profileError } = await admin
       .from("profiles")
-      .select("id, email, full_name, user_category, phone")
+      .select("id, full_name, user_category, phone")
       .eq("id", id)
       .eq("user_category", "student")
       .maybeSingle();
@@ -32,6 +32,15 @@ export async function POST(req: NextRequest) {
     if (profileError || !profile) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
+
+    // Get admission number
+    const { data: studentRecord } = await admin
+      .from("students")
+      .select("admission_number")
+      .eq("id", id)
+      .maybeSingle();
+
+    const admissionNumber = studentRecord?.admission_number || "N/A";
 
     // Generate new temp password
     const { generateTempPassword, hashPassword } = await import("@/lib/security");
@@ -75,7 +84,7 @@ export async function POST(req: NextRequest) {
       credentials: {
         id: profile.id,
         fullName: profile.full_name,
-        email: profile.email,
+        admissionNumber,
         tempPassword: newPassword,
         phone: profile.phone,
       },

@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     // Update auth user password
     const { error: updateAuthError } = await admin.auth.admin.updateUserById(id, {
-      password: newPassword,
+      password: newPin,
     });
 
     if (updateAuthError) {

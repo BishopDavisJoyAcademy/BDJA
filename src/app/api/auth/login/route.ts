@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { logAudit } from "@/lib/audit";
-import { getClientIP } from "@/lib/security";
+import { getClientIP, checkAccountLockout, recordFailedLogin, recordSuccessfulLogin } from "@/lib/security";
 import { getErrorMessage } from "@/lib/errors";
-import { checkAccountLockout, recordFailedAttempt, resetFailedAttempts } from "@/lib/auth";
+import { restoreMissingProfile } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check lockout
-    const lockout = await checkAccountLockout(email, ip);
+    const lockout = await checkAccountLockout(email);
     if (lockout.locked) {
       return NextResponse.json(
         { error: `Account locked. Try again after ${new Date(lockout.lockedUntil!).toLocaleTimeString()}.` },
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError || !authData.user) {
-      await recordFailedAttempt(email, ip, req.headers.get("user-agent") || "");
+      await recordFailedLogin(email, ip, req.headers.get("user-agent") || "");
       return NextResponse.json(
         { error: authError?.message || "Invalid email or password" },
         { status: 401 }
@@ -62,7 +62,6 @@ export async function POST(req: NextRequest) {
     } | null;
 
     if (!profile) {
-      const { restoreMissingProfile } = await import("@/lib/auth");
       const restored = await restoreMissingProfile(userId);
       if (restored) {
         const { data: restoredRows } = await admin
@@ -96,7 +95,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Reset failed attempts
-    await resetFailedAttempts(email, ip);
+    await recordSuccessfulLogin(email, ip);
 
     // Update last login
     await admin.from("profiles").update({

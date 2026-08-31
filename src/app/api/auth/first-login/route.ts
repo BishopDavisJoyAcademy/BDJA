@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { hashPassword, verifyPassword } from "@/lib/security";
 import { logAudit } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
-import { firstLoginPasswordSchema, firstLoginPINSchema } from "@/lib/validation";
+import { firstLoginPasswordSchema, firstLoginPinSchema } from "@/lib/validation";
 import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Validate new credential
-    const schema = isStudent ? firstLoginPINSchema : firstLoginPasswordSchema;
+    const schema = isStudent ? firstLoginPinSchema : firstLoginPasswordSchema;
     const parseResult = schema.safeParse({ new_credential, confirm_credential });
     if (!parseResult.success) {
       const issues = parseResult.error.issues.map((i) => i.message).join("; ");

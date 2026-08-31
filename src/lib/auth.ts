@@ -254,10 +254,10 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
 
   if (studentError) {
     console.error("[auth] Student record creation failed:", studentError);
-    // Attempt cleanup
-    await admin.from("students").delete().eq("id", userResult.userId).catch(() => {});
-    await admin.from("profiles").delete().eq("id", userResult.userId).catch(() => {});
-    await admin.auth.admin.deleteUser(userResult.userId).catch(() => {});
+    // Attempt cleanup — wrap each in try/catch since .catch() doesn't exist on PostgrestFilterBuilder
+    try { await admin.from("students").delete().eq("id", userResult.userId); } catch { /* ignore */ }
+    try { await admin.from("profiles").delete().eq("id", userResult.userId); } catch { /* ignore */ }
+    try { await admin.auth.admin.deleteUser(userResult.userId); } catch { /* ignore */ }
     throw new Error(`Failed to create student record: ${studentError.message}`);
   }
 

@@ -142,14 +142,21 @@ export interface CreateStaffResult {
 export async function createStaff(options: CreateStaffOptions): Promise<CreateStaffResult> {
   const admin = getSupabaseAdmin();
 
-  // Check email uniqueness via DB (not listing all users)
-  const { data: existing } = await admin.from("profiles").select("id").eq("email", options.email.toLowerCase()).maybeSingle();
+  // Ensure email is valid
+  let email = options.email?.trim().toLowerCase();
+  if (!email) {
+    const localPart = options.fullName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30);
+    email = `${localPart || "staff"}-${Date.now().toString(36)}@bdja.staff.local`;
+  }
+
+  // Check email uniqueness via DB
+  const { data: existing } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
   if (existing) {
-    return { userId: "", staffId: "", email: options.email, tempPassword: "", success: false, message: "A user with this email already exists", error: "A user with this email already exists" };
+    return { userId: "", staffId: "", email, tempPassword: "", success: false, message: "A user with this email already exists", error: "A user with this email already exists" };
   }
 
   const userResult = await createUser({
-    email: options.email,
+    email,
     fullName: options.fullName,
     role: "staff",
     userCategory: "staff",
@@ -215,8 +222,15 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
   const pin = generatePIN();
   const admin = getSupabaseAdmin();
 
+  // Ensure email is valid — auto-generate if empty
+  let email = options.email?.trim();
+  if (!email) {
+    const localPart = options.admissionNumber.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40);
+    email = `${localPart || "student"}-${Date.now().toString(36)}@bdja.student.local`;
+  }
+
   const userResult = await createUser({
-    email: options.email,
+    email,
     password: pin,
     fullName: options.fullName,
     role: "student",
@@ -229,14 +243,23 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
 
   const { error: studentError } = await admin.from("students").insert({
     id: userResult.userId,
+    profile_id: userResult.userId,
     admission_number: options.admissionNumber,
     grade_level: options.gradeLevel,
     class_id: options.classId || null,
+    campus_id: options.campusId || null,
     enrollment_date: new Date().toISOString().split("T")[0],
     status: "active",
   });
 
-  if (studentError) console.error("[auth] Student record creation failed:", studentError);
+  if (studentError) {
+    console.error("[auth] Student record creation failed:", studentError);
+    // Attempt cleanup
+    await admin.from("students").delete().eq("id", userResult.userId).catch(() => {});
+    await admin.from("profiles").delete().eq("id", userResult.userId).catch(() => {});
+    await admin.auth.admin.deleteUser(userResult.userId).catch(() => {});
+    throw new Error(`Failed to create student record: ${studentError.message}`);
+  }
 
   if (options.parentId) {
     const { error: linkError } = await admin.from("parent_students").insert({
@@ -253,7 +276,7 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
     action: "STUDENT_CREATED",
     table_name: "student",
     record_id: userResult.userId,
-    new_data: { admission_number: options.admissionNumber, grade_level: options.gradeLevel },
+    new_data: { admission_number: options.admissionNumber, grade_level: options.gradeLevel, email },
   }).catch(() => {});
 
   return { ...userResult, studentId: userResult.userId, tempPassword: pin };

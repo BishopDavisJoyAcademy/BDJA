@@ -1,19 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requirePermission } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { createStudent } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
-import { getErrorMessage, AuthRequiredError, PermissionDeniedError } from "@/lib/errors";
+import { getErrorMessage, AuthRequiredError, PermissionDeniedError, ValidationError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
+
+function sanitizeEmailLocalPart(input: string): string {
+  return input.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40);
+}
+
+function generateStudentEmail(admissionNumber: string): string {
+  const local = sanitizeEmailLocalPart(admissionNumber) || `student-${Date.now()}`;
+  return `${local}@bdja.student.local`;
+}
 
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
     requirePermission(session, "students.view");
+
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
+    const gradeFilter = searchParams.get("grade");
+    const statusFilter = searchParams.get("status");
+    const searchQuery = searchParams.get("q");
 
     if (id) {
       const { data, error } = await admin
@@ -22,17 +36,53 @@ export async function GET(req: NextRequest) {
         .eq("id", id)
         .eq("user_category", "student")
         .maybeSingle();
-      if (error || !data) return NextResponse.json({ error: "Student not found" }, { status: 404 });
+
+      if (error) {
+        console.error("[students GET] Single fetch error:", error.message);
+        return NextResponse.json({ error: "Database error fetching student" }, { status: 500 });
+      }
+      if (!data) {
+        return NextResponse.json({ error: "Student not found" }, { status: 404 });
+      }
       return NextResponse.json({ student: data });
     }
 
-    const { data, error } = await admin
+    let query = admin
       .from("profiles")
       .select("*, students(*)")
       .eq("user_category", "student")
       .order("created_at", { ascending: false });
-    if (error) return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 });
-    return NextResponse.json({ students: data || [] });
+
+    if (gradeFilter && gradeFilter !== "all") {
+      query = query.filter("students.grade_level", "eq", gradeFilter);
+    }
+
+    if (statusFilter === "active") {
+      query = query.eq("is_active", true);
+    } else if (statusFilter === "inactive") {
+      query = query.eq("is_active", false);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("[students GET] List fetch error:", error.message);
+      return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 });
+    }
+
+    let result = data || [];
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((row: Record<string, unknown>) => {
+        const fullName = String(row.full_name || "").toLowerCase();
+        const email = String(row.email || "").toLowerCase();
+        const admission = String((row.students as Record<string, unknown> | null)?.admission_number || "").toLowerCase();
+        return fullName.includes(q) || email.includes(q) || admission.includes(q);
+      });
+    }
+
+    return NextResponse.json({ students: result, count: result.length });
   } catch (error: unknown) {
     if (error instanceof AuthRequiredError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
@@ -40,6 +90,7 @@ export async function GET(req: NextRequest) {
     if (error instanceof PermissionDeniedError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 403 });
     }
+    console.error("[students GET] Unhandled error:", error);
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
@@ -48,70 +99,19 @@ export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(req);
     requirePermission(session, "students.create");
-    const admin = getSupabaseAdmin();
+
     const body = await req.json();
+    const action = body.action || "create";
 
-    if (!body.email || !body.full_name || !body.admission_number || !body.grade_level) {
-      return NextResponse.json({ error: "Email, full name, admission number, and grade level are required" }, { status: 400 });
+    if (action === "generate_credentials") {
+      return handleGenerateCredentials(body, session, req);
     }
 
-    // Generate temp password
-    const tempPassword = Math.random().toString(36).slice(2, 10) + "A1!";
-
-    const { data: authData, error: authError } = await admin.auth.admin.createUser({
-      email: body.email,
-      password: tempPassword,
-      email_confirm: true,
-    });
-    if (authError || !authData.user) {
-      return NextResponse.json({ error: authError?.message || "Failed to create auth user" }, { status: 500 });
+    if (action !== "create") {
+      return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }
 
-    const userId = authData.user.id;
-
-    const { data: profile, error: profileError } = await admin.from("profiles").insert([{
-      id: userId,
-      email: body.email,
-      full_name: body.full_name,
-      role: "student",
-      user_category: "student",
-      phone: body.phone || null,
-      campus_id: body.campus_id || null,
-      is_active: true,
-      password_changed: false,
-      onboarding_completed: false,
-    }]).select().single();
-
-    if (profileError || !profile) {
-      await admin.auth.admin.deleteUser(userId);
-      return NextResponse.json({ error: "Failed to create profile" }, { status: 500 });
-    }
-
-    const { error: studentError } = await admin.from("students").insert([{
-      id: userId,
-      profile_id: userId,
-      admission_number: body.admission_number,
-      grade_level: body.grade_level,
-      class_id: body.class_id || null,
-      campus_id: body.campus_id || null,
-    }]);
-
-    if (studentError) {
-      await admin.from("profiles").delete().eq("id", userId);
-      await admin.auth.admin.deleteUser(userId);
-      return NextResponse.json({ error: "Failed to create student record" }, { status: 500 });
-    }
-
-    await logAudit({
-      user_id: session.userId,
-      action: "STUDENT_CREATED",
-      table_name: "students",
-      record_id: userId,
-      new_data: { full_name: body.full_name, admission_number: body.admission_number, grade_level: body.grade_level },
-      ip_address: getClientIP(req),
-    });
-
-    return NextResponse.json({ success: true, student: profile, tempPassword });
+    return handleCreateStudent(body, session, req);
   } catch (error: unknown) {
     if (error instanceof AuthRequiredError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
@@ -119,19 +119,213 @@ export async function POST(req: NextRequest) {
     if (error instanceof PermissionDeniedError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 403 });
     }
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 400 });
+    }
+    console.error("[students POST] Unhandled error:", error);
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
+}
+
+async function handleCreateStudent(
+  body: Record<string, unknown>,
+  session: Awaited<ReturnType<typeof requireAuth>>,
+  req: NextRequest
+) {
+  const admin = getSupabaseAdmin();
+
+  const fullName = String(body.full_name || "").trim();
+  const admissionNumber = String(body.admission_number || "").trim();
+  const gradeLevel = String(body.grade_level || "").trim();
+  let email = String(body.email || "").trim().toLowerCase();
+  const phone = String(body.phone || "").trim() || undefined;
+  const classId = body.class_id ? String(body.class_id) : undefined;
+  const campusId = body.campus_id ? String(body.campus_id) : undefined;
+  const parentId = body.parent_id ? String(body.parent_id) : undefined;
+
+  if (!fullName) {
+    return NextResponse.json({ error: "Full name is required", field: "full_name" }, { status: 400 });
+  }
+  if (!admissionNumber) {
+    return NextResponse.json({ error: "Admission number is required", field: "admission_number" }, { status: 400 });
+  }
+  if (!gradeLevel) {
+    return NextResponse.json({ error: "Grade level is required", field: "grade_level" }, { status: 400 });
+  }
+
+  // Check admission number uniqueness
+  const { data: existingAdmission } = await admin
+    .from("students")
+    .select("id")
+    .eq("admission_number", admissionNumber)
+    .maybeSingle();
+
+  if (existingAdmission) {
+    return NextResponse.json(
+      { error: `Admission number "${admissionNumber}" already exists`, field: "admission_number" },
+      { status: 409 }
+    );
+  }
+
+  // Auto-generate email if not provided
+  if (!email) {
+    email = generateStudentEmail(admissionNumber);
+  }
+
+  // Check email uniqueness
+  const { data: existingEmail } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existingEmail) {
+    return NextResponse.json(
+      { error: `Email "${email}" is already in use`, field: "email" },
+      { status: 409 }
+    );
+  }
+
+  try {
+    const result = await createStudent({
+      email,
+      fullName,
+      phone,
+      admissionNumber,
+      gradeLevel,
+      classId,
+      campusId,
+      parentId,
+      createdBy: session.userId,
+    });
+
+    await logAudit({
+      user_id: session.userId,
+      action: "STUDENT_CREATED",
+      table_name: "students",
+      record_id: result.studentId,
+      new_data: { full_name: fullName, admission_number: admissionNumber, grade_level: gradeLevel, email },
+      ip_address: getClientIP(req),
+    });
+
+    return NextResponse.json({
+      success: true,
+      student: {
+        id: result.studentId,
+        email: result.email,
+        full_name: fullName,
+        admission_number: admissionNumber,
+        grade_level: gradeLevel,
+      },
+      credentials: {
+        email: result.email,
+        tempPassword: result.tempPassword,
+      },
+      message: "Student created successfully. Credentials displayed below.",
+    });
+  } catch (err: unknown) {
+    const msg = getErrorMessage(err);
+    console.error("[students POST] Create failed:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+async function handleGenerateCredentials(
+  body: Record<string, unknown>,
+  session: Awaited<ReturnType<typeof requireAuth>>,
+  req: NextRequest
+) {
+  const admin = getSupabaseAdmin();
+  const id = String(body.id || "");
+
+  if (!id) {
+    return NextResponse.json({ error: "Student ID is required" }, { status: 400 });
+  }
+
+  // Verify student exists
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("id, email, full_name, user_category")
+    .eq("id", id)
+    .eq("user_category", "student")
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    return NextResponse.json({ error: "Student not found" }, { status: 404 });
+  }
+
+  // Generate new temp password
+  const { generateTempPassword, hashPassword } = await import("@/lib/security");
+  const newPassword = generateTempPassword();
+  const passwordHash = await hashPassword(newPassword);
+
+  // Update auth user password
+  const { error: updateAuthError } = await admin.auth.admin.updateUserById(id, {
+    password: newPassword,
+  });
+
+  if (updateAuthError) {
+    console.error("[students credentials] Auth update failed:", updateAuthError.message);
+    return NextResponse.json({ error: "Failed to update auth password" }, { status: 500 });
+  }
+
+  // Update profile
+  const { error: profileUpdateError } = await admin
+    .from("profiles")
+    .update({
+      temp_password_hash: passwordHash,
+      password_changed: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (profileUpdateError) {
+    console.error("[students credentials] Profile update failed:", profileUpdateError.message);
+  }
+
+  await logAudit({
+    user_id: session.userId,
+    action: "STUDENT_CREDENTIALS_REGENERATED",
+    table_name: "students",
+    record_id: id,
+    ip_address: getClientIP(req),
+  });
+
+  return NextResponse.json({
+    success: true,
+    credentials: {
+      email: profile.email,
+      tempPassword: newPassword,
+    },
+    message: "New credentials generated successfully",
+  });
 }
 
 export async function PUT(req: NextRequest) {
   try {
     const session = await requireAuth(req);
     requirePermission(session, "students.edit");
+
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
-    if (!id) return NextResponse.json({ error: "Student ID required" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: "Student ID required" }, { status: 400 });
+    }
+
     const body = await req.json();
+
+    // Check if student exists
+    const { data: existing } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("id", id)
+      .eq("user_category", "student")
+      .maybeSingle();
+
+    if (!existing) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
 
     const { error: profileError } = await admin.from("profiles").update({
       full_name: body.full_name,
@@ -142,7 +336,10 @@ export async function PUT(req: NextRequest) {
       updated_at: new Date().toISOString(),
     }).eq("id", id);
 
-    if (profileError) return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
+    if (profileError) {
+      console.error("[students PUT] Profile update error:", profileError.message);
+      return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
+    }
 
     const { error: studentError } = await admin.from("students").update({
       admission_number: body.admission_number,
@@ -152,7 +349,10 @@ export async function PUT(req: NextRequest) {
       updated_at: new Date().toISOString(),
     }).eq("id", id);
 
-    if (studentError) return NextResponse.json({ error: "Failed to update student record" }, { status: 500 });
+    if (studentError) {
+      console.error("[students PUT] Student update error:", studentError.message);
+      return NextResponse.json({ error: "Failed to update student record" }, { status: 500 });
+    }
 
     await logAudit({
       user_id: session.userId,
@@ -163,7 +363,7 @@ export async function PUT(req: NextRequest) {
       ip_address: getClientIP(req),
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: "Student updated successfully" });
   } catch (error: unknown) {
     if (error instanceof AuthRequiredError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
@@ -171,6 +371,7 @@ export async function PUT(req: NextRequest) {
     if (error instanceof PermissionDeniedError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 403 });
     }
+    console.error("[students PUT] Unhandled error:", error);
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
@@ -179,28 +380,57 @@ export async function DELETE(req: NextRequest) {
   try {
     const session = await requireAuth(req);
     requirePermission(session, "students.delete");
+
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
-    if (!id) return NextResponse.json({ error: "Student ID required" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: "Student ID required" }, { status: 400 });
+    }
 
-    const { error: studentError } = await admin.from("students").delete().eq("id", id);
-    if (studentError) return NextResponse.json({ error: "Failed to delete student record" }, { status: 500 });
+    // Check if student exists
+    const { data: existing } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .eq("id", id)
+      .eq("user_category", "student")
+      .maybeSingle();
 
-    const { error: profileError } = await admin.from("profiles").delete().eq("id", id);
-    if (profileError) return NextResponse.json({ error: "Failed to delete profile" }, { status: 500 });
+    if (!existing) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
 
-    await admin.auth.admin.deleteUser(id);
+    // Delete in proper order: students record → parent_links → profile → auth
+    const { error: studentDelError } = await admin.from("students").delete().eq("id", id);
+    if (studentDelError) {
+      console.error("[students DELETE] Student record delete error:", studentDelError.message);
+    }
+
+    const { error: parentLinkError } = await admin.from("parent_students").delete().eq("student_id", id);
+    if (parentLinkError) {
+      console.error("[students DELETE] Parent link delete error:", parentLinkError.message);
+    }
+
+    const { error: profileDelError } = await admin.from("profiles").delete().eq("id", id);
+    if (profileDelError) {
+      console.error("[students DELETE] Profile delete error:", profileDelError.message);
+    }
+
+    const { error: authDelError } = await admin.auth.admin.deleteUser(id);
+    if (authDelError) {
+      console.error("[students DELETE] Auth delete error:", authDelError.message);
+    }
 
     await logAudit({
       user_id: session.userId,
       action: "STUDENT_DELETED",
       table_name: "students",
       record_id: id,
+      old_data: existing,
       ip_address: getClientIP(req),
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: "Student deleted successfully" });
   } catch (error: unknown) {
     if (error instanceof AuthRequiredError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
@@ -208,6 +438,7 @@ export async function DELETE(req: NextRequest) {
     if (error instanceof PermissionDeniedError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 403 });
     }
+    console.error("[students DELETE] Unhandled error:", error);
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
@@ -216,10 +447,57 @@ export async function PATCH(req: NextRequest) {
   try {
     const session = await requireAuth(req);
     requirePermission(session, "students.promote");
+
     const admin = getSupabaseAdmin();
     const body = await req.json();
-    const { id, new_grade_level, new_class_id } = body;
-    if (!id || !new_grade_level) return NextResponse.json({ error: "Student ID and new grade level required" }, { status: 400 });
+    const { id, new_grade_level, new_class_id, is_active } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Student ID required" }, { status: 400 });
+    }
+
+    // Check if student exists
+    const { data: existing } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .eq("id", id)
+      .eq("user_category", "student")
+      .maybeSingle();
+
+    if (!existing) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
+
+    // Handle status toggle
+    if (typeof is_active === "boolean") {
+      const { error } = await admin.from("profiles").update({
+        is_active: is_active,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id);
+
+      if (error) {
+        console.error("[students PATCH] Status toggle error:", error.message);
+        return NextResponse.json({ error: "Failed to update status" }, { status: 500 });
+      }
+
+      await logAudit({
+        user_id: session.userId,
+        action: is_active ? "STUDENT_ACTIVATED" : "STUDENT_DEACTIVATED",
+        table_name: "students",
+        record_id: id,
+        ip_address: getClientIP(req),
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: is_active ? "Student activated" : "Student deactivated",
+      });
+    }
+
+    // Handle promotion
+    if (!new_grade_level) {
+      return NextResponse.json({ error: "New grade level required for promotion" }, { status: 400 });
+    }
 
     const { data: current } = await admin.from("students").select("grade_level").eq("id", id).single();
     const oldGrade = current?.grade_level || "";
@@ -230,7 +508,10 @@ export async function PATCH(req: NextRequest) {
       updated_at: new Date().toISOString(),
     }).eq("id", id);
 
-    if (error) return NextResponse.json({ error: "Failed to promote student" }, { status: 500 });
+    if (error) {
+      console.error("[students PATCH] Promotion error:", error.message);
+      return NextResponse.json({ error: "Failed to promote student" }, { status: 500 });
+    }
 
     await logAudit({
       user_id: session.userId,
@@ -242,7 +523,7 @@ export async function PATCH(req: NextRequest) {
       ip_address: getClientIP(req),
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: "Student promoted successfully" });
   } catch (error: unknown) {
     if (error instanceof AuthRequiredError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
@@ -250,6 +531,7 @@ export async function PATCH(req: NextRequest) {
     if (error instanceof PermissionDeniedError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 403 });
     }
+    console.error("[students PATCH] Unhandled error:", error);
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

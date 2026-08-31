@@ -231,16 +231,6 @@ export async function createStudent(options: CreateStudentOptions): Promise<Crea
     metadata: { admission_number: options.admissionNumber, grade_level: options.gradeLevel },
   });
 
-  // Set profile email to NULL for students — they login with admission number, not email
-  const { error: profileEmailError } = await admin
-    .from("profiles")
-    .update({ email: null })
-    .eq("id", userResult.userId);
-
-  if (profileEmailError) {
-    console.error("[auth] Failed to clear student profile email:", profileEmailError.message);
-  }
-
   const { error: studentError } = await admin.from("students").insert({
     id: userResult.userId,
     profile_id: userResult.userId,

@@ -29,19 +29,27 @@ export async function POST(req: NextRequest) {
     }
 
     const nowIso = new Date().toISOString();
-    const updateData: Record<string, unknown> = {
+
+    // Build update object explicitly — no dynamic Record to satisfy Supabase types
+    const updatePayload: {
+      onboarding_completed: boolean;
+      updated_at: string;
+      full_name?: string;
+      phone?: string | null;
+      avatar_url?: string | null;
+    } = {
       onboarding_completed: true,
       updated_at: nowIso,
     };
 
-    if (full_name !== undefined) updateData.full_name = full_name;
-    if (phone !== undefined) updateData.phone = phone;
-    if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
+    if (full_name !== undefined) updatePayload.full_name = full_name;
+    if (phone !== undefined) updatePayload.phone = phone || null;
+    if (avatar_url !== undefined) updatePayload.avatar_url = avatar_url || null;
 
     // Update profile with verification
     const { data: updatedRows, error: updateError } = await admin
       .from("profiles")
-      .update(updateData)
+      .update(updatePayload)
       .eq("id", session.userId)
       .select("id, onboarding_completed, full_name, phone, avatar_url");
 

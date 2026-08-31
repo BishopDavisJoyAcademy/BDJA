@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "sonner";
@@ -337,7 +338,7 @@ export default function OnboardingPage() {
                     <div className="relative">
                       <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${config.gradient} flex items-center justify-center text-3xl font-bold text-white shadow-lg`}>
                         {form.avatar_url ? (
-                          <img src={form.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                          <Image src={form.avatar_url} alt="Profile avatar" width={96} height={96} className="w-full h-full rounded-full object-cover" />
                         ) : (
                           form.full_name?.charAt(0).toUpperCase() || "?"
                         )}

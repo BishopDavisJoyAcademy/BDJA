@@ -180,7 +180,14 @@ export async function middleware(req: NextRequest) {
 
   // Onboarding not completed
   if (profile.onboarding_completed === false) {
-    if (pathname === "/onboarding" || pathname.startsWith("/onboarding/")) {
+    // Allow onboarding page and the API endpoints needed during onboarding
+    const allowedOnboardingPaths = [
+      "/onboarding",
+      "/api/auth/onboarding",
+      "/api/auth/me",
+      "/api/auth/logout",
+    ];
+    if (allowedOnboardingPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
       return res;
     }
     if (pathname.startsWith("/api/")) {

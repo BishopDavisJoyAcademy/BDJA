@@ -120,7 +120,7 @@ export default function StudentCalendarPage() {
             {Array.from({ length: firstDay }).map((_, i) => (
               <div key={`empty-${i}`} className="min-h-[80px] border-b border-r border-slate-700/20" />
             ))}
-            {Array.from({ length: daysInMonth }).map((day) => {
+            {Array.from({ length: daysInMonth }).map((_, day) => {
               const dayEvents = getEventsForDay(day + 1);
               const isToday = new Date().toDateString() === new Date(year, month, day + 1).toDateString();
               return (

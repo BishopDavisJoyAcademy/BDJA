@@ -104,7 +104,7 @@ export default function StudentAssignmentsPage() {
               const urgencyColor = overdue ? "red" : days <= 2 ? "amber" : "blue";
               const urgencyBg = overdue ? "bg-red-500/10 border-red-500/20" : days <= 2 ? "bg-amber-500/10 border-amber-500/20" : "bg-slate-900/60 border-slate-700/50";
               const urgencyText = overdue ? "text-red-400" : days <= 2 ? "text-amber-400" : "text-slate-400";
-              const urgencyIcon = overdue ? AlertTriangle : days <= 2 ? Clock : Calendar;
+              const UrgencyIcon = overdue ? AlertTriangle : days <= 2 ? Clock : Calendar;
 
               return (
                 <motion.div key={assignment.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
@@ -126,7 +126,7 @@ export default function StudentAssignmentsPage() {
                     </div>
                     <div className="text-right shrink-0">
                       <div className={`flex items-center gap-1.5 text-sm font-medium ${urgencyText}`}>
-                        <urgencyIcon className="w-4 h-4" />
+                        <UrgencyIcon className="w-4 h-4" />
                         <span>
                           {overdue ? "Overdue" : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : `${days} days left`}
                         </span>

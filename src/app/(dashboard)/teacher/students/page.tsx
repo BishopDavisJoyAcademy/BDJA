@@ -152,7 +152,7 @@ export default function TeacherStudentsPage() {
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search by name or admission number..."
           className="w-full pl-10 pr-10 py-2.5 bg-slate-800/50 border border-slate-700/60 rounded-xl text-white placeholder-slate-600 text-sm focus:outline-none transition-all"
-          style={{ focusBorderColor: GOLD }}
+          
         />
         {searchQuery && (
           <button

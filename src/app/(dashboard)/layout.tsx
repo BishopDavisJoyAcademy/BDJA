@@ -160,7 +160,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {sidebarOpen && (
             <div className="overflow-hidden">
               <p className="font-bold text-white text-sm leading-tight">BDJA</p>
-              <p className="text-[10px] text-gray-500 leading-tight">Admin Portal</p>
+              {user?.user_category === "admin" ? (<p className="text-[10px] text-gray-500 leading-tight">Admin Portal</p>) : user?.user_category === "staff" ? (<p className="text-[10px] text-gray-500 leading-tight">Staff Portal</p>) : user?.user_category === "student" ? (<p className="text-[10px] text-gray-500 leading-tight">Student Portal</p>) : user?.user_category === "parent" ? (<p className="text-[10px] text-gray-500 leading-tight">Parent Portal</p>) : (<p className="text-[10px] text-gray-500 leading-tight">Portal</p>)}
             </div>
           )}
         </div>
@@ -232,7 +232,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
                 <div>
                   <p className="font-bold text-white text-sm">BDJA</p>
-                  <p className="text-[10px] text-gray-500">Portal</p>
+                  {user?.user_category === "admin" ? (<p className="text-[10px] text-gray-500">Admin Portal</p>) : user?.user_category === "staff" ? (<p className="text-[10px] text-gray-500">Staff Portal</p>) : user?.user_category === "student" ? (<p className="text-[10px] text-gray-500">Student Portal</p>) : user?.user_category === "parent" ? (<p className="text-[10px] text-gray-500">Parent Portal</p>) : (<p className="text-[10px] text-gray-500">Portal</p>)}
                 </div>
               </div>
               <button onClick={() => setMobileOpen(false)} className="p-2 text-gray-400 hover:text-white">

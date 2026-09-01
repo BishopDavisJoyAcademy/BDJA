@@ -2,8 +2,14 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
-import { BookOpen, Calendar, AlertCircle, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  BookOpen, Calendar, AlertCircle, Loader2, Clock,
+  CheckCircle2, AlertTriangle, FileText
+} from "lucide-react";
 import { getErrorMessage } from "@/lib/errors";
+
+const GOLD = "#D4AF37";
 
 interface Assignment {
   id: string;
@@ -24,11 +30,14 @@ export default function StudentAssignmentsPage() {
     async function fetchAssignments() {
       try {
         const res = await fetch("/api/assignments");
-        if (!res.ok) throw new Error("Failed to fetch assignments");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Failed to fetch assignments (${res.status})`);
+        }
         const data = await res.json();
         setAssignments(data.assignments || []);
       } catch (err: unknown) {
-        setError(getErrorMessage(err) || "Could not load assignments");
+        setError(getErrorMessage(err) || "Could not load assignments. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -42,86 +51,95 @@ export default function StudentAssignmentsPage() {
     return diff;
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-      </div>
-    );
-  }
+  const sortedAssignments = [...assignments].sort((a, b) => {
+    const aOverdue = isOverdue(a.due_date);
+    const bOverdue = isOverdue(b.due_date);
+    if (aOverdue && !bOverdue) return -1;
+    if (!aOverdue && bOverdue) return 1;
+    return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+  });
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Assignments</h1>
-          <p className="text-gray-500">View and track your assignments</p>
+          <h1 className="text-2xl font-bold text-white">My Assignments</h1>
+          <p className="text-sm text-slate-400 mt-0.5">View and track your assignments</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
-          <BookOpen className="w-5 h-5" />
-          <span className="font-medium">{assignments.length} Total</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 text-xs text-slate-400">
+          <BookOpen className="w-3.5 h-3.5" style={{ color: GOLD }} />
+          <span>{assignments.length} Total</span>
         </div>
-      </div>
+      </motion.div>
 
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5" />
-          {error}
+      <AnimatePresence>
+        {error && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+            className="p-3 rounded-xl flex items-start gap-2.5"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-300">{error}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: GOLD }} />
+        </div>
+      ) : sortedAssignments.length === 0 && !error ? (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="text-center py-16 bg-slate-900/50 border border-slate-700/50 rounded-2xl">
+          <CheckCircle2 className="w-16 h-16 text-slate-700 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white">All caught up!</h3>
+          <p className="text-slate-500 text-sm mt-1">No assignments right now. Check back later for new ones.</p>
+        </motion.div>
+      ) : (
+        <div className="grid gap-4">
+          <AnimatePresence>
+            {sortedAssignments.map((assignment, i) => {
+              const overdue = isOverdue(assignment.due_date);
+              const days = daysUntil(assignment.due_date);
+              const urgencyColor = overdue ? "red" : days <= 2 ? "amber" : "blue";
+              const urgencyBg = overdue ? "bg-red-500/10 border-red-500/20" : days <= 2 ? "bg-amber-500/10 border-amber-500/20" : "bg-slate-900/60 border-slate-700/50";
+              const urgencyText = overdue ? "text-red-400" : days <= 2 ? "text-amber-400" : "text-slate-400";
+              const urgencyIcon = overdue ? AlertTriangle : days <= 2 ? Clock : Calendar;
+
+              return (
+                <motion.div key={assignment.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                  className={`rounded-xl p-5 border hover:border-slate-600/50 transition-colors ${urgencyBg}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4 flex-1 min-w-0">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${overdue ? "bg-red-500/15" : days <= 2 ? "bg-amber-500/15" : "bg-slate-800/80 border border-slate-700/50"}`}>
+                        <FileText className="w-6 h-6" style={{ color: overdue ? "#f87171" : days <= 2 ? "#fbbf24" : GOLD }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-white text-sm">{assignment.title}</h3>
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{assignment.description}</p>
+                        {assignment.subject_name && (
+                          <span className="inline-block mt-2 px-2 py-0.5 bg-slate-800 text-slate-400 text-[11px] rounded font-medium">
+                            {assignment.subject_name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className={`flex items-center gap-1.5 text-sm font-medium ${urgencyText}`}>
+                        <urgencyIcon className="w-4 h-4" />
+                        <span>
+                          {overdue ? "Overdue" : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : `${days} days left`}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1">{new Date(assignment.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       )}
-
-      {assignments.length === 0 && !error && (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <BookOpen className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No assignments found</h3>
-          <p className="text-gray-400 mt-1">You're all caught up! Check back later for new assignments.</p>
-        </div>
-      )}
-
-      <div className="grid gap-4">
-        {assignments.map((assignment) => {
-          const overdue = isOverdue(assignment.due_date);
-          const days = daysUntil(assignment.due_date);
-          return (
-            <div
-              key={assignment.id}
-              className={`bg-white p-5 rounded-xl border shadow-sm hover:shadow-md transition-shadow ${
-                overdue ? "border-red-200" : "border-gray-200"
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
-                    overdue ? "bg-red-100 text-red-600" : days <= 2 ? "bg-yellow-100 text-yellow-600" : "bg-blue-100 text-blue-600"
-                  }`}>
-                    <BookOpen className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{assignment.description}</p>
-                    {assignment.subject_name && (
-                      <span className="inline-block mt-2 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded font-medium">
-                        {assignment.subject_name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className={`flex items-center gap-1 text-sm font-medium ${
-                    overdue ? "text-red-600" : days <= 2 ? "text-yellow-600" : "text-gray-500"
-                  }`}>
-                    <Calendar className="w-4 h-4" />
-                    <span>
-                      {overdue ? "Overdue" : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : `${days} days left`}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">{new Date(assignment.due_date).toLocaleDateString()}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }

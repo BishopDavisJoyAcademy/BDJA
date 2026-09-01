@@ -34,7 +34,10 @@ export default function StudentTimetablePage() {
   useEffect(() => {
     async function fetchTimetable() {
       try {
-        const res = await fetch("/api/calendar?event_type=timetable");
+        const { data: { session: s } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
+        const res = await fetch("/api/calendar?event_type=timetable", { headers });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || `Failed to fetch timetable (${res.status})`);

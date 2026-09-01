@@ -41,7 +41,10 @@ export default function StudentGradesPage() {
   useEffect(() => {
     async function fetchGrades() {
       try {
-        const res = await fetch("/api/grades");
+        const { data: { session: s } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
+        const res = await fetch("/api/grades", { headers });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || `Failed to fetch grades (${res.status})`);

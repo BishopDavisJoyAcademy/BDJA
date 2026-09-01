@@ -29,7 +29,10 @@ export default function StudentAssignmentsPage() {
   useEffect(() => {
     async function fetchAssignments() {
       try {
-        const res = await fetch("/api/assignments");
+        const { data: { session: s } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
+        const res = await fetch("/api/assignments", { headers });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || `Failed to fetch assignments (${res.status})`);

@@ -129,45 +129,8 @@ export async function validateSession(token: string): Promise<{ session: Validat
 }
 
 export async function requireAuth(req: Request): Promise<ValidatedSession> {
-  let token = "";
   const authHeader = req.headers.get("authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    token = authHeader.slice(7).trim();
-  }
-
-  // Fallback: extract token from Supabase SSR auth cookie
-  // Browser fetch() sends cookies automatically but not Authorization headers
-  if (!token) {
-    try {
-      const cookieHeader = req.headers.get("cookie") || "";
-      const cookies = cookieHeader.split(";").map((c) => c.trim()).filter(Boolean);
-      for (const cookie of cookies) {
-        const eqIdx = cookie.indexOf("=");
-        if (eqIdx === -1) continue;
-        const name = cookie.slice(0, eqIdx).trim();
-        const value = cookie.slice(eqIdx + 1).trim();
-        if (name.startsWith("sb-")) {
-          const decoded = decodeURIComponent(value);
-          try {
-            const parsed = JSON.parse(decoded);
-            const extracted = parsed.access_token || parsed[0]?.access_token || parsed.token;
-            if (extracted && typeof extracted === "string" && extracted.includes(".")) {
-              token = extracted;
-              break;
-            }
-          } catch {
-            // Not JSON — check if raw JWT (contains dots, long enough)
-            if (decoded.includes(".") && decoded.length > 50) {
-              token = decoded;
-              break;
-            }
-          }
-        }
-      }
-    } catch {
-      // ignore cookie parsing errors
-    }
-  }
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
 
   const { session, error } = await validateSession(token);
   if (!session || error) {

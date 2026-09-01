@@ -40,7 +40,10 @@ export default function TeacherStudentsPage() {
   useEffect(() => {
     async function fetchClasses() {
       try {
-        const res = await fetch("/api/teacher/classes");
+        const { data: { session: s } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
+        const res = await fetch("/api/teacher/classes", { headers });
         if (!res.ok) throw new Error("Failed to fetch classes");
         const data = await res.json();
         const classList = data.classes || [];
@@ -64,7 +67,10 @@ export default function TeacherStudentsPage() {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch(`/api/teacher/students?class_id=${selectedClass}`);
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        const h2: Record<string, string> = {};
+        if (s2?.access_token) h2["Authorization"] = `Bearer ${s2.access_token}`;
+        const res = await fetch(`/api/teacher/students?class_id=${selectedClass}`, { headers: h2 });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || "Failed to fetch students");

@@ -8,6 +8,7 @@ import {
   CheckCircle2, AlertTriangle, FileText
 } from "lucide-react";
 import { getErrorMessage } from "@/lib/errors";
+import { supabase } from "@/lib/supabase";
 
 const GOLD = "#D4AF37";
 

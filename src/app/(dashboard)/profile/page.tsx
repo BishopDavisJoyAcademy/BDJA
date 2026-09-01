@@ -127,7 +127,7 @@ export default function ProfilePage() {
     } catch {
       // non-critical
     }
-  }, [user, user?.id, user?.user_category]);
+  }, [user?.id, user?.user_category]);
 
   /* ─── Fetch suggestions ─── */
   const fetchSuggestions = useCallback(async () => {

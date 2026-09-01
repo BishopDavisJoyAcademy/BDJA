@@ -37,14 +37,12 @@ export function useAuth() {
 
   const fetchUser = useCallback(async () => {
     try {
-      // Use getUser() for secure validation
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
       if (userError || !currentUser) {
         setState({ user: null, loading: false, error: null });
         return;
       }
 
-      // Get session for the token
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
@@ -143,12 +141,12 @@ export function useAuth() {
     }
   }, [fetchUser]);
 
-  const signInStudent = useCallback(async (admissionNumber: string, pin: string): Promise<{ success: boolean; error: string | null; mustChangePassword?: boolean; redirectTo?: string }> => {
+  const signInStudent = useCallback(async (admissionNumber: string, password: string): Promise<{ success: boolean; error: string | null; mustChangePassword?: boolean; redirectTo?: string }> => {
     try {
       const res = await fetch("/api/auth/student-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admission_number: admissionNumber, pin }),
+        body: JSON.stringify({ admission_number: admissionNumber, password }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {

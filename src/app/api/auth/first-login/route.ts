@@ -15,8 +15,11 @@ export async function POST(req: NextRequest) {
     const admin = getSupabaseAdmin();
 
     const body = await req.json();
-    const { new_credential, confirm_credential } = body;
     const isStudent = session.userCategory === "student";
+
+    // Extract correct fields based on user type
+    const newCredential = isStudent ? body.new_pin : body.new_password;
+    const confirmCredential = isStudent ? body.confirm_pin : body.confirm_password;
 
     // 1. Fetch current profile
     const { data: profileRows, error: profileError } = await admin
@@ -41,7 +44,10 @@ export async function POST(req: NextRequest) {
 
     // 2. Validate new credential
     const schema = isStudent ? firstLoginPinSchema : firstLoginPasswordSchema;
-    const parseResult = schema.safeParse({ new_credential, confirm_credential });
+    const parseResult = schema.safeParse({
+      [isStudent ? "new_pin" : "new_password"]: newCredential,
+      [isStudent ? "confirm_pin" : "confirm_password"]: confirmCredential,
+    });
     if (!parseResult.success) {
       const issues = parseResult.error.issues.map((i) => i.message).join("; ");
       return NextResponse.json({ error: issues }, { status: 400 });
@@ -58,7 +64,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No temporary password on record" }, { status: 400 });
     }
 
-    const isMatch = await verifyPassword(new_credential, currentTempHash);
+    const isMatch = await verifyPassword(newCredential, currentTempHash);
     if (isMatch) {
       return NextResponse.json(
         { error: "New password cannot be the same as the temporary password" },
@@ -67,10 +73,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Hash new credential
-    const passwordHash = await hashPassword(new_credential);
+    const passwordHash = await hashPassword(newCredential);
     const nowIso = new Date().toISOString();
 
-    // 5. Update profile WITH verification — .select() ensures we know if 0 rows were affected
+    // 5. Update profile WITH verification
     const { data: updatedRows, error: updateError } = await admin
       .from("profiles")
       .update({
@@ -120,7 +126,7 @@ export async function POST(req: NextRequest) {
     // 7. Update auth user password — PRESERVE all existing metadata
     const existingMetadata = authUser.user.user_metadata || {};
     const { error: authUpdateError } = await admin.auth.admin.updateUserById(session.userId, {
-      password: new_credential,
+      password: newCredential,
       user_metadata: {
         ...existingMetadata,
         password_changed: true,

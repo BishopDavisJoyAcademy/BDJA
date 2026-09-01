@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const identifier = getClientIP(req) + ":student-login";
+    const identifier = getClientIP(req);
     const { success: rateOk } = await rateLimit(identifier, RATE_LIMITS.login);
     if (!rateOk) {
       return NextResponse.json({ error: "Too many login attempts. Please try again later." }, { status: 429 });

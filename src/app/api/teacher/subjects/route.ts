@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { getErrorMessage, AuthRequiredError } from "@/lib/errors";
+import { getErrorMessage, isAuthError, getErrorStatusCode } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -10,58 +10,49 @@ export async function GET(req: NextRequest) {
     const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
 
-    // Get teacher's timetable entries to find class_ids
-    const { data: timetableData, error: ttError } = await admin
-      .from("teacher_timetables")
-      .select("class_id")
+    if (session.userCategory !== "staff" && session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    const { data: ctClasses } = await admin
+      .from("classes")
+      .select("id, name, grade_level")
+      .eq("class_teacher_id", session.userId);
+
+    const { data: csEntries } = await admin
+      .from("class_subjects")
+      .select("class_id, subject_id, subjects(id, name, code)")
       .eq("teacher_id", session.userId);
 
-    if (ttError) {
-      return NextResponse.json({ error: "Failed to fetch timetable" }, { status: 500 });
+    const subjectMap = new Map();
+    (csEntries || []).forEach((entry: Record<string, unknown>) => {
+      const sub = entry.subjects as Record<string, string> | null;
+      if (sub?.id && !subjectMap.has(sub.id)) {
+        subjectMap.set(sub.id, { id: sub.id, name: sub.name, code: sub.code });
+      }
+    });
+
+    let allClasses = ctClasses || [];
+    let allSubjects = Array.from(subjectMap.values());
+
+    if (session.userCategory === "admin") {
+      const [{ data: classes }, { data: subjects }] = await Promise.all([
+        admin.from("classes").select("id, name, grade_level"),
+        admin.from("subjects").select("id, name, code"),
+      ]);
+      allClasses = classes || [];
+      allSubjects = subjects || [];
     }
 
-    const classIds = (timetableData || [])
-      .map((t) => t.class_id)
-      .filter((id): id is string => Boolean(id));
-    const uniqueClassIds = Array.from(new Set(classIds));
-
-    if (uniqueClassIds.length === 0) {
-      return NextResponse.json({ subjects: [] });
-    }
-
-    // Get subject_ids from class_subjects
-    const { data: classSubjects, error: csError } = await admin
-      .from("class_subjects")
-      .select("subject_id")
-      .in("class_id", uniqueClassIds);
-
-    if (csError) {
-      return NextResponse.json({ error: "Failed to fetch class subjects" }, { status: 500 });
-    }
-
-    const subjectIds = Array.from(
-      new Set((classSubjects || []).map((cs) => cs.subject_id).filter((id): id is string => Boolean(id)))
-    );
-
-    if (subjectIds.length === 0) {
-      return NextResponse.json({ subjects: [] });
-    }
-
-    // Get actual subjects
-    const { data: subjects, error: subjError } = await admin
-      .from("subjects")
-      .select("*")
-      .in("id", subjectIds);
-
-    if (subjError) {
-      return NextResponse.json({ error: "Failed to fetch subjects" }, { status: 500 });
-    }
-
-    return NextResponse.json({ subjects: subjects || [] });
+    return NextResponse.json({ classes: allClasses, subjects: allSubjects, class_subjects: csEntries || [] });
   } catch (error: unknown) {
-    if (error instanceof AuthRequiredError) {
-      return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 401 });
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: getErrorMessage(error) },
+        { status: getErrorStatusCode(error) || 401 }
+      );
     }
-    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
+    console.error("[teacher/subjects GET] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

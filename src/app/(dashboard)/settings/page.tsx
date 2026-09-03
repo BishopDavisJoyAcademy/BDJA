@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -455,7 +456,7 @@ export default function SettingsPage() {
                       <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-slate-700/50"
                         style={{ background: profile.avatar_url ? undefined : `${GOLD}15` }}>
                         {profile.avatar_url ? (
-                          <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                          <Image src={profile.avatar_url} alt="Avatar" fill className="object-cover" sizes="96px" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <User className="w-10 h-10" style={{ color: `${GOLD}80` }} />

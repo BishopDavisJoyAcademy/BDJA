@@ -13,10 +13,10 @@ export async function GET(req: NextRequest) {
     const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
 
-    // Fetch from profiles + related tables
+    // Fetch from profiles (department/designation are on staff table, not profiles)
     const { data: profileRows, error: profileError } = await admin
       .from("profiles")
-      .select("id, full_name, email, phone, avatar_url, role, user_category, campus_id, department, designation")
+      .select("id, full_name, email, phone, avatar_url, role, user_category, campus_id")
       .eq("id", session.userId)
       .limit(1);
 
@@ -26,14 +26,14 @@ export async function GET(req: NextRequest) {
 
     const profile = profileRows[0];
 
-    // Fetch student-specific data if applicable
-    let admission_number = null;
-    let grade_level = null;
+    // Fetch student-specific data if applicable (students table uses id = auth user id)
+    let admission_number: string | null = null;
+    let grade_level: string | null = null;
     if (profile.user_category === "student") {
       const { data: studentRows } = await admin
         .from("students")
         .select("admission_number, grade_level")
-        .eq("profile_id", session.userId)
+        .eq("id", session.userId)
         .limit(1);
       if (studentRows && studentRows.length > 0) {
         admission_number = studentRows[0].admission_number;
@@ -41,18 +41,18 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Fetch staff-specific data if applicable
-    let staffDept = profile.department;
-    let staffDesignation = profile.designation;
+    // Fetch staff-specific data if applicable (staff table uses id = auth user id)
+    let department: string | null = null;
+    let designation: string | null = null;
     if (profile.user_category === "staff" || profile.user_category === "admin") {
       const { data: staffRows } = await admin
         .from("staff")
         .select("department, designation")
-        .eq("profile_id", session.userId)
+        .eq("id", session.userId)
         .limit(1);
       if (staffRows && staffRows.length > 0) {
-        staffDept = staffRows[0].department;
-        staffDesignation = staffRows[0].designation;
+        department = staffRows[0].department;
+        designation = staffRows[0].designation;
       }
     }
 
@@ -66,8 +66,8 @@ export async function GET(req: NextRequest) {
         role: profile.role,
         user_category: profile.user_category,
         campus_id: profile.campus_id,
-        department: staffDept,
-        designation: staffDesignation,
+        department,
+        designation,
         admission_number,
         grade_level,
       },
@@ -92,9 +92,11 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
 
     const allowedFields = ["full_name", "phone", "avatar_url"];
-    const updates: Record<string, unknown> = {};
+    const updates: { full_name?: string; phone?: string | null; avatar_url?: string | null; updated_at?: string } = {};
     for (const key of allowedFields) {
-      if (body[key] !== undefined) updates[key] = body[key];
+      if (body[key] !== undefined) {
+        (updates as Record<string, unknown>)[key] = body[key];
+      }
     }
 
     if (Object.keys(updates).length === 0) {

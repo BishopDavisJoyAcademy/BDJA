@@ -8,7 +8,8 @@ import Image from "next/image";
 import {
   LayoutDashboard, Users, GraduationCap, FileText, MessageSquare, BarChart3, Shield, Settings, Bug,
   BookOpen, Video, Building2, Calendar, LogOut, ChevronDown, ChevronRight, Sparkles,
-  Wrench, UserCog, AlertTriangle, Globe, PlusCircle, X, Menu, AlertCircle
+  Wrench, UserCog, AlertTriangle, Globe, PlusCircle, X, Menu, AlertCircle,
+  ClipboardCheck, Receipt, Award
 } from "lucide-react";
 import { ADMIN_SEGMENT } from "@/lib/constants";
 import { JoyChat } from "@/components/joy/JoyChat";
@@ -52,6 +53,10 @@ const staffNav: NavItem[] = [
 
 const studentNav: NavItem[] = [
   { label: "Dashboard", href: "/student", icon: LayoutDashboard },
+  { label: "Assignments", href: "/student/assignments", icon: BookOpen },
+  { label: "Attendance", href: "/student/attendance", icon: ClipboardCheck },
+  { label: "Grades", href: "/student/grades", icon: Award },
+  { label: "Fees", href: "/student/fees", icon: Receipt },
   { label: "Calendar", href: "/student/calendar", icon: Calendar },
   { label: "Settings", href: "/settings", icon: Settings },
 ];

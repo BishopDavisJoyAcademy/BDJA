@@ -89,18 +89,17 @@ export default function StudentAssignmentDetailPage() {
     setUploading(true);
     const newUrls: string[] = [];
 
+    const { requestSignedUploadUrl, uploadFileToSignedUrl } = await import("@/lib/upload-client");
+
     for (const file of Array.from(files)) {
       if (file.size > 10 * 1024 * 1024) {
         toast.error(`${file.name} is too large (max 10MB)`);
         continue;
       }
       try {
-        const ext = file.name.split(".").pop();
-        const fileName = `assignments/${assignmentId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("assignments").upload(fileName, file);
-        if (upErr) throw upErr;
-        const { data: { publicUrl } } = supabase.storage.from("assignments").getPublicUrl(fileName);
-        newUrls.push(publicUrl);
+        const signed = await requestSignedUploadUrl(file.name, file.type || "application/octet-stream");
+        await uploadFileToSignedUrl(signed.signedUrl, file, file.type || "application/octet-stream");
+        newUrls.push(signed.publicUrl);
       } catch (err: unknown) {
         toast.error(`Failed to upload ${file.name}`);
       }

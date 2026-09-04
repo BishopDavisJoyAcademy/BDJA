@@ -2344,6 +2344,85 @@ export type Database = {
           },
         ]
       }
+      report_cards: {
+        Row: {
+          academic_year: string
+          class_id: string | null
+          generated_at: string | null
+          generated_by: string | null
+          id: string
+          parent_acknowledged: boolean | null
+          parent_acknowledged_at: string | null
+          parent_signature_url: string | null
+          pdf_url: string | null
+          principal_remarks: string | null
+          principal_signature_url: string | null
+          status: string | null
+          student_id: string
+          teacher_remarks: string | null
+          teacher_signature_url: string | null
+          term: string
+        }
+        Insert: {
+          academic_year: string
+          class_id?: string | null
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          parent_acknowledged?: boolean | null
+          parent_acknowledged_at?: string | null
+          parent_signature_url?: string | null
+          pdf_url?: string | null
+          principal_remarks?: string | null
+          principal_signature_url?: string | null
+          status?: string | null
+          student_id: string
+          teacher_remarks?: string | null
+          teacher_signature_url?: string | null
+          term: string
+        }
+        Update: {
+          academic_year?: string
+          class_id?: string | null
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          parent_acknowledged?: boolean | null
+          parent_acknowledged_at?: string | null
+          parent_signature_url?: string | null
+          pdf_url?: string | null
+          principal_remarks?: string | null
+          principal_signature_url?: string | null
+          status?: string | null
+          student_id?: string
+          teacher_remarks?: string | null
+          teacher_signature_url?: string | null
+          term?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_cards_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_cards_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_cards_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       runtime_errors: {
         Row: {
           component: string | null

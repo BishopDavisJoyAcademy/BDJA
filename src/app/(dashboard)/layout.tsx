@@ -56,6 +56,7 @@ const studentNav: NavItem[] = [
   { label: "Assignments", href: "/student/assignments", icon: BookOpen },
   { label: "Attendance", href: "/student/attendance", icon: ClipboardCheck },
   { label: "Grades", href: "/student/grades", icon: Award },
+  { label: "Report Card", href: "/student/report-card", icon: FileText },
   { label: "Analytics", href: "/student/analytics", icon: BarChart3 },
   { label: "Announcements", href: "/student/announcements", icon: Megaphone },
   { label: "Fees", href: "/student/fees", icon: Receipt },

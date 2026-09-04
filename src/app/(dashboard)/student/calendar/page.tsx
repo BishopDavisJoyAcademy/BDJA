@@ -8,6 +8,7 @@ import {
   ChevronLeft, ChevronRight, CalendarDays, X
 } from "lucide-react";
 import { getErrorMessage } from "@/lib/errors";
+import { supabase } from "@/lib/supabase";
 
 const GOLD = "#D4AF37";
 
@@ -38,7 +39,10 @@ export default function StudentCalendarPage() {
       try {
         const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString();
         const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString();
-        const res = await fetch(`/api/calendar?start=${start}&end=${end}`);
+        const { data: { session: s } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
+        const res = await fetch(`/api/calendar?start=${start}&end=${end}`, { headers });
         if (!res.ok) throw new Error("Failed to fetch calendar");
         const data = await res.json();
         setEvents(data.events || []);

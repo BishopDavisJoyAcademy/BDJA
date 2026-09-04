@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "./supabase-server";
 import { checkAccountLockout } from "./security";
 import { ValidatedSession, AuthError, UserRole, UserCategory } from "@/types";
@@ -9,30 +10,59 @@ function isAccountSuspended(value: unknown): value is false {
 }
 
 /**
- * Extract Bearer token from Authorization header.
- * Falls back to Supabase auth cookie if no header present.
+ * Extract the Supabase access token from the request.
+ * Priority:
+ * 1. Authorization: Bearer <token> header
+ * 2. Supabase SSR auth cookie (sb-<ref>-auth-token)
  */
-function extractToken(req: Request): string {
+async function extractToken(req: Request): Promise<string> {
+  // 1. Try Authorization header
   const authHeader = req.headers.get("authorization");
-  let token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  if (bearerToken) return bearerToken;
 
-  if (!token) {
-    const cookieHeader = req.headers.get("cookie") || "";
-    // Supabase SSR cookies: sb-<project-ref>-auth-token=["access_token","refresh_token",...]
-    const authTokenMatch = cookieHeader.match(/sb-[^=]+-auth-token=([^;]+)/);
-    if (authTokenMatch) {
-      try {
-        const parsed = JSON.parse(decodeURIComponent(authTokenMatch[1]));
-        if (Array.isArray(parsed) && typeof parsed[0] === "string") {
-          token = parsed[0];
+  // 2. Try Supabase SSR cookies via Next.js 15 cookies() API
+  try {
+    const cookieStore = await cookies();
+    // Supabase SSR cookie names: sb-<project-ref>-auth-token
+    const allCookies = cookieStore.getAll();
+    for (const cookie of allCookies) {
+      if (cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token")) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(cookie.value));
+          // Format: ["access_token", "refresh_token", ...]
+          if (Array.isArray(parsed) && typeof parsed[0] === "string" && parsed[0].length > 20) {
+            return parsed[0];
+          }
+        } catch {
+          // Not the JSON array format, try raw token
+          if (cookie.value.length > 20) {
+            return decodeURIComponent(cookie.value);
+          }
         }
-      } catch {
-        // Cookie format not as expected — ignore
+      }
+    }
+  } catch {
+    // cookies() may fail in non-App-Router contexts — ignore
+  }
+
+  // 3. Fallback: parse Cookie header string manually (for edge cases)
+  const cookieHeader = req.headers.get("cookie") || "";
+  const authTokenMatch = cookieHeader.match(/sb-[^=;\s]+-auth-token=([^;]+)/);
+  if (authTokenMatch) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(authTokenMatch[1]));
+      if (Array.isArray(parsed) && typeof parsed[0] === "string" && parsed[0].length > 20) {
+        return parsed[0];
+      }
+    } catch {
+      if (authTokenMatch[1].length > 20) {
+        return decodeURIComponent(authTokenMatch[1]);
       }
     }
   }
 
-  return token;
+  return "";
 }
 
 export async function validateSession(token: string): Promise<{ session: ValidatedSession | null; error: AuthError | null }> {
@@ -156,7 +186,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
 }
 
 export async function requireAuth(req: Request): Promise<ValidatedSession> {
-  const token = extractToken(req);
+  const token = await extractToken(req);
 
   const { session, error } = await validateSession(token);
   if (!session || error) {

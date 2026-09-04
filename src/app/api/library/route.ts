@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
     const campusId = searchParams.get("campus_id");

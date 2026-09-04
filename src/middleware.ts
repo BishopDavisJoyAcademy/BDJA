@@ -35,6 +35,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/vora/public",
   "/api/onboarding",
   "/api/pages/public",
+  "/api/library",
 ];
 
 const STATIC_ASSETS = ["/_next", "/static", "/favicon.ico", "/logo", "/images", "/grades", "/slides", "/manifest.json"];

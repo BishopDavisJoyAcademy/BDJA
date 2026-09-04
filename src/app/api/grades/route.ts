@@ -44,7 +44,11 @@ export async function GET(req: NextRequest) {
 
     let query = admin
       .from("assessments")
-      .select("*, profiles:student_id(full_name, id), subjects:subject_id(name, code), classes:class_id(name, grade_level)");
+      .select(`
+        *,
+        subjects:subject_id(name, code),
+        classes:class_id(name, grade_level)
+      `);
 
     if (studentId) query = query.eq("student_id", studentId);
     if (term) query = query.eq("term", term);

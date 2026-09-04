@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     let query = admin
       .from("fee_payments")
-      .select("*, profiles:student_id(full_name, id), fee_structures:fee_structure_id(grade_level, term, academic_year)");
+      .select("*, fee_structures:fee_structure_id(grade_level, term, academic_year)");
 
     if (studentId) query = query.eq("student_id", studentId);
     if (status) query = query.eq("status", status);

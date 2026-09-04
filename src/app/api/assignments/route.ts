@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
       query = query.eq("class_id", student.class_id);
     } else if (session.userCategory === "parent") {
       const { data: children } = await admin
-        .from("parent_children")
+        .from("parent_students")
         .select("student_id")
         .eq("parent_id", session.userId);
       const childIds = children?.map((c) => c.student_id) || [];

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     let query = admin
       .from("attendance")
-      .select("*, profiles:student_id(full_name, id), classes:class_id(name, grade_level)");
+      .select("*, classes:class_id(name, grade_level)");
 
     if (classId) query = query.eq("class_id", classId);
     if (date) query = query.eq("date", date);

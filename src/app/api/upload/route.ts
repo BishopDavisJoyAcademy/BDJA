@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase-client";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/security";
-import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +11,12 @@ const ALLOWED_TYPES = [
   "image/png",
   "image/webp",
   "image/gif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain",
 ];
 
 interface AuthUser {
@@ -24,15 +29,13 @@ interface AuthUser {
 
 /**
  * Authenticate using cookies — identical to middleware.
- * No Authorization header. No localStorage token.
- * Browser sends cookies automatically with credentials: "include".
  */
 async function authenticateFromCookies(): Promise<AuthUser | null> {
   try {
     const supabase = await createClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      console.warn("[upload-sign] Cookie auth: no user", userError?.message);
+      console.warn("[upload] Cookie auth: no user", userError?.message);
       return null;
     }
 
@@ -44,13 +47,13 @@ async function authenticateFromCookies(): Promise<AuthUser | null> {
       .limit(1);
 
     if (profileError || !rows || rows.length === 0) {
-      console.warn("[upload-sign] Cookie auth: profile missing", profileError?.message);
+      console.warn("[upload] Cookie auth: profile missing", profileError?.message);
       return null;
     }
 
     const profile = rows[0];
     if (profile.is_active === false) {
-      console.warn("[upload-sign] Cookie auth: suspended", user.id);
+      console.warn("[upload] Cookie auth: suspended", user.id);
       return null;
     }
 
@@ -62,8 +65,40 @@ async function authenticateFromCookies(): Promise<AuthUser | null> {
       fullName: profile.full_name,
     };
   } catch (err) {
-    console.error("[upload-sign] Cookie auth crashed:", err);
+    console.error("[upload] Cookie auth crashed:", err);
     return null;
+  }
+}
+
+/**
+ * Ensure the bdja-uploads bucket exists. Creates it if missing.
+ */
+async function ensureBucket(admin: ReturnType<typeof getSupabaseAdmin>): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { data: buckets, error: listError } = await admin.storage.listBuckets();
+    if (listError) {
+      return { ok: false, error: `Failed to list buckets: ${listError.message}` };
+    }
+
+    const exists = buckets?.some((b) => b.name === "bdja-uploads");
+    if (exists) return { ok: true };
+
+    console.info("[upload] Bucket 'bdja-uploads' not found — creating...");
+    const { error: createError } = await admin.storage.createBucket("bdja-uploads", {
+      public: true,
+      fileSizeLimit: 10485760, // 10 MB
+      allowedMimeTypes: ALLOWED_TYPES,
+    });
+
+    if (createError) {
+      return { ok: false, error: `Failed to create bucket: ${createError.message}` };
+    }
+
+    console.info("[upload] Bucket 'bdja-uploads' created successfully");
+    return { ok: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `Bucket check failed: ${msg}` };
   }
 }
 
@@ -71,32 +106,26 @@ async function authenticateFromCookies(): Promise<AuthUser | null> {
  * POST /api/upload
  * Body: { filename: string, contentType: string }
  * Returns: { signedUrl: string, publicUrl: string, path: string, token: string }
- *
- * This is the signed URL pattern used by WhatsApp, Instagram, AWS S3, and Supabase.
- * The server validates auth, generates a signed upload URL, and returns it.
- * The client then uploads the file DIRECTLY to Supabase Storage via XMLHttpRequest.
- * Zero server bandwidth. Real upload progress. No Vercel body limits.
  */
 export async function POST(req: NextRequest) {
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   try {
-    console.info(`[upload-sign:${requestId}] Step 1: Authenticating via cookies`);
+    console.info(`[upload:${requestId}] Step 1: Authenticating via cookies`);
     const authUser = await authenticateFromCookies();
     if (!authUser) {
-      console.info(`[upload-sign:${requestId}] Step 1a: Auth failed — 401`);
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-    console.info(`[upload-sign:${requestId}] Step 2: Auth OK — ${authUser.userId}`);
+    console.info(`[upload:${requestId}] Step 2: Auth OK — ${authUser.userId}`);
 
-    console.info(`[upload-sign:${requestId}] Step 3: Rate limit check`);
+    console.info(`[upload:${requestId}] Step 3: Rate limit check`);
     const identifier = getClientIP(req) + ":upload";
     const { success: rateOk } = await rateLimit(identifier, RATE_LIMITS.upload);
     if (!rateOk) {
       return NextResponse.json({ error: "Too many uploads. Try again later." }, { status: 429 });
     }
 
-    console.info(`[upload-sign:${requestId}] Step 4: Parsing request body`);
+    console.info(`[upload:${requestId}] Step 4: Parsing request body`);
     const body = await req.json();
     const { filename, contentType } = body;
 
@@ -109,27 +138,33 @@ export async function POST(req: NextRequest) {
 
     const ext = contentType === "image/png" ? "png" : contentType === "image/gif" ? "gif" : "webp";
     const path = `avatars/${Date.now()}_${authUser.userId.slice(0, 8)}.${ext}`;
-    console.info(`[upload-sign:${requestId}] Step 5: Target path: ${path}`);
+    console.info(`[upload:${requestId}] Step 5: Target path: ${path}`);
 
-    console.info(`[upload-sign:${requestId}] Step 6: Generating signed URL`);
+    console.info(`[upload:${requestId}] Step 6: Ensuring bucket exists`);
     const admin = getSupabaseAdmin();
+    const bucketCheck = await ensureBucket(admin);
+    if (!bucketCheck.ok) {
+      console.error(`[upload:${requestId}] Bucket error:`, bucketCheck.error);
+      return NextResponse.json({ error: bucketCheck.error }, { status: 500 });
+    }
 
+    console.info(`[upload:${requestId}] Step 7: Generating signed URL`);
     const { data: signedData, error: signedError } = await admin.storage
       .from("bdja-uploads")
       .createSignedUploadUrl(path);
 
     if (signedError || !signedData) {
-      console.error(`[upload-sign:${requestId}] Signed URL failed:`, signedError);
+      console.error(`[upload:${requestId}] Signed URL failed:`, signedError);
       return NextResponse.json(
-        { error: `Storage error: ${signedError?.message || "Unknown"}` },
+        { error: `Storage error: ${signedError?.message || "Could not generate upload URL"}` },
         { status: 500 }
       );
     }
 
-    console.info(`[upload-sign:${requestId}] Step 7: Getting public URL`);
+    console.info(`[upload:${requestId}] Step 8: Getting public URL`);
     const { data: publicData } = admin.storage.from("bdja-uploads").getPublicUrl(path);
 
-    console.info(`[upload-sign:${requestId}] Step 8: Returning signed URL`);
+    console.info(`[upload:${requestId}] Step 9: Returning signed URL`);
     return NextResponse.json({
       signedUrl: signedData.signedUrl,
       publicUrl: publicData.publicUrl,
@@ -139,7 +174,7 @@ export async function POST(req: NextRequest) {
 
   } catch (error: unknown) {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error(`[upload-sign:${requestId}] CRASH:`, err.name, err.message);
+    console.error(`[upload:${requestId}] CRASH:`, err.name, err.message);
     return NextResponse.json(
       { error: `Upload setup failed: ${err.message}` },
       { status: 500 }

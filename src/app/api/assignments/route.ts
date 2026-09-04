@@ -7,7 +7,44 @@ import { getClientIP } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
-// GET — role-scoped assignment list
+/* ─── Types ─── */
+interface AssignmentRow {
+  id: string;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  status: string | null;
+  max_score: number | null;
+  attachments: unknown | null;
+  rubric: unknown | null;
+  created_at: string | null;
+  class_id: string;
+  subject_id: string;
+  teacher_id: string;
+  classes: { name: string | null; grade_level: string | null } | null;
+  subjects: { name: string | null; code: string | null } | null;
+}
+
+interface FlattenedAssignment {
+  id: string;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  status: string | null;
+  max_score: number | null;
+  attachments: unknown | null;
+  rubric: unknown | null;
+  created_at: string | null;
+  class_id: string;
+  subject_id: string;
+  teacher_id: string;
+  class_name: string | null;
+  grade_level: string | null;
+  subject_name: string | null;
+  subject_code: string | null;
+}
+
+/* ─── GET: role-scoped assignment list ─── */
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
@@ -27,7 +64,6 @@ export async function GET(req: NextRequest) {
 
     // Role-based filtering
     if (session.userCategory === "student") {
-      // Get student's class_id
       const { data: student } = await admin
         .from("students")
         .select("class_id")
@@ -38,7 +74,6 @@ export async function GET(req: NextRequest) {
       }
       query = query.eq("class_id", student.class_id);
     } else if (session.userCategory === "parent") {
-      // Get parent's children's class_ids
       const { data: children } = await admin
         .from("parent_children")
         .select("student_id")
@@ -50,13 +85,16 @@ export async function GET(req: NextRequest) {
         .from("students")
         .select("class_id")
         .in("id", childIds);
-      const classIds = [...new Set(students?.map((s) => s.class_id).filter(Boolean) || [])];
+      const classIds = Array.from(
+        new Set(
+          (students || [])
+            .map((s) => s.class_id)
+            .filter((c): c is string => !!c)
+        )
+      );
       if (classIds.length === 0) return NextResponse.json({ assignments: [] });
       query = query.in("class_id", classIds);
     } else if (session.userCategory === "staff") {
-      // Teacher sees assignments for:
-      // 1. Classes where they are class_teacher_id
-      // 2. Class_subjects where they are the teacher
       const [{ data: ctClasses }, { data: csSubjects }] = await Promise.all([
         admin.from("classes").select("id").eq("class_teacher_id", session.userId),
         admin.from("class_subjects").select("class_id, subject_id").eq("teacher_id", session.userId),
@@ -64,7 +102,7 @@ export async function GET(req: NextRequest) {
 
       const ctClassIds = ctClasses?.map((c) => c.id) || [];
       const csClassIds = csSubjects?.map((c) => c.class_id) || [];
-      const allClassIds = [...new Set([...ctClassIds, ...csClassIds])];
+      const allClassIds = Array.from(new Set([...ctClassIds, ...csClassIds]));
 
       if (allClassIds.length === 0) {
         return NextResponse.json({ assignments: [] });
@@ -83,14 +121,28 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch assignments" }, { status: 500 });
     }
 
-    // Flatten joined data
-    const assignments = (data || []).map((a: Record<string, unknown>) => ({
-      ...a,
-      class_name: (a.classes as Record<string, string> | null)?.name || null,
-      grade_level: (a.classes as Record<string, string> | null)?.grade_level || null,
-      subject_name: (a.subjects as Record<string, string> | null)?.name || null,
-      subject_code: (a.subjects as Record<string, string> | null)?.code || null,
-    }));
+    // Flatten joined data with explicit typing
+    const assignments: FlattenedAssignment[] = (data || []).map((a) => {
+      const row = a as unknown as AssignmentRow;
+      return {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        due_date: row.due_date,
+        status: row.status,
+        max_score: row.max_score,
+        attachments: row.attachments,
+        rubric: row.rubric,
+        created_at: row.created_at,
+        class_id: row.class_id,
+        subject_id: row.subject_id,
+        teacher_id: row.teacher_id,
+        class_name: row.classes?.name || null,
+        grade_level: row.classes?.grade_level || null,
+        subject_name: row.subjects?.name || null,
+        subject_code: row.subjects?.code || null,
+      };
+    });
 
     return NextResponse.json({ assignments });
   } catch (error: unknown) {
@@ -105,7 +157,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST — create assignment (teacher/admin only)
+/* ─── POST: create assignment (teacher/admin only) ─── */
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(req);
@@ -121,7 +173,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "class_id and subject_id are required" }, { status: 400 });
       }
 
-      // Check if teacher is class teacher OR teaches this subject in this class
       const [{ data: ctClass }, { data: csEntry }] = await Promise.all([
         admin.from("classes").select("id").eq("id", class_id).eq("class_teacher_id", session.userId).maybeSingle(),
         admin.from("class_subjects").select("id").eq("class_id", class_id).eq("subject_id", subject_id).eq("teacher_id", session.userId).maybeSingle(),
@@ -142,7 +193,7 @@ export async function POST(req: NextRequest) {
       class_id: body.class_id,
       subject_id: body.subject_id,
       teacher_id: session.userId,
-      max_score: body.max_score || 100,
+      max_score: body.max_score ?? 100,
       status: body.status || "published",
       attachments: body.attachments || null,
       rubric: body.rubric || null,
@@ -158,7 +209,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to create assignment" }, { status: 500 });
     }
 
-    // Audit log
     await logAudit({
       user_id: session.userId,
       action: "ASSIGNMENT_CREATED",

@@ -7,6 +7,15 @@ import { getClientIP } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
+/* ─── Types ─── */
+interface AssignmentRow {
+  id: string;
+  teacher_id: string;
+  class_id: string;
+  max_score: number | null;
+}
+
+/* ─── PUT: grade a submission ─── */
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireAuth(req);
@@ -19,15 +28,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "student_id and score are required" }, { status: 400 });
     }
 
-    const { data: assignment } = await admin
+    const { data: rawAssignment } = await admin
       .from("assignments")
       .select("id, teacher_id, class_id, max_score")
       .eq("id", assignmentId)
       .maybeSingle();
 
-    if (!assignment) {
+    if (!rawAssignment) {
       return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
     }
+
+    const assignment = rawAssignment as unknown as AssignmentRow;
 
     if (session.userCategory === "staff") {
       const [{ data: ctClass }, { data: csEntry }] = await Promise.all([

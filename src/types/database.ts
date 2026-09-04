@@ -313,6 +313,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          max_score: number | null
           rubric: Json | null
           status: string | null
           subject_id: string
@@ -327,6 +328,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          max_score?: number | null
           rubric?: Json | null
           status?: string | null
           subject_id: string
@@ -341,6 +343,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          max_score?: number | null
           rubric?: Json | null
           status?: string | null
           subject_id?: string

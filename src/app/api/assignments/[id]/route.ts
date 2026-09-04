@@ -5,13 +5,45 @@ import { getErrorMessage, isAuthError, getErrorStatusCode } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
+/* ─── Types ─── */
+interface AssignmentRow {
+  id: string;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  status: string | null;
+  max_score: number | null;
+  attachments: unknown | null;
+  rubric: unknown | null;
+  created_at: string | null;
+  class_id: string;
+  subject_id: string;
+  teacher_id: string;
+  classes: { name: string | null; grade_level: string | null } | null;
+  subjects: { name: string | null; code: string | null } | null;
+}
+
+interface SubmissionRow {
+  id: string;
+  assignment_id: string;
+  student_id: string;
+  content: string | null;
+  attachments: unknown | null;
+  status: string | null;
+  submitted_at: string | null;
+  grade: unknown | null;
+  graded_at: string | null;
+  graded_by: string | null;
+}
+
+/* ─── GET: single assignment with access control ─── */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
     const { id } = await params;
 
-    const { data: assignment } = await admin
+    const { data: rawAssignment } = await admin
       .from("assignments")
       .select(`
         id, title, description, due_date, status, max_score, attachments, rubric, created_at,
@@ -22,10 +54,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .eq("id", id)
       .maybeSingle();
 
-    if (!assignment) {
+    if (!rawAssignment) {
       return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
     }
 
+    const assignment = rawAssignment as unknown as AssignmentRow;
+
+    // Access control
     if (session.userCategory === "student") {
       const { data: student } = await admin
         .from("students")
@@ -45,7 +80,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    let mySubmission = null;
+    // Fetch student's own submission if applicable
+    let mySubmission: SubmissionRow | null = null;
     if (session.userCategory === "student") {
       const { data: sub } = await admin
         .from("assignment_submissions")
@@ -53,16 +89,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         .eq("assignment_id", id)
         .eq("student_id", session.userId)
         .maybeSingle();
-      mySubmission = sub;
+      mySubmission = sub as unknown as SubmissionRow | null;
     }
 
     return NextResponse.json({
       assignment: {
-        ...assignment,
-        class_name: (assignment.classes as Record<string, string> | null)?.name || null,
-        grade_level: (assignment.classes as Record<string, string> | null)?.grade_level || null,
-        subject_name: (assignment.subjects as Record<string, string> | null)?.name || null,
-        subject_code: (assignment.subjects as Record<string, string> | null)?.code || null,
+        id: assignment.id,
+        title: assignment.title,
+        description: assignment.description,
+        due_date: assignment.due_date,
+        status: assignment.status,
+        max_score: assignment.max_score,
+        attachments: assignment.attachments,
+        rubric: assignment.rubric,
+        created_at: assignment.created_at,
+        class_id: assignment.class_id,
+        subject_id: assignment.subject_id,
+        teacher_id: assignment.teacher_id,
+        class_name: assignment.classes?.name || null,
+        grade_level: assignment.classes?.grade_level || null,
+        subject_name: assignment.subjects?.name || null,
+        subject_code: assignment.subjects?.code || null,
       },
       mySubmission,
     });

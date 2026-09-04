@@ -8,6 +8,33 @@ function isAccountSuspended(value: unknown): value is false {
   return value === false;
 }
 
+/**
+ * Extract Bearer token from Authorization header.
+ * Falls back to Supabase auth cookie if no header present.
+ */
+function extractToken(req: Request): string {
+  const authHeader = req.headers.get("authorization");
+  let token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+
+  if (!token) {
+    const cookieHeader = req.headers.get("cookie") || "";
+    // Supabase SSR cookies: sb-<project-ref>-auth-token=["access_token","refresh_token",...]
+    const authTokenMatch = cookieHeader.match(/sb-[^=]+-auth-token=([^;]+)/);
+    if (authTokenMatch) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(authTokenMatch[1]));
+        if (Array.isArray(parsed) && typeof parsed[0] === "string") {
+          token = parsed[0];
+        }
+      } catch {
+        // Cookie format not as expected — ignore
+      }
+    }
+  }
+
+  return token;
+}
+
 export async function validateSession(token: string): Promise<{ session: ValidatedSession | null; error: AuthError | null }> {
   try {
     if (!token || typeof token !== "string") {
@@ -129,8 +156,7 @@ export async function validateSession(token: string): Promise<{ session: Validat
 }
 
 export async function requireAuth(req: Request): Promise<ValidatedSession> {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const token = extractToken(req);
 
   const { session, error } = await validateSession(token);
   if (!session || error) {

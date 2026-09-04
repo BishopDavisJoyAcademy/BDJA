@@ -301,7 +301,7 @@ export default function StudentAnalyticsPage() {
                   />
                   <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                     {performanceDistribution.map((entry, index) => (
-                      <cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Bar>
                 </BarChart>

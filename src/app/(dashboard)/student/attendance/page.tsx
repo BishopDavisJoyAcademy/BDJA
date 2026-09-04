@@ -77,7 +77,7 @@ export default function StudentAttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [currentDate]);
+  }, []);
 
   useEffect(() => {
     fetchAttendance();

@@ -77,7 +77,7 @@ export default function StudentAttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [year, month]);
+  }, [currentDate]);
 
   useEffect(() => {
     fetchAttendance();
@@ -296,7 +296,7 @@ export default function StudentAttendancePage() {
                 style={{
                   background: config ? config.bg : "rgba(30, 41, 59, 0.5)",
                   border: `1px solid ${config ? config.border : "rgba(51, 65, 85, 0.3)"}`,
-                  ringColor: day.isToday ? GOLD : undefined,
+                  boxShadow: day.isToday ? `0 0 0 2px ${GOLD}` : undefined,
                 }}
               >
                 <span

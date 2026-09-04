@@ -47,7 +47,12 @@ const adminNav: NavItem[] = [
 const staffNav: NavItem[] = [
   { label: "Dashboard", href: "/teacher", icon: LayoutDashboard },
   { label: "Students", href: "/teacher/students", icon: GraduationCap },
-  { label: "Calendar", href: "/manage/calendar", icon: Calendar },
+  { label: "Class Dashboard", href: "/teacher/class-dashboard", icon: BarChart3 },
+  { label: "Marks", href: "/teacher/marks", icon: Award },
+  { label: "Assignments", href: "/teacher/assignments", icon: FileText },
+  { label: "VORA", href: "/teacher/vora", icon: Video },
+  { label: "Registers", href: "/teacher/registers", icon: ClipboardCheck },
+  { label: "Timetables", href: "/teacher/timetables", icon: Calendar },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

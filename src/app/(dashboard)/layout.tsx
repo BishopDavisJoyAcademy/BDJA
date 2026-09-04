@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, GraduationCap, FileText, MessageSquare, BarChart3, Shield, Settings, Bug,
   BookOpen, Video, Building2, Calendar, LogOut, ChevronDown, ChevronRight, Sparkles,
   Wrench, UserCog, AlertTriangle, Globe, PlusCircle, X, Menu, AlertCircle,
-  ClipboardCheck, Receipt, Award
+  ClipboardCheck, Receipt, Award, Megaphone
 } from "lucide-react";
 import { ADMIN_SEGMENT } from "@/lib/constants";
 import { JoyChat } from "@/components/joy/JoyChat";
@@ -56,6 +56,8 @@ const studentNav: NavItem[] = [
   { label: "Assignments", href: "/student/assignments", icon: BookOpen },
   { label: "Attendance", href: "/student/attendance", icon: ClipboardCheck },
   { label: "Grades", href: "/student/grades", icon: Award },
+  { label: "Analytics", href: "/student/analytics", icon: BarChart3 },
+  { label: "Announcements", href: "/student/announcements", icon: Megaphone },
   { label: "Fees", href: "/student/fees", icon: Receipt },
   { label: "Calendar", href: "/student/calendar", icon: Calendar },
   { label: "Settings", href: "/settings", icon: Settings },

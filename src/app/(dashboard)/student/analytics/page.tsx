@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  BarChart, Bar, Legend,
+  BarChart, Bar, Cell, Legend,
 } from "recharts";
 import {
   TrendingUp, Award, BookOpen, Target, Loader2, AlertCircle,

@@ -45,7 +45,14 @@ export async function GET(req: NextRequest) {
     // Get student info
     const { data: student } = await admin
       .from("students")
-      .select("*, classes:class_id(name, grade_level, class_teacher_id), profiles:student_id(full_name, email, avatar_url)")
+      .select("*, classes:class_id(name, grade_level, class_teacher_id)")
+      .eq("id", studentId)
+      .maybeSingle();
+
+    // Get profile info separately
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("full_name, email, avatar_url")
       .eq("id", studentId)
       .maybeSingle();
 
@@ -166,9 +173,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       student: {
         id: studentId,
-        name: student.profiles?.full_name || "",
-        email: student.profiles?.email || "",
-        avatar_url: student.profiles?.avatar_url || null,
+        name: profile?.full_name || "" || "",
+        email: profile?.email || "" || "",
+        avatar_url: profile?.avatar_url || null || null,
         admission_number: student.admission_number || "",
         class_name: student.classes?.name || "",
         grade_level: student.classes?.grade_level || "",

@@ -78,6 +78,8 @@ interface ReportCardData {
     principal_remarks: string | null;
     status: string | null;
     generated_at: string | null;
+    parent_acknowledged: boolean | null;
+    parent_acknowledged_at: string | null;
   } | null;
 }
 
@@ -214,7 +216,7 @@ export default function StudentReportCardPage() {
             value={selectedTerm}
             onChange={(e) => setSelectedTerm(e.target.value)}
             className="px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-white focus:outline-none focus:ring-2"
-            style={{ focusRingColor: GOLD }}
+            
           >
             {TERMS.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>

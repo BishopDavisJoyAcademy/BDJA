@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
@@ -116,7 +117,13 @@ export default function TeacherVoraPage() {
   });
 
   const uniqueGrades = Array.from(new Set(content.map((c) => c.grade_level).filter(Boolean)));
-  const uniqueSubjects = Array.from(new Map(content.filter((c) => c.subject_id).map((c) => [c.subject_id, c.subjects?.name || ""])).entries());
+  const uniqueSubjects = Array.from(
+    new Map(
+      content
+        .filter((c) => c.subject_id != null)
+        .map((c) => [c.subject_id!, c.subjects?.name || ""] as [string, string])
+    ).entries()
+  );
 
   if (loading) {
     return (
@@ -193,7 +200,7 @@ export default function TeacherVoraPage() {
           >
             <div className="relative aspect-video bg-slate-800 flex items-center justify-center">
               {item.thumbnail_url ? (
-                <img src={item.thumbnail_url} alt={item.title} className="w-full h-full object-cover" />
+                <Image src={item.thumbnail_url} alt={item.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
               ) : (
                 <Video className="w-10 h-10 text-slate-600" />
               )}

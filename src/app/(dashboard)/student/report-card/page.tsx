@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
@@ -244,7 +245,7 @@ export default function StudentReportCardPage() {
           {/* School Header */}
           <div className="text-center border-b-2 pb-6 mb-6" style={{ borderColor: GOLD }}>
             {data?.school.logo_url && (
-              <img src={data.school.logo_url} alt="School Logo" className="w-16 h-16 mx-auto mb-3 object-contain" />
+              <Image src={data.school.logo_url} alt="School Logo" width={64} height={64} className="mx-auto mb-3 object-contain" />
             )}
             <h2 className="text-2xl font-bold text-slate-900">{data?.school.school_name || "Bishop Davis Joy Academy"}</h2>
             <div className="flex items-center justify-center gap-4 mt-2 text-xs text-slate-500">

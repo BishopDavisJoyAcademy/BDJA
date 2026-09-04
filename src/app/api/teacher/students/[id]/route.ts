@@ -48,7 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Fetch student profile
     const { data: profile } = await admin
       .from("profiles")
-      .select("id, full_name, email, avatar_url, phone, date_of_birth, gender, address")
+      .select("id, full_name, email, avatar_url, phone")
       .eq("id", studentId)
       .maybeSingle();
 
@@ -156,9 +156,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         email: profile?.email || "",
         avatar_url: profile?.avatar_url || null,
         phone: profile?.phone || "",
-        date_of_birth: profile?.date_of_birth || null,
-        gender: profile?.gender || "",
-        address: profile?.address || "",
+        date_of_birth: studentRecord?.date_of_birth || null,
+        gender: "",
+        address: "",
         admission_number: studentRecord?.admission_number || "",
         class_name: studentRecord?.classes?.name || "",
         grade_level: studentRecord?.classes?.grade_level || "",

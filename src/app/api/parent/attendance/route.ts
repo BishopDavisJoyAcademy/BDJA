@@ -10,15 +10,16 @@ export async function GET(req: NextRequest) {
     const session = await requireAuth(req);
     const { searchParams } = new URL(req.url);
     const childId = searchParams.get("child_id");
-    const term = searchParams.get("term");
-    const year = searchParams.get("year");
+    const startDate = searchParams.get("start_date");
+    const endDate = searchParams.get("end_date");
 
     if (!childId) {
       return NextResponse.json({ error: "child_id is required" }, { status: 400 });
     }
 
-    // Verify this child belongs to the parent
     const admin = getSupabaseAdmin();
+
+    // Verify parent access
     const { data: authCheck } = await admin
       .from("parent_children")
       .select("id")
@@ -26,7 +27,6 @@ export async function GET(req: NextRequest) {
       .eq("student_id", childId)
       .limit(1);
 
-    // Fallback to legacy
     let authorized = (authCheck && authCheck.length > 0);
     if (!authorized) {
       const { data: legacyCheck } = await admin
@@ -39,34 +39,43 @@ export async function GET(req: NextRequest) {
     }
 
     if (!authorized) {
-      return NextResponse.json({ error: "You do not have access to this child" }, { status: 403 });
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     let query = admin
-      .from("assessments")
+      .from("attendance")
       .select(`
         *,
-        subjects:subject_id(name, code),
-        classes:class_id(name, grade_level)
+        subjects:subject_id(name),
+        classes:class_id(name),
+        profiles:marked_by(full_name)
       `)
       .eq("student_id", childId);
 
-    if (term) query = query.eq("term", term);
-    if (year) query = query.eq("academic_year", year);
+    if (startDate) query = query.gte("date", startDate);
+    if (endDate) query = query.lte("date", endDate);
 
-    const { data: grades, error } = await query.order("created_at", { ascending: false });
+    const { data, error } = await query.order("date", { ascending: false });
 
     if (error) {
-      console.error("[api/parent/grades] Supabase error:", error);
-      return NextResponse.json({ error: "Failed to fetch grades" }, { status: 500 });
+      console.error("[api/parent/attendance] Supabase error:", error);
+      return NextResponse.json({ error: "Failed to fetch attendance" }, { status: 500 });
     }
 
-    return NextResponse.json({ grades: grades || [] });
+    // Calculate stats
+    const stats = { present: 0, absent: 0, late: 0, excused: 0, total: 0 };
+    (data || []).forEach((r: Record<string, unknown>) => {
+      const status = (r.status as string)?.toLowerCase();
+      if (status in stats) stats[status as keyof typeof stats]++;
+      stats.total++;
+    });
+
+    return NextResponse.json({ attendance: data || [], stats });
   } catch (error: unknown) {
     if (isAuthError(error)) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
-    console.error("[api/parent/grades] Error:", error);
+    console.error("[api/parent/attendance] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

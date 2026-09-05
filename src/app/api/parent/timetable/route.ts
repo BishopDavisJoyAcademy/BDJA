@@ -10,15 +10,14 @@ export async function GET(req: NextRequest) {
     const session = await requireAuth(req);
     const { searchParams } = new URL(req.url);
     const childId = searchParams.get("child_id");
-    const term = searchParams.get("term");
-    const year = searchParams.get("year");
 
     if (!childId) {
       return NextResponse.json({ error: "child_id is required" }, { status: 400 });
     }
 
-    // Verify this child belongs to the parent
     const admin = getSupabaseAdmin();
+
+    // Verify parent access
     const { data: authCheck } = await admin
       .from("parent_children")
       .select("id")
@@ -26,7 +25,6 @@ export async function GET(req: NextRequest) {
       .eq("student_id", childId)
       .limit(1);
 
-    // Fallback to legacy
     let authorized = (authCheck && authCheck.length > 0);
     if (!authorized) {
       const { data: legacyCheck } = await admin
@@ -39,34 +37,43 @@ export async function GET(req: NextRequest) {
     }
 
     if (!authorized) {
-      return NextResponse.json({ error: "You do not have access to this child" }, { status: 403 });
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    let query = admin
-      .from("assessments")
+    // Get student's class
+    const { data: studentRow } = await admin
+      .from("students")
+      .select("class_id")
+      .eq("id", childId)
+      .maybeSingle();
+
+    const classId = studentRow?.class_id;
+    if (!classId) {
+      return NextResponse.json({ timetable: [] });
+    }
+
+    const { data, error } = await admin
+      .from("timetable")
       .select(`
         *,
         subjects:subject_id(name, code),
-        classes:class_id(name, grade_level)
+        profiles:teacher_id(full_name)
       `)
-      .eq("student_id", childId);
-
-    if (term) query = query.eq("term", term);
-    if (year) query = query.eq("academic_year", year);
-
-    const { data: grades, error } = await query.order("created_at", { ascending: false });
+      .eq("class_id", classId)
+      .order("day_of_week", { ascending: true })
+      .order("start_time", { ascending: true });
 
     if (error) {
-      console.error("[api/parent/grades] Supabase error:", error);
-      return NextResponse.json({ error: "Failed to fetch grades" }, { status: 500 });
+      console.error("[api/parent/timetable] Supabase error:", error);
+      return NextResponse.json({ error: "Failed to fetch timetable" }, { status: 500 });
     }
 
-    return NextResponse.json({ grades: grades || [] });
+    return NextResponse.json({ timetable: data || [] });
   } catch (error: unknown) {
     if (isAuthError(error)) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: getErrorStatusCode(error) || 401 });
     }
-    console.error("[api/parent/grades] Error:", error);
+    console.error("[api/parent/timetable] Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -150,7 +150,7 @@ export default function TeacherMarksPage() {
   }, [getHeaders]);
 
   // Fetch students + existing grades
-  const fetchStudentsAndGrades = useCallback(async (classId: string, subjectId: string, termVal: string, yearVal: string) => {
+  const fetchStudentsAndGrades = useCallback(async (classId: string, subjectId: string, termVal: string, yearVal: string, maxScoreOverride?: string) => {
     if (!classId || !subjectId) return;
     setFetchingStudents(true);
     setError("");
@@ -183,7 +183,7 @@ export default function TeacherMarksPage() {
         initialMarks[s.id] = {
           student_id: s.id,
           score: eg?.score != null ? String(eg.score) : "",
-          max_score: eg?.max_score != null ? String(eg.max_score) : globalMaxScore,
+          max_score: eg?.max_score != null ? String(eg.max_score) : (maxScoreOverride || globalMaxScore),
           performance_level: (eg?.performance_level as MarkEntry["performance_level"]) || "meeting",
           strand: eg?.strand || selectedStrand,
           sub_strand: eg?.sub_strand || selectedSubStrand,
@@ -199,7 +199,7 @@ export default function TeacherMarksPage() {
       setFetchingStudents(false);
       setLoading(false);
     }
-  }, [getHeaders, globalMaxScore, selectedStrand, selectedSubStrand]);
+  }, [getHeaders]);
 
   // Initial load
   useEffect(() => {
@@ -218,9 +218,10 @@ export default function TeacherMarksPage() {
   // Load students when class/subject/term/year changes
   useEffect(() => {
     if (selectedClass && selectedSubject) {
-      fetchStudentsAndGrades(selectedClass, selectedSubject, term, academicYear);
+      fetchStudentsAndGrades(selectedClass, selectedSubject, term, academicYear, globalMaxScore);
     }
-  }, [selectedClass, selectedSubject, term, academicYear, fetchStudentsAndGrades]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClass, selectedSubject, term, academicYear]);
 
   // Update mark field
   const updateMark = useCallback((studentId: string, field: keyof MarkEntry, value: string) => {

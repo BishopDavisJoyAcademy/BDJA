@@ -1678,6 +1678,78 @@ export type Database = {
           },
         ]
       }
+      joy_admin_requests: {
+        Row: {
+          admin_response: string | null
+          category: string | null
+          context: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          priority: string
+          question: string
+          responded_at: string | null
+          responded_by: string | null
+          status: string
+          updated_at: string
+          user_category: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          admin_response?: string | null
+          category?: string | null
+          context?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          question: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          updated_at?: string
+          user_category: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          admin_response?: string | null
+          category?: string | null
+          context?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          question?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          updated_at?: string
+          user_category?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "joy_admin_requests_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "joy_admin_requests_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       joy_analytics: {
         Row: {
           category: string
@@ -1948,6 +2020,36 @@ export type Database = {
           required_permission?: string | null
           suggested_actions?: Json
           updated_at?: string
+        }
+        Relationships: []
+      }
+      joy_page_interactions: {
+        Row: {
+          action_taken: string
+          assistant_suggestion: string | null
+          created_at: string
+          id: string
+          page_route: string
+          successful: boolean | null
+          user_id: string
+        }
+        Insert: {
+          action_taken: string
+          assistant_suggestion?: string | null
+          created_at?: string
+          id?: string
+          page_route: string
+          successful?: boolean | null
+          user_id: string
+        }
+        Update: {
+          action_taken?: string
+          assistant_suggestion?: string | null
+          created_at?: string
+          id?: string
+          page_route?: string
+          successful?: boolean | null
+          user_id?: string
         }
         Relationships: []
       }

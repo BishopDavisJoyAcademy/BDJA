@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 import { Baby, Loader2, Award, UserCheck, BookOpen, Wallet, Clock, CalendarDays } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 const GOLD = "#D4AF37";
@@ -66,7 +67,7 @@ export default function ParentChildProfile() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-6">
             <div className="flex flex-col sm:flex-row items-start gap-5">
               <div className="w-20 h-20 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center shrink-0 overflow-hidden">
-                {profile.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : <Baby className="w-8 h-8" style={{ color: GOLD }} />}
+                {profile.avatar_url ? <Image src={profile.avatar_url} alt="" width={80} height={80} className="w-full h-full object-cover" /> : <Baby className="w-8 h-8" style={{ color: GOLD }} />}
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-xl font-bold text-white">{profile.full_name}</h2>

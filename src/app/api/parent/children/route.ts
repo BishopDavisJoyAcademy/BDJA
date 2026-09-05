@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Also try parent_students as fallback for legacy data
-    let fallbackRows: typeof rows = [];
+    let fallbackRows: Array<Record<string, unknown>> = [];
     if (!rows || rows.length === 0) {
       const { data: legacyRows } = await admin
         .from("parent_students")
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
         const { data: studentRecords } = await admin
           .from("students")
           .select(`id, admission_number, grade_level, class_id, classes(name, grade_level, stream, class_teacher_id), profile_id`)
-          .in("profile_id", profileIds);
+          .in("profile_id", profileIds as string[]);
 
         const studentMap = new Map();
         (studentRecords || []).forEach((s: Record<string, unknown>) => {
@@ -66,9 +66,9 @@ export async function GET(req: NextRequest) {
         });
 
         fallbackRows = legacyRows.map((r: Record<string, unknown>) => {
-          const student = studentMap.get(r.student_id);
+          const student = studentMap.get(r.student_id as string);
           return {
-            student_id: student?.id || r.student_id,
+            student_id: (student as Record<string, unknown>)?.id || r.student_id,
             relationship: r.relationship,
             students: student || null,
             profiles: r.profiles,
@@ -82,7 +82,8 @@ export async function GET(req: NextRequest) {
     // Fetch class teacher names
     const teacherIds = new Set<string>();
     (sourceRows || []).forEach((r: Record<string, unknown>) => {
-      const cls = (r as Record<string, unknown>).students?.classes;
+      const student = r.students as Record<string, unknown> | null;
+      const cls = student?.classes as Record<string, unknown> | null;
       if (cls?.class_teacher_id) teacherIds.add(cls.class_teacher_id);
     });
 
@@ -98,21 +99,21 @@ export async function GET(req: NextRequest) {
     }
 
     const children = (sourceRows || []).map((r: Record<string, unknown>) => {
-      const student = (r as Record<string, unknown>).students;
-      const profile = student?.profiles;
-      const cls = student?.classes;
-      const teacherName = cls?.class_teacher_id ? teacherMap.get(cls.class_teacher_id) : null;
+      const student = r.students as Record<string, unknown> | null;
+      const profile = student?.profiles as Record<string, unknown> | null;
+      const cls = student?.classes as Record<string, unknown> | null;
+      const teacherName = cls?.class_teacher_id ? teacherMap.get(cls.class_teacher_id as string) : null;
 
       return {
         id: r.student_id as string,
-        student_id: student?.id as string,
-        full_name: profile?.full_name as string || "Unknown",
-        admission_number: student?.admission_number as string || "",
-        grade_level: student?.grade_level as string || cls?.grade_level as string || null,
-        class_name: cls?.name as string || null,
-        class_teacher_name: teacherName,
-        avatar_url: profile?.avatar_url as string || null,
-        relationship: r.relationship as string || null,
+        student_id: (student?.id as string) || "",
+        full_name: (profile?.full_name as string) || "Unknown",
+        admission_number: (student?.admission_number as string) || "",
+        grade_level: (student?.grade_level as string) || (cls?.grade_level as string) || null,
+        class_name: (cls?.name as string) || null,
+        class_teacher_name: teacherName || null,
+        avatar_url: (profile?.avatar_url as string) || null,
+        relationship: (r.relationship as string) || null,
       };
     });
 

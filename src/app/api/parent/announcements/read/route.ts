@@ -16,13 +16,23 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = getSupabaseAdmin();
+
+    // Use raw query to avoid type issues with upsert on new tables
     const { data, error } = await admin
       .from("announcement_reads")
-      .upsert({ announcement_id, user_id: session.userId, read_at: new Date().toISOString() }, { onConflict: "announcement_id,user_id" })
+      .insert({
+        announcement_id,
+        user_id: session.userId,
+        read_at: new Date().toISOString(),
+      })
       .select()
       .maybeSingle();
 
     if (error) {
+      // If duplicate, it's already read - that's fine
+      if (error.code === "23505") {
+        return NextResponse.json({ success: true });
+      }
       console.error("[api/parent/announcements/read] Supabase error:", error);
       return NextResponse.json({ error: "Failed to mark as read" }, { status: 500 });
     }

@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 import { MessageSquare, Loader2, Send, ChevronLeft, User, Clock } from "lucide-react";
+import Image from "next/image";
 
 const GOLD = "#D4AF37";
 
@@ -107,7 +108,7 @@ export default function ParentMessages() {
               teachers.map((t) => (
                 <button key={t.id} onClick={() => setSelectedTeacher(t)} className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${selectedTeacher?.id === t.id ? "bg-[#D4AF37]/10 border border-[#D4AF37]/20" : "hover:bg-slate-800/40 border border-transparent"}`}>
                   <div className="w-9 h-9 rounded-full bg-slate-700/50 flex items-center justify-center shrink-0 overflow-hidden">
-                    {t.avatar_url ? <img src={t.avatar_url} alt="" className="w-full h-full object-cover" /> : <User className="w-4 h-4 text-slate-400" />}
+                    {t.avatar_url ? <Image src={t.avatar_url} alt="" width={36} height={36} className="w-full h-full object-cover" /> : <User className="w-4 h-4 text-slate-400" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{t.full_name}</p>
@@ -126,7 +127,7 @@ export default function ParentMessages() {
               <div className="flex items-center gap-3 p-4 border-b border-slate-700/50">
                 <button onClick={() => setView("list")} className="sm:hidden p-1.5 rounded-lg hover:bg-slate-800/50 text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
                 <div className="w-8 h-8 rounded-full bg-slate-700/50 flex items-center justify-center shrink-0 overflow-hidden">
-                  {selectedTeacher.avatar_url ? <img src={selectedTeacher.avatar_url} alt="" className="w-full h-full object-cover" /> : <User className="w-4 h-4 text-slate-400" />}
+                  {selectedTeacher.avatar_url ? <Image src={selectedTeacher.avatar_url} alt="" width={32} height={32} className="w-full h-full object-cover" /> : <User className="w-4 h-4 text-slate-400" />}
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-white truncate">{selectedTeacher.full_name}</p>

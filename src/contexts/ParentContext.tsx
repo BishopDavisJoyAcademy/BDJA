@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Users, Loader2 } from "lucide-react";
+import Image from "next/image";
 
 const GOLD = "#D4AF37";
 

@@ -23,11 +23,25 @@ export async function GET(req: NextRequest) {
       `)
       .or(`target_audience.eq.all,target_audience.eq.parents`)
       .lte("published_at", new Date().toISOString())
-      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order("is_pinned", { ascending: false })
       .order("published_at", { ascending: false });
 
     if (category) query = query.eq("category", category);
+
+    // Handle expires_at filter separately to avoid type issues
+    const { data: rawData, error } = await query;
+
+    if (error) {
+      console.error("[api/parent/announcements] Supabase error:", error);
+      return NextResponse.json({ error: "Failed to fetch announcements" }, { status: 500 });
+    }
+
+    // Filter out expired announcements in JS
+    const now = new Date().toISOString();
+    let data = (rawData || []).filter((a: Record<string, unknown>) => {
+      const expires = a.expires_at as string | null;
+      return !expires || expires > now;
+    });
 
     // If child_id provided, also include class-specific announcements
     if (childId) {
@@ -58,20 +72,41 @@ export async function GET(req: NextRequest) {
           .maybeSingle();
 
         if (studentRow?.class_id) {
-          query = query.or(`target_class_id.eq.${studentRow.class_id},target_grade_level.eq.${studentRow.grade_level}`);
+          const { data: classAnnouncements } = await admin
+            .from("announcements")
+            .select(`
+              *,
+              profiles:created_by(full_name, avatar_url),
+              classes:target_class_id(name, grade_level)
+            `)
+            .eq("target_class_id", studentRow.class_id)
+            .or(`target_grade_level.eq.${studentRow.grade_level}`)
+            .lte("published_at", now)
+            .order("is_pinned", { ascending: false })
+            .order("published_at", { ascending: false });
+
+          const filteredClass = (classAnnouncements || []).filter((a: Record<string, unknown>) => {
+            const expires = a.expires_at as string | null;
+            return !expires || expires > now;
+          });
+
+          // Merge and deduplicate
+          const existingIds = new Set(data.map((a: Record<string, unknown>) => a.id as string));
+          filteredClass.forEach((a: Record<string, unknown>) => {
+            if (!existingIds.has(a.id as string)) data.push(a);
+          });
+
+          // Re-sort
+          data.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+            if (a.is_pinned !== b.is_pinned) return (b.is_pinned as boolean) ? 1 : -1;
+            return new Date(b.published_at as string).getTime() - new Date(a.published_at as string).getTime();
+          });
         }
       }
     }
 
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("[api/parent/announcements] Supabase error:", error);
-      return NextResponse.json({ error: "Failed to fetch announcements" }, { status: 500 });
-    }
-
     // Check read status
-    const announcementIds = (data || []).map((a: Record<string, unknown>) => a.id);
+    const announcementIds = data.map((a: Record<string, unknown>) => a.id as string);
     let readSet = new Set<string>();
     if (announcementIds.length > 0) {
       const { data: reads } = await admin
@@ -82,7 +117,7 @@ export async function GET(req: NextRequest) {
       (reads || []).forEach((r: Record<string, unknown>) => readSet.add(r.announcement_id as string));
     }
 
-    const enriched = (data || []).map((a: Record<string, unknown>) => ({
+    const enriched = data.map((a: Record<string, unknown>) => ({
       ...a,
       is_read: readSet.has(a.id as string),
     }));

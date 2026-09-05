@@ -116,17 +116,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
+    const insertData = {
+      parent_id: session.userId,
+      teacher_id,
+      student_id: child_id,
+      content,
+      sent_by: "parent" as const,
+      read_by_parent: true,
+      read_by_teacher: false,
+    };
+
     const { data, error } = await admin
       .from("parent_teacher_messages")
-      .insert({
-        parent_id: session.userId,
-        teacher_id,
-        student_id: child_id,
-        content,
-        sent_by: "parent",
-        read_by_parent: true,
-        read_by_teacher: false,
-      })
+      .insert(insertData)
       .select()
       .maybeSingle();
 

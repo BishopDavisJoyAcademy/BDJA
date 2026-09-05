@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
         .from("assignment_submissions")
         .select("assignment_id, status, submitted_at, grade")
         .eq("student_id", childId)
-        .in("assignment_id", assignmentIds);
+        .in("assignment_id", assignmentIds as string[]);
       (submissions || []).forEach((s: Record<string, unknown>) => {
         submissionsMap.set(s.assignment_id as string, s);
       });

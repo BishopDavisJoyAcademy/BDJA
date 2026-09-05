@@ -125,13 +125,15 @@ export default function TeacherMarksPage() {
       const data = await res.json();
       const list = data.classes || [];
       setClasses(list);
-      if (list.length > 0 && !selectedClass) {
+      if (list.length > 0) {
         setSelectedClass(list[0].id);
       }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Could not load classes");
+    } finally {
+      setLoading(false);
     }
-  }, [getHeaders, selectedClass]);
+  }, [getHeaders]);
 
   // Fetch subjects for selected class
   const fetchSubjects = useCallback(async (classId: string) => {
@@ -140,10 +142,13 @@ export default function TeacherMarksPage() {
       const res = await fetch(`/api/teacher/subjects?class_id=${classId}`, { headers });
       if (!res.ok) throw new Error("Failed to fetch subjects");
       const data = await res.json();
-      // Filter to subjects this teacher actually teaches for this class
       const teacherSubjects = data.subjects || [];
       setSubjects(teacherSubjects);
-      setSelectedSubject("");
+      if (teacherSubjects.length > 0) {
+        setSelectedSubject(teacherSubjects[0].id);
+      } else {
+        setSelectedSubject("");
+      }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Could not load subjects");
     }

@@ -120,7 +120,7 @@ export default function TeacherAttendanceRegistersPage() {
       const data = await res.json();
       const list = data.classes || [];
       setClasses(list);
-      if (list.length > 0 && !selectedClass) {
+      if (list.length > 0) {
         setSelectedClass(list[0].id);
       }
     } catch (err: unknown) {
@@ -128,7 +128,7 @@ export default function TeacherAttendanceRegistersPage() {
     } finally {
       setLoading(false);
     }
-  }, [getHeaders, selectedClass]);
+  }, [getHeaders]);
 
   // Fetch students for class
   const fetchStudents = useCallback(async (classId: string) => {

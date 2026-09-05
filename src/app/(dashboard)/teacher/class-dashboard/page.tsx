@@ -90,13 +90,13 @@ export default function TeacherClassDashboardPage() {
       const d = await res.json();
       const list = d.classes || [];
       setClasses(list);
-      if (list.length > 0 && !selectedClass) {
+      if (list.length > 0) {
         setSelectedClass(list[0]);
       }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Could not load classes");
     }
-  }, [getHeaders, selectedClass]);
+  }, [getHeaders]);
 
   const fetchDashboard = useCallback(async () => {
     if (!selectedClass) return;

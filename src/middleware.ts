@@ -222,9 +222,27 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  // Parent routes
+  // Parent routes — allow parents, admins, AND students/staff who have children linked
   if (internalPathname.startsWith("/parent/") || internalPathname === "/parent") {
-    if (category !== "parent" && category !== "admin") {
+    if (category === "parent" || category === "admin") {
+      return res;
+    }
+    // Check if user has children linked via parent_children or parent_students
+    const { data: hasChildren } = await admin
+      .from("parent_children")
+      .select("id")
+      .eq("parent_id", user.id)
+      .limit(1);
+    let canAccessParent = (hasChildren && hasChildren.length > 0);
+    if (!canAccessParent) {
+      const { data: legacyChildren } = await admin
+        .from("parent_students")
+        .select("id")
+        .eq("parent_id", user.id)
+        .limit(1);
+      canAccessParent = (legacyChildren && legacyChildren.length > 0);
+    }
+    if (!canAccessParent) {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }

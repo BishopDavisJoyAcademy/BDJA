@@ -77,7 +77,7 @@ export default function JoyKnowledgeManagerPage() {
       setFormData({ key: "", content: "", category: "general", is_public: true });
     }
     setIsModalOpen(true);
-  }, []);
+  }, [formData]);
 
   const handleSave = useCallback(async () => {
     if (!formData.key.trim() || !formData.content.trim()) {

@@ -1,5 +1,3 @@
-"use server";
-
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { requireAuth } from "@/lib/session";
@@ -107,7 +105,7 @@ export async function GET(req: NextRequest) {
         percentage: pct,
         subjectName: a.subjects?.name || "Unknown",
         performanceLevel: a.performance_level,
-        date: a.created_at,
+        date: a.created_at || new Date().toISOString(),
       });
     }
 

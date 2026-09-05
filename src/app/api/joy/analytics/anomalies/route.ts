@@ -1,5 +1,3 @@
-"use server";
-
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { requireAuth } from "@/lib/session";
@@ -59,7 +57,11 @@ export async function GET(req: NextRequest) {
         if (records.length < 2) continue;
 
         // Sort by date
-        records.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        records.sort((a, b) => {
+          const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return da - db;
+        });
 
         // Check for sudden drops (current < previous by > 30%)
         for (let i = 1; i < records.length; i++) {
@@ -82,7 +84,7 @@ export async function GET(req: NextRequest) {
               className: curr.classes?.name || "Unknown",
               description: `Grade dropped ${Math.round(drop)}% in ${curr.subjects?.name || "a subject"}`,
               details: `Previous: ${Math.round(prevPct)}%, Current: ${Math.round(currPct)}%. Student: ${profileMap.get(studentId) || "Unknown"}`,
-              detectedAt: curr.created_at,
+              detectedAt: curr.created_at || new Date().toISOString(),
               recommendedAction: "Verify with teacher for possible data entry error or identify cause of decline.",
             });
           }
@@ -97,7 +99,7 @@ export async function GET(req: NextRequest) {
               className: curr.classes?.name || "Unknown",
               description: `Grade jumped ${Math.round(jump)}% in ${curr.subjects?.name || "a subject"}`,
               details: `Previous: ${Math.round(prevPct)}%, Current: ${Math.round(currPct)}%. Verify for data accuracy.`,
-              detectedAt: curr.created_at,
+              detectedAt: curr.created_at || new Date().toISOString(),
               recommendedAction: "Verify score accuracy with teacher. Could indicate data entry error.",
             });
           }
@@ -115,7 +117,7 @@ export async function GET(req: NextRequest) {
               className: a.classes?.name || "Unknown",
               description: `Invalid max score (0) in ${a.subjects?.name || "subject"}`,
               details: `Assessment ID: ${a.id}. Max score is 0, which is invalid.`,
-              detectedAt: a.created_at,
+              detectedAt: a.created_at || new Date().toISOString(),
               recommendedAction: "Correct the max score in the gradebook immediately.",
             });
           }
@@ -129,7 +131,7 @@ export async function GET(req: NextRequest) {
               className: a.classes?.name || "Unknown",
               description: `Score exceeds max score in ${a.subjects?.name || "subject"}`,
               details: `Score: ${a.score}, Max: ${a.max_score}. Assessment ID: ${a.id}.`,
-              detectedAt: a.created_at,
+              detectedAt: a.created_at || new Date().toISOString(),
               recommendedAction: "URGENT: Score cannot exceed max score. Verify and correct immediately.",
             });
           }

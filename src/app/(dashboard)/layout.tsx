@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -106,12 +107,33 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     setExpandedSections((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
+  const [hasChildren, setHasChildren] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    // Check if user has children linked (for parent nav access)
+    const checkChildren = async () => {
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!s?.access_token) return;
+        const res = await fetch("/api/parent/children", {
+          headers: { Authorization: `Bearer ${s.access_token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setHasChildren((data.children || []).length > 0);
+        }
+      } catch { /* silent */ }
+    };
+    checkChildren();
+  }, [user]);
+
   const getNav = () => {
     if (!user) return [];
     if (user.user_category === "admin") return adminNav;
     if (user.user_category === "staff") return staffNav;
     if (user.user_category === "student") return studentNav;
-    if (user.user_category === "parent") return parentNav;
+    if (user.user_category === "parent" || hasChildren) return parentNav;
     return [];
   };
 

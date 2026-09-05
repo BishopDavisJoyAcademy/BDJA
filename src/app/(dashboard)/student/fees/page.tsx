@@ -1,363 +1,289 @@
 "use client";
 
+import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
-import {
-  Receipt,
-  TrendingUp,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  XCircle,
-  Download,
-  Loader2,
-  Calendar,
-  GraduationCap,
-  Wallet,
-  FileText,
-} from "lucide-react";
-import { getErrorMessage } from "@/lib/errors";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errors";
+import {
+  Wallet, Loader2, Copy, Check, Phone, Receipt, AlertCircle, ExternalLink,
+  Send, ShieldCheck, Clock, CheckCircle2, XCircle, AlertTriangle
+} from "lucide-react";
 
 const GOLD = "#D4AF37";
 
-interface FeePayment {
-  id: string;
-  amount: number;
-  payment_method: string;
-  status: "pending" | "verified" | "rejected" | "refunded";
-  receipt_number: string | null;
-  receipt_url: string | null;
-  transaction_ref: string | null;
-  notes: string | null;
-  created_at: string;
-  verified_at: string | null;
-  fee_structures: {
-    grade_level: string;
-    term: string;
-    academic_year: string;
-  } | null;
+interface Payment {
+  id: string; amount: number; status: string; payment_method: string | null;
+  transaction_ref: string | null; receipt_number: string | null; created_at: string; notes: string | null;
 }
 
 interface FeeStructure {
-  id: string;
-  grade_level: string;
-  term: string;
-  academic_year: string;
-  tuition: number;
-  uniform: number | null;
-  transport: number | null;
-  activity_fees: number | null;
-  other_fees: Record<string, number> | null;
-  total: number | null;
+  total: number; tuition: number; activity_fees: number; transport: number; uniform: number;
+  term: string; academic_year: string; grade_level: string;
 }
 
-const statusConfig = {
-  verified: { label: "Verified", color: "#22c55e", bg: "rgba(34, 197, 94, 0.15)", border: "rgba(34, 197, 94, 0.3)", icon: CheckCircle2 },
-  pending: { label: "Pending", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.15)", border: "rgba(245, 158, 11, 0.3)", icon: Clock },
-  rejected: { label: "Rejected", color: "#ef4444", bg: "rgba(239, 68, 68, 0.15)", border: "rgba(239, 68, 68, 0.3)", icon: XCircle },
-  refunded: { label: "Refunded", color: "#3b82f6", bg: "rgba(59, 130, 246, 0.15)", border: "rgba(59, 130, 246, 0.3)", icon: AlertCircle },
-};
-
-const methodLabels: Record<string, string> = {
-  cash: "Cash",
-  bank_transfer: "Bank Transfer",
-  mpesa: "M-Pesa",
-  cheque: "Cheque",
-  card: "Card",
-  other: "Other",
-};
-
-export default function StudentFeesPage() {
-  const [payments, setPayments] = useState<FeePayment[]>([]);
-  const [structures, setStructures] = useState<FeeStructure[]>([]);
+export default function StudentFees() {
+  const { user } = useAuth();
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [feeStructure, setFeeStructure] = useState<FeeStructure | null>(null);
+  const [totalPaid, setTotalPaid] = useState(0);
+  const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+  const [showClaimForm, setShowClaimForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const [claimForm, setClaimForm] = useState({
+    amount: "", payment_method: "mpesa", transaction_ref: "", phone_number: "", payment_date: "", notes: "",
+  });
+
+  const fetchFees = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
-      const { data: { session: s } } = await supabase.auth.getSession();
+      const { data: { session: s } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
       const headers: Record<string, string> = {};
       if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
-
-      const [paymentsRes, structuresRes] = await Promise.all([
-        fetch("/api/fees", { headers }),
-        fetch("/api/admin/fee-structures", { headers }),
-      ]);
-
-      if (!paymentsRes.ok) {
-        const err = await paymentsRes.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to fetch payments");
-      }
-
-      const paymentsData = await paymentsRes.json();
-      setPayments(paymentsData.fees || []);
-
-      // Fee structures might 403 for students, that's OK
-      if (structuresRes.ok) {
-        const structuresData = await structuresRes.json();
-        setStructures(structuresData.feeStructures || []);
-      }
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || "Could not load fee data");
-      toast.error(getErrorMessage(err) || "Could not load fee data");
-    } finally {
-      setLoading(false);
-    }
+      const res = await fetch("/api/student/fees", { headers });
+      if (!res.ok) throw new Error("Failed to fetch fees");
+      const data = await res.json();
+      setPayments(data.payments || []);
+      setFeeStructure(data.fee_structure || null);
+      setTotalPaid(data.total_paid || 0);
+      setBalance(data.balance || 0);
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchFees(); }, [fetchFees]);
 
-  // Stats
-  const totalPaid = payments
-    .filter((p) => p.status === "verified")
-    .reduce((sum, p) => sum + p.amount, 0);
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(label);
+    toast.success(`${label} copied`);
+    setTimeout(() => setCopied(null), 2000);
+  };
 
-  const totalPending = payments
-    .filter((p) => p.status === "pending")
-    .reduce((sum, p) => sum + p.amount, 0);
+  const submitClaim = async () => {
+    const amount = parseFloat(claimForm.amount);
+    if (!amount || amount <= 0) { toast.error("Enter a valid amount"); return; }
+    if (!claimForm.transaction_ref.trim()) { toast.error("Enter transaction reference"); return; }
+    if (!claimForm.phone_number.trim()) { toast.error("Enter phone number"); return; }
+    if (!claimForm.payment_date) { toast.error("Select payment date"); return; }
 
-  const totalRejected = payments
-    .filter((p) => p.status === "rejected")
-    .reduce((sum, p) => sum + p.amount, 0);
+    setSubmitting(true);
+    try {
+      const { data: { session: s } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
+      const res = await fetch("/api/student/fees", {
+        method: "POST", headers,
+        body: JSON.stringify({
+          amount, payment_method: claimForm.payment_method,
+          transaction_ref: claimForm.transaction_ref.trim(),
+          phone_number: claimForm.phone_number.trim(),
+          payment_date: claimForm.payment_date,
+          notes: claimForm.notes.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to submit claim");
+      }
+      toast.success("Payment claim submitted! Admin will verify shortly.");
+      setShowClaimForm(false);
+      setClaimForm({ amount: "", payment_method: "mpesa", transaction_ref: "", phone_number: "", payment_date: "", notes: "" });
+      fetchFees();
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); } finally { setSubmitting(false); }
+  };
 
-  if (loading) {
+  const payBillNumber = "100400";
+  const accountNumber = user?.full_name ? `MWITI22#${user.full_name.replace(/\s+/g, "")}` : "";
+
+  const statusBadge = (status: string) => {
+    const map: Record<string, { bg: string; text: string; border: string; icon: React.ReactNode }> = {
+      verified: { bg: "#22c55e15", text: "#22c55e", border: "#22c55e30", icon: <CheckCircle2 className="w-3 h-3" /> },
+      pending: { bg: "#f59e0b15", text: "#f59e0b", border: "#f59e0b30", icon: <Clock className="w-3 h-3" /> },
+      rejected: { bg: "#ef444415", text: "#ef4444", border: "#ef444430", icon: <XCircle className="w-3 h-3" /> },
+      refunded: { bg: "#3b82f615", text: "#60a5fa", border: "#3b82f630", icon: <AlertTriangle className="w-3 h-3" /> },
+    };
+    const s = map[status] || map.pending;
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-        >
-          <Loader2 className="w-8 h-8" style={{ color: GOLD }} />
-        </motion.div>
-      </div>
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium border" style={{ background: s.bg, color: s.text, borderColor: s.border }}>
+        {s.icon}{status}
+      </span>
     );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <AlertCircle className="w-12 h-12 text-red-400" />
-        <p className="text-red-400 text-sm">{error}</p>
-        <button
-          onClick={fetchData}
-          className="px-4 py-2 rounded-xl text-sm font-medium"
-          style={{ background: `${GOLD}15`, color: GOLD }}
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Fees & Payments</h1>
-          <p className="text-sm text-slate-400 mt-1">View your fee structure and payment history</p>
-        </div>
-      </motion.div>
+      <div>
+        <h1 className="text-2xl font-bold text-white">School Fees</h1>
+        <p className="text-slate-400 text-sm mt-1">View your fee balance and payment history</p>
+      </div>
 
-      {/* Stats Cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-3"
-      >
-        {[
-          { label: "Total Paid", value: totalPaid, color: "#22c55e", icon: CheckCircle2 },
-          { label: "Pending", value: totalPending, color: "#f59e0b", icon: Clock },
-          { label: "Rejected", value: totalRejected, color: "#ef4444", icon: XCircle },
-          { label: "Transactions", value: payments.length, color: GOLD, icon: Receipt },
-        ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 + i * 0.03 }}
-            className="bg-slate-900/60 border border-slate-700/50 rounded-2xl p-4"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
-              <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                {stat.label}
-              </span>
+      {/* Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-5">
+          <p className="text-xs text-slate-500 uppercase tracking-wider">Total Expected</p>
+          <p className="text-2xl font-bold text-white mt-1">KES {(feeStructure?.total || 0).toLocaleString()}</p>
+        </div>
+        <div className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-5">
+          <p className="text-xs text-slate-500 uppercase tracking-wider">Total Paid</p>
+          <p className="text-2xl font-bold text-green-400 mt-1">KES {totalPaid.toLocaleString()}</p>
+        </div>
+        <div className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-5">
+          <p className="text-xs text-slate-500 uppercase tracking-wider">Balance</p>
+          <p className={`text-2xl font-bold mt-1 ${balance > 0 ? "text-red-400" : "text-green-400"}`}>KES {balance.toLocaleString()}</p>
+        </div>
+      </div>
+
+      {/* Payment Details */}
+      <div className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#D4AF3715", border: "1px solid #D4AF3730" }}>
+            <Receipt className="w-5 h-5" style={{ color: GOLD }} />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white">HFC Bank Payment Details</h3>
+            <p className="text-xs text-slate-500">Pay via M-Pesa or HFC Bank</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div className="rounded-xl bg-slate-800/40 border border-slate-700/30 p-4">
+            <p className="text-xs text-slate-500 mb-1">M-Pesa PayBill Number</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xl font-bold text-white tracking-wider">{payBillNumber}</p>
+              <button onClick={() => copyToClipboard(payBillNumber, "PayBill")} className="p-2 rounded-lg hover:bg-slate-700/50 transition-colors">
+                {copied === "PayBill" ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
+              </button>
             </div>
-            <p className="text-2xl font-bold" style={{ color: stat.color }}>
-              {stat.label === "Transactions" ? stat.value : `KES ${stat.value.toLocaleString()}`}
-            </p>
+          </div>
+          <div className="rounded-xl bg-slate-800/40 border border-slate-700/30 p-4">
+            <p className="text-xs text-slate-500 mb-1">Account Number</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-bold text-white truncate">{accountNumber}</p>
+              <button onClick={() => copyToClipboard(accountNumber, "Account")} className="p-2 rounded-lg hover:bg-slate-700/50 transition-colors shrink-0">
+                {copied === "Account" ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3 mb-6">
+          <a href="tel:*334#" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90" style={{ background: "#D4AF37", color: "#0f172a" }}>
+            <Phone className="w-4 h-4" />Open M-Pesa (*334#)
+          </a>
+          <a href="https://hfcb.co.ke/hfcb-whizz" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:text-white hover:border-slate-600/50 transition-all">
+            <ExternalLink className="w-4 h-4" />HFC Whizz App
+          </a>
+        </div>
+
+        <div className="rounded-xl bg-slate-800/30 border border-slate-700/20 p-4">
+          <h4 className="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">How to Pay via M-Pesa</h4>
+          <ol className="space-y-2.5">
+            {["Open your phone dialer and dial *334# (or open M-Pesa app)","Select Lipa na M-Pesa","Select PayBill",`Enter Business Number: ${payBillNumber}`,`Enter Account Number: ${accountNumber}`,"Enter the amount you wish to pay","Enter your M-Pesa PIN and confirm","You will receive an SMS confirmation from M-Pesa"].map((step, i) => (
+              <li key={i} className="flex items-start gap-3 text-sm text-slate-400">
+                <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5" style={{ background: "#D4AF3720", color: GOLD }}>{i + 1}</span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-4 pt-3 border-t border-slate-700/20 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-slate-500">After paying, submit your payment details below for verification. Keep your M-Pesa SMS as proof.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Submit Payment Claim */}
+      <div className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#22c55e15", border: "1px solid #22c55e30" }}>
+              <ShieldCheck className="w-5 h-5 text-green-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white">Submit Payment for Verification</h3>
+              <p className="text-xs text-slate-500">Already paid? Submit your M-Pesa details for admin verification</p>
+            </div>
+          </div>
+          <button onClick={() => setShowClaimForm(!showClaimForm)} className="px-4 py-2 rounded-xl text-xs font-medium transition-all" style={{ background: "#D4AF3715", color: "#D4AF37", border: "1px solid #D4AF3730" }}>
+            {showClaimForm ? "Cancel" : "Submit Payment"}
+          </button>
+        </div>
+
+        {showClaimForm && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3 pt-4 border-t border-slate-700/30">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Amount (KES)</label>
+                <input type="number" value={claimForm.amount} onChange={(e) => setClaimForm({ ...claimForm, amount: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-white focus:outline-none focus:border-[#D4AF37]/30" placeholder="e.g. 15000" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Payment Method</label>
+                <select value={claimForm.payment_method} onChange={(e) => setClaimForm({ ...claimForm, payment_method: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-white focus:outline-none focus:border-[#D4AF37]/30">
+                  <option value="mpesa">M-Pesa</option>
+                  <option value="cash">Cash</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">M-Pesa Transaction Code</label>
+                <input type="text" value={claimForm.transaction_ref} onChange={(e) => setClaimForm({ ...claimForm, transaction_ref: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-white focus:outline-none focus:border-[#D4AF37]/30" placeholder="e.g. SIB7XXXXXXX" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Phone Number Used</label>
+                <input type="text" value={claimForm.phone_number} onChange={(e) => setClaimForm({ ...claimForm, phone_number: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-white focus:outline-none focus:border-[#D4AF37]/30" placeholder="e.g. 254712345678" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Payment Date</label>
+                <input type="date" value={claimForm.payment_date} onChange={(e) => setClaimForm({ ...claimForm, payment_date: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-white focus:outline-none focus:border-[#D4AF37]/30" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Notes (optional)</label>
+                <input type="text" value={claimForm.notes} onChange={(e) => setClaimForm({ ...claimForm, notes: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm text-white focus:outline-none focus:border-[#D4AF37]/30" placeholder="Any additional info" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+              <p className="text-[11px] text-slate-500">Your payment will be verified by school staff within 24-48 hours. You will be notified once verified.</p>
+            </div>
+            <button onClick={submitClaim} disabled={submitting} className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50" style={{ background: "#D4AF37", color: "#0f172a" }}>
+              {submitting ? "Submitting..." : "Submit Payment Claim"}
+            </button>
           </motion.div>
-        ))}
-      </motion.div>
+        )}
+      </div>
 
       {/* Payment History */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-slate-900/60 border border-slate-700/50 rounded-2xl overflow-hidden"
-      >
-        <div className="p-5 border-b border-slate-700/50">
-          <div className="flex items-center gap-2">
-            <Wallet className="w-4 h-4" style={{ color: GOLD }} />
-            <h2 className="text-sm font-medium text-white">Payment History</h2>
-          </div>
-        </div>
-
-        {payments.length === 0 ? (
-          <div className="text-center py-16">
-            <Receipt className="w-12 h-12 text-slate-700 mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">No payment records found</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-700/30">
-            {payments.map((payment, i) => {
-              const cfg = statusConfig[payment.status] || statusConfig.pending;
-              return (
-                <motion.div
-                  key={payment.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.25 + i * 0.03 }}
-                  className="p-4 flex items-start gap-4 hover:bg-slate-800/30 transition-colors"
-                >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
-                  >
-                    <cfg.icon className="w-5 h-5" style={{ color: cfg.color }} />
+      {loading ? (
+        <div className="flex items-center justify-center h-32"><Loader2 className="w-8 h-8 animate-spin" style={{ color: GOLD }} /></div>
+      ) : payments.length > 0 ? (
+        <div className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-5">
+          <h3 className="text-sm font-semibold text-white mb-4">Payment History</h3>
+          <div className="space-y-2">
+            {payments.map((p) => (
+              <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/30 border border-slate-700/20">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-white">KES {p.amount.toLocaleString()}</p>
+                    {statusBadge(p.status)}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          KES {payment.amount.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {methodLabels[payment.payment_method] || payment.payment_method}
-                          {payment.fee_structures && (
-                            <span className="ml-1">
-                              · {payment.fee_structures.grade_level} · {payment.fee_structures.term} ·{" "}
-                              {payment.fee_structures.academic_year}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <span
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium uppercase"
-                        style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
-                      >
-                        {cfg.label}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="text-[11px] text-slate-500">
-                        <Calendar className="w-3 h-3 inline mr-1" />
-                        {new Date(payment.created_at).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </span>
-                      {payment.receipt_number && (
-                        <span className="text-[11px] text-slate-500">
-                          <FileText className="w-3 h-3 inline mr-1" />
-                          {payment.receipt_number}
-                        </span>
-                      )}
-                      {payment.transaction_ref && (
-                        <span className="text-[11px] text-slate-500">
-                          Ref: {payment.transaction_ref}
-                        </span>
-                      )}
-                    </div>
-                    {payment.notes && (
-                      <p className="text-xs text-slate-400 mt-1">{payment.notes}</p>
-                    )}
-                  </div>
-                  {payment.receipt_url && (
-                    <a
-                      href={payment.receipt_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all shrink-0"
-                      title="Download Receipt"
-                    >
-                      <Download className="w-4 h-4" />
-                    </a>
-                  )}
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
-      </motion.div>
-
-      {/* Fee Structure Info */}
-      {structures.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-slate-900/60 border border-slate-700/50 rounded-2xl overflow-hidden"
-        >
-          <div className="p-5 border-b border-slate-700/50">
-            <div className="flex items-center gap-2">
-              <GraduationCap className="w-4 h-4" style={{ color: GOLD }} />
-              <h2 className="text-sm font-medium text-white">Fee Structure</h2>
-            </div>
-          </div>
-          <div className="divide-y divide-slate-700/30">
-            {structures.map((s, i) => (
-              <motion.div
-                key={s.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.35 + i * 0.03 }}
-                className="p-4"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-white">
-                    {s.grade_level} · {s.term} · {s.academic_year}
-                  </p>
-                  <span className="text-sm font-bold" style={{ color: GOLD }}>
-                    KES {s.total?.toLocaleString() || s.tuition.toLocaleString()}
-                  </span>
+                  <p className="text-xs text-slate-500">{p.payment_method || "M-Pesa"} · {new Date(p.created_at).toLocaleDateString()}</p>
+                  {p.transaction_ref && <p className="text-[10px] text-slate-600">Ref: {p.transaction_ref}</p>}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-slate-400">
-                  <span>Tuition: KES {s.tuition.toLocaleString()}</span>
-                  {s.uniform !== null && <span>Uniform: KES {s.uniform.toLocaleString()}</span>}
-                  {s.transport !== null && <span>Transport: KES {s.transport.toLocaleString()}</span>}
-                  {s.activity_fees !== null && <span>Activities: KES {s.activity_fees.toLocaleString()}</span>}
-                </div>
-                {s.other_fees && Object.keys(s.other_fees).length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {Object.entries(s.other_fees).map(([key, val]) => (
-                      <span
-                        key={key}
-                        className="px-2 py-0.5 rounded-lg text-[10px] bg-slate-800/50 border border-slate-700/30 text-slate-400"
-                      >
-                        {key}: KES {Number(val).toLocaleString()}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
+              </div>
             ))}
           </div>
-        </motion.div>
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-8 text-center">
+          <Receipt className="w-10 h-10 text-slate-700 mx-auto mb-3" />
+          <h3 className="text-sm font-medium text-white mb-1">No Payment History</h3>
+          <p className="text-xs text-slate-500">No payments have been recorded yet.</p>
+        </div>
       )}
     </div>
   );

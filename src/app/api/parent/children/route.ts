@@ -9,10 +9,6 @@ export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
 
-    if (session.userCategory !== "parent") {
-      return NextResponse.json({ error: "Forbidden — parents only" }, { status: 403 });
-    }
-
     const admin = getSupabaseAdmin();
 
     // Use parent_children (correct table: student_id -> students)

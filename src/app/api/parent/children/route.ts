@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
     (sourceRows || []).forEach((r: Record<string, unknown>) => {
       const student = r.students as Record<string, unknown> | null;
       const cls = student?.classes as Record<string, unknown> | null;
-      if (cls?.class_teacher_id) teacherIds.add(cls.class_teacher_id);
+      if (cls?.class_teacher_id) teacherIds.add(cls.class_teacher_id as string);
     });
 
     let teacherMap = new Map<string, string>();

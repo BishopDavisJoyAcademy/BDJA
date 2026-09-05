@@ -204,7 +204,7 @@ export default function TeacherMarksPage() {
       setFetchingStudents(false);
       setLoading(false);
     }
-  }, [getHeaders]);
+  }, [getHeaders, globalMaxScore, selectedStrand, selectedSubStrand]);
 
   // Initial load
   useEffect(() => {

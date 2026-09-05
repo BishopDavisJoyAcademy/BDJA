@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
           // Merge and deduplicate
           const existingIds = new Set(data.map((a: Record<string, unknown>) => a.id as string));
           filteredClass.forEach((a: Record<string, unknown>) => {
-            if (!existingIds.has(a.id as string)) data.push(a);
+            if (!existingIds.has(a.id as string)) data.push(a as (typeof data)[0]);
           });
 
           // Re-sort

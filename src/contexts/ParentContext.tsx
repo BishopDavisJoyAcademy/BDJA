@@ -146,7 +146,7 @@ export function ChildSelector({ className = "" }: { className?: string }) {
       >
         <div className="w-8 h-8 rounded-full bg-slate-700/50 flex items-center justify-center shrink-0 overflow-hidden">
           {selectedChild?.avatar_url ? (
-            <img src={selectedChild.avatar_url} alt="" className="w-full h-full object-cover" />
+            <Image src={selectedChild.avatar_url} alt="" width={32} height={32} className="w-full h-full object-cover" />
           ) : (
             <Users className="w-4 h-4" style={{ color: GOLD }} />
           )}
@@ -183,7 +183,7 @@ export function ChildSelector({ className = "" }: { className?: string }) {
                 >
                   <div className="w-8 h-8 rounded-full bg-slate-700/50 flex items-center justify-center shrink-0 overflow-hidden">
                     {child.avatar_url ? (
-                      <img src={child.avatar_url} alt="" className="w-full h-full object-cover" />
+                      <Image src={child.avatar_url} alt="" width={32} height={32} className="w-full h-full object-cover" />
                     ) : (
                       <Users className="w-4 h-4 text-slate-400" />
                     )}

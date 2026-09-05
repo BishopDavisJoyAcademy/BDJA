@@ -1722,6 +1722,235 @@ export type Database = {
           },
         ]
       }
+      joy_audit_log: {
+        Row: {
+          action_type: string
+          ai_response_preview: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          ip_address: unknown
+          metadata: Json | null
+          permission_granted: boolean
+          permission_key: string | null
+          query_text: string | null
+          success: boolean
+          target_record_id: string | null
+          target_table: string | null
+          tool_name: string | null
+          user_agent: string | null
+          user_category: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          ai_response_preview?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          permission_granted?: boolean
+          permission_key?: string | null
+          query_text?: string | null
+          success?: boolean
+          target_record_id?: string | null
+          target_table?: string | null
+          tool_name?: string | null
+          user_agent?: string | null
+          user_category: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          ai_response_preview?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          permission_granted?: boolean
+          permission_key?: string | null
+          query_text?: string | null
+          success?: boolean
+          target_record_id?: string | null
+          target_table?: string | null
+          tool_name?: string | null
+          user_agent?: string | null
+          user_category?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      joy_conversation_analytics: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          guardrail_reason: string | null
+          guardrail_triggered: boolean | null
+          id: string
+          model_used: string | null
+          query: string
+          query_category: string | null
+          resolved: boolean | null
+          response_time_ms: number | null
+          role: string | null
+          token_count: number | null
+          tool_calls_used: string[] | null
+          user_id: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          guardrail_reason?: string | null
+          guardrail_triggered?: boolean | null
+          id?: string
+          model_used?: string | null
+          query: string
+          query_category?: string | null
+          resolved?: boolean | null
+          response_time_ms?: number | null
+          role?: string | null
+          token_count?: number | null
+          tool_calls_used?: string[] | null
+          user_id?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          guardrail_reason?: string | null
+          guardrail_triggered?: boolean | null
+          id?: string
+          model_used?: string | null
+          query?: string
+          query_category?: string | null
+          resolved?: boolean | null
+          response_time_ms?: number | null
+          role?: string | null
+          token_count?: number | null
+          tool_calls_used?: string[] | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "joy_conversation_analytics_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      joy_guardrail_violations: {
+        Row: {
+          blocked: boolean
+          created_at: string
+          id: string
+          metadata: Json | null
+          query_preview: string
+          severity: string
+          user_id: string
+          violation_type: string
+        }
+        Insert: {
+          blocked?: boolean
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          query_preview: string
+          severity?: string
+          user_id: string
+          violation_type: string
+        }
+        Update: {
+          blocked?: boolean
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          query_preview?: string
+          severity?: string
+          user_id?: string
+          violation_type?: string
+        }
+        Relationships: []
+      }
+      joy_knowledge_base: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          id: string
+          is_public: boolean
+          key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "joy_knowledge_base_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      joy_page_assistants: {
+        Row: {
+          context_prompt: string
+          created_at: string
+          id: string
+          is_active: boolean
+          page_name: string
+          page_route: string
+          required_permission: string | null
+          suggested_actions: Json
+          updated_at: string
+        }
+        Insert: {
+          context_prompt: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          page_name: string
+          page_route: string
+          required_permission?: string | null
+          suggested_actions?: Json
+          updated_at?: string
+        }
+        Update: {
+          context_prompt?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          page_name?: string
+          page_route?: string
+          required_permission?: string | null
+          suggested_actions?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       joy_user_preferences: {
         Row: {
           created_at: string | null

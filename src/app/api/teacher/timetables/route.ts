@@ -178,15 +178,24 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { class_id, subject_id, day_of_week, start_time, end_time, room, topic, teacher_id } = body;
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: {
+      class_id?: string;
+      subject_id?: string;
+      day_of_week?: number;
+      start_time?: string;
+      end_time?: string;
+      room?: string | null;
+      topic?: string | null;
+      teacher_id?: string | null;
+    } = {};
     if (class_id !== undefined) updateData.class_id = class_id;
     if (subject_id !== undefined) updateData.subject_id = subject_id;
     if (day_of_week !== undefined) updateData.day_of_week = day_of_week;
     if (start_time !== undefined) updateData.start_time = start_time;
     if (end_time !== undefined) updateData.end_time = end_time;
-    if (room !== undefined) updateData.room = room;
-    if (topic !== undefined) updateData.topic = topic;
-    if (teacher_id !== undefined) updateData.teacher_id = teacher_id;
+    if (room !== undefined) updateData.room = room || null;
+    if (topic !== undefined) updateData.topic = topic || null;
+    if (teacher_id !== undefined) updateData.teacher_id = teacher_id || null;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });

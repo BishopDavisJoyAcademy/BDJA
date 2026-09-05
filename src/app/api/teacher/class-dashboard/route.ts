@@ -108,24 +108,26 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // Compute all student stats
+    const allStudents = students?.map((s) => {
+      const stats = studentStats.get(s.id);
+      const avg = stats && stats.count > 0 ? Math.round(stats.avg / stats.count) : 0;
+      const attRate = stats && stats.totalAtt > 0 ? Math.round((stats.present / stats.totalAtt) * 100) : 0;
+      const assignRate = stats && stats.totalAssignments > 0 ? Math.round((stats.submitted / stats.totalAssignments) * 100) : 0;
+      return {
+        id: s.id,
+        name: (s.profiles as unknown as { full_name: string })?.full_name || "",
+        avatar_url: (s.profiles as unknown as { avatar_url: string | null })?.avatar_url || null,
+        admission_number: s.admission_number || "",
+        avg,
+        attRate,
+        assignRate,
+        risk: avg < 50 || attRate < 60 ? "high" : avg < 65 || attRate < 75 ? "medium" : "low",
+      };
+    }) || [];
+
     // At-risk students (avg < 50% OR attendance < 60%)
-    const atRisk = students
-      ?.map((s) => {
-        const stats = studentStats.get(s.id);
-        const avg = stats && stats.count > 0 ? Math.round(stats.avg / stats.count) : 0;
-        const attRate = stats && stats.totalAtt > 0 ? Math.round((stats.present / stats.totalAtt) * 100) : 0;
-        const assignRate = stats && stats.totalAssignments > 0 ? Math.round((stats.submitted / stats.totalAssignments) * 100) : 0;
-        return {
-          id: s.id,
-          name: (s.profiles as unknown as { full_name: string })?.full_name || "",
-          avatar_url: (s.profiles as unknown as { avatar_url: string | null })?.avatar_url || null,
-          admission_number: s.admission_number || "",
-          avg,
-          attRate,
-          assignRate,
-          risk: avg < 50 || attRate < 60 ? "high" : avg < 65 || attRate < 75 ? "medium" : "low",
-        };
-      })
+    const atRisk = allStudents
       .filter((s) => s.risk !== "low")
       .sort((a, b) => (a.avg - b.avg) || (a.attRate - b.attRate));
 

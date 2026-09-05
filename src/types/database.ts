@@ -158,6 +158,108 @@ export type Database = {
           },
         ]
       }
+      announcement_reads: {
+        Row: {
+          announcement_id: string
+          id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          id?: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_pinned: boolean
+          priority: string
+          published_at: string
+          target_audience: string
+          target_class_id: string | null
+          target_grade_level: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_pinned?: boolean
+          priority?: string
+          published_at?: string
+          target_audience?: string
+          target_class_id?: string | null
+          target_grade_level?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_pinned?: boolean
+          priority?: string
+          published_at?: string
+          target_audience?: string
+          target_class_id?: string | null
+          target_grade_level?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_target_class_id_fkey"
+            columns: ["target_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessments: {
         Row: {
           academic_year: string
@@ -2085,6 +2187,67 @@ export type Database = {
           },
         ]
       }
+      parent_teacher_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          parent_id: string
+          read_by_parent: boolean
+          read_by_teacher: boolean
+          sent_by: string
+          student_id: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          parent_id: string
+          read_by_parent?: boolean
+          read_by_teacher?: boolean
+          sent_by: string
+          student_id: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          parent_id?: string
+          read_by_parent?: boolean
+          read_by_teacher?: boolean
+          sent_by?: string
+          student_id?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_teacher_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_teacher_messages_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_teacher_messages_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_history: {
         Row: {
           changed_at: string | null
@@ -3437,170 +3600,6 @@ export type Database = {
         ]
       }
     }
-      announcements: {
-        Row: {
-          category: string
-          content: string
-          created_at: string
-          created_by: string
-          expires_at: string | null
-          id: string
-          is_pinned: boolean
-          priority: string
-          published_at: string
-          target_audience: string
-          target_class_id: string | null
-          target_grade_level: string | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          category?: string
-          content: string
-          created_at?: string
-          created_by: string
-          expires_at?: string | null
-          id?: string
-          is_pinned?: boolean
-          priority?: string
-          published_at?: string
-          target_audience?: string
-          target_class_id?: string | null
-          target_grade_level?: string | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          category?: string
-          content?: string
-          created_at?: string
-          created_by?: string
-          expires_at?: string | null
-          id?: string
-          is_pinned?: boolean
-          priority?: string
-          published_at?: string
-          target_audience?: string
-          target_class_id?: string | null
-          target_grade_level?: string | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "announcements_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "announcements_target_class_id_fkey"
-            columns: ["target_class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      announcement_reads: {
-        Row: {
-          announcement_id: string
-          id: string
-          read_at: string
-          user_id: string
-        }
-        Insert: {
-          announcement_id: string
-          id?: string
-          read_at?: string
-          user_id: string
-        }
-        Update: {
-          announcement_id?: string
-          id?: string
-          read_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "announcement_reads_announcement_id_fkey"
-            columns: ["announcement_id"]
-            isOneToOne: false
-            referencedRelation: "announcements"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "announcement_reads_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      parent_teacher_messages: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          parent_id: string
-          read_by_parent: boolean
-          read_by_teacher: boolean
-          sent_by: string
-          student_id: string
-          teacher_id: string
-          updated_at: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          parent_id: string
-          read_by_parent?: boolean
-          read_by_teacher?: boolean
-          sent_by: string
-          student_id: string
-          teacher_id: string
-          updated_at?: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          parent_id?: string
-          read_by_parent?: boolean
-          read_by_teacher?: boolean
-          sent_by?: string
-          student_id?: string
-          teacher_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "parent_teacher_messages_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "parent_teacher_messages_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "parent_teacher_messages_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-
     Views: {
       [_ in never]: never
     }

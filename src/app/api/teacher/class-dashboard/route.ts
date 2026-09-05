@@ -172,6 +172,7 @@ export async function GET(req: NextRequest) {
         assignment_completion: classAssignRate,
       },
       at_risk: atRisk || [],
+      students: allStudents,
       subject_performance: subjectPerformance,
     });
   } catch (error: unknown) {

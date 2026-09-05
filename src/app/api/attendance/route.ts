@@ -27,6 +27,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const classId = searchParams.get("class_id");
     const date = searchParams.get("date");
+    const startDate = searchParams.get("start_date");
+    const endDate = searchParams.get("end_date");
     const studentId = searchParams.get("student_id");
 
     let query = admin
@@ -35,6 +37,8 @@ export async function GET(req: NextRequest) {
 
     if (classId) query = query.eq("class_id", classId);
     if (date) query = query.eq("date", date);
+    if (startDate) query = query.gte("date", startDate);
+    if (endDate) query = query.lte("date", endDate);
     if (studentId) query = query.eq("student_id", studentId);
 
     // Students can only see their own attendance

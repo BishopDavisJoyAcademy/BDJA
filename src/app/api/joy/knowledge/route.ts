@@ -22,22 +22,25 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get("category");
     const key = searchParams.get("key");
 
-    let query = admin.from("joy_knowledge_base").select("*");
-
     if (key) {
-      query = query.eq("key", key).single();
-      const { data, error } = await query;
+      const { data, error } = await admin
+        .from("joy_knowledge_base")
+        .select("*")
+        .eq("key", key)
+        .single();
       if (error) throw error;
       return NextResponse.json({ knowledge: data });
     }
+
+    let query = admin.from("joy_knowledge_base").select("*");
 
     if (category) {
       query = query.eq("category", category);
     }
 
-    query = query.eq("is_public", true).order("category", { ascending: true });
-
-    const { data, error } = await query;
+    const { data, error } = await query
+      .eq("is_public", true)
+      .order("category", { ascending: true });
     if (error) throw error;
 
     return NextResponse.json({ knowledge: data || [] });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 
@@ -39,7 +40,7 @@ export function useJoyAdminRequests(): UseJoyAdminRequestsReturn {
   const [loading, setLoading] = useState(false);
 
   const getHeaders = useCallback(async () => {
-    const { data: { session: s } } = await import("@/lib/supabase-client").then((m) => m.supabase.auth.getSession());
+    const { data: { session: s } } = await supabase.auth.getSession();
     const headers: Record<string, string> = {};
     if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
     return headers;
@@ -63,7 +64,13 @@ export function useJoyAdminRequests(): UseJoyAdminRequestsReturn {
     }
   }, [getHeaders]);
 
-  const createRequest = useCallback(async (data) => {
+  const createRequest = useCallback(async (data: {
+    question: string;
+    context?: string;
+    conversation_id?: string;
+    priority?: string;
+    category?: string;
+  }) => {
     try {
       const headers = await getHeaders();
       const res = await fetch("/api/joy/admin-requests", {

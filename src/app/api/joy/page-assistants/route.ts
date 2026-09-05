@@ -26,17 +26,21 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const route = searchParams.get("route");
 
-    let query = admin.from("joy_page_assistants").select("*");
-
     if (route) {
-      query = query.eq("page_route", route).single();
-      const { data, error } = await query;
+      const { data, error } = await admin
+        .from("joy_page_assistants")
+        .select("*")
+        .eq("page_route", route)
+        .single();
       if (error && error.code !== "PGRST116") throw error;
       return NextResponse.json({ assistant: data });
     }
 
-    query = query.eq("is_active", true).order("page_name", { ascending: true });
-    const { data, error } = await query;
+    const { data, error } = await admin
+      .from("joy_page_assistants")
+      .select("*")
+      .eq("is_active", true)
+      .order("page_name", { ascending: true });
     if (error) throw error;
 
     return NextResponse.json({ assistants: data || [] });

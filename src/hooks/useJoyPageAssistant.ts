@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 import { JoyPageAssistant } from "@/types/joy";
@@ -17,7 +18,7 @@ export function useJoyPageAssistant(): UseJoyPageAssistantReturn {
   const [loading, setLoading] = useState(false);
 
   const getHeaders = useCallback(async () => {
-    const { data: { session: s } } = await import("@/lib/supabase-client").then((m) => m.supabase.auth.getSession());
+    const { data: { session: s } } = await supabase.auth.getSession();
     const headers: Record<string, string> = {};
     if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
     return headers;

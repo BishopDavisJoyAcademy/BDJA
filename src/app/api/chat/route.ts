@@ -326,7 +326,7 @@ export async function POST(req: NextRequest) {
 
     // Log analytics
     const responseTime = Date.now() - startTime;
-    await logAnalytics(session.userId, conversationId, lastUserMessage?.content || "", classifyQueryIntent(lastUserMessage?.content || ""), responseTime, "aevibron-core-v3", false, undefined, toolCalls?.map((tc) => String(tc.function?.name || "")).filter(Boolean));
+    await logAnalytics(session.userId, conversationId, lastUserMessage?.content || "", classifyQueryIntent(lastUserMessage?.content || ""), responseTime, "aevibron-core-v3", false, undefined, toolCalls?.map((tc) => String(((tc as Record<string, unknown>).function as { name?: string } | undefined)?.name || "")).filter(Boolean));
 
     return NextResponse.json({
       reply: replyText,

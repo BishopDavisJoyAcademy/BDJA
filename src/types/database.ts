@@ -963,7 +963,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string | null
-          fee_structure_id: string
+          fee_structure_id: string | null
           id: string
           notes: string | null
           payment_method: string
@@ -978,7 +978,7 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string | null
-          fee_structure_id: string
+          fee_structure_id?: string | null
           id?: string
           notes?: string | null
           payment_method: string
@@ -993,7 +993,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string | null
-          fee_structure_id?: string
+          fee_structure_id?: string | null
           id?: string
           notes?: string | null
           payment_method?: string

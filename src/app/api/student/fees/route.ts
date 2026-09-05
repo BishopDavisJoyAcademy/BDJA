@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
       transaction_ref,
       status: "pending" as const,
       notes: notes || `Phone: ${phone_number}, Date: ${payment_date}`,
-      ...(feeStruct?.id ? { fee_structure_id: feeStruct.id } : {}),
+      fee_structure_id: feeStruct?.id ?? null,
     };
 
     const { data, error } = await admin

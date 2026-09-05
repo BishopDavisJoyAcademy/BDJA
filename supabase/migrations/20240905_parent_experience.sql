@@ -147,3 +147,8 @@ DROP TRIGGER IF EXISTS update_announcements_updated_at ON public.announcements;
 CREATE TRIGGER update_announcements_updated_at
   BEFORE UPDATE ON public.announcements
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- ============================================
+-- 5. Make fee_structure_id nullable for payment claims
+-- ============================================
+ALTER TABLE public.fee_payments ALTER COLUMN fee_structure_id DROP NOT NULL;

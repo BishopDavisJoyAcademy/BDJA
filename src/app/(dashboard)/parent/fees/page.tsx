@@ -9,7 +9,7 @@ import { Wallet, Loader2, Copy, Check, Phone, Receipt, AlertCircle, ExternalLink
 
 const GOLD = "#D4AF37";
 
-interface Payment { id: string; amount: number; status: string; payment_method: string | null; receipt_number: string | null; created_at: string; }
+interface Payment { id: string; amount: number; status: string; payment_method: string | null; receipt_number: string | null; transaction_ref: string | null; created_at: string; }
 
 export default function ParentFees() {
   const { selectedChild } = useParentContext();

@@ -47,12 +47,16 @@ export async function GET(req: NextRequest) {
 
     // Get applicable fee structure
     const currentYear = new Date().getFullYear().toString();
-    const { data: feeStructure } = await admin
-      .from("fee_structures")
-      .select("*")
-      .eq("grade_level", studentRow.grade_level)
-      .eq("academic_year", currentYear)
-      .maybeSingle();
+    let feeStructure = null;
+    if (studentRow.grade_level) {
+      const { data: fs } = await admin
+        .from("fee_structures")
+        .select("*")
+        .eq("grade_level", studentRow.grade_level)
+        .eq("academic_year", currentYear)
+        .maybeSingle();
+      feeStructure = fs;
+    }
 
     // Calculate totals
     const totalPaid = (payments || []).reduce((sum: number, p: Record<string, unknown>) => sum + ((p.amount as number) || 0), 0);
@@ -104,12 +108,16 @@ export async function POST(req: NextRequest) {
 
     // Get applicable fee structure for fee_structure_id
     const currentYear = new Date().getFullYear().toString();
-    const { data: feeStruct } = await admin
-      .from("fee_structures")
-      .select("id")
-      .eq("grade_level", studentRow.grade_level)
-      .eq("academic_year", currentYear)
-      .maybeSingle();
+    let feeStruct = null;
+    if (studentRow.grade_level) {
+      const { data: fs } = await admin
+        .from("fee_structures")
+        .select("id")
+        .eq("grade_level", studentRow.grade_level)
+        .eq("academic_year", currentYear)
+        .maybeSingle();
+      feeStruct = fs;
+    }
 
     // Check for duplicate transaction ref
     const { data: existing } = await admin
@@ -122,15 +130,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "This transaction reference has already been submitted" }, { status: 409 });
     }
 
-    const insertData: Record<string, unknown> = {
+    const insertData = {
       student_id: studentRow.id,
       amount,
       payment_method,
       transaction_ref,
-      status: "pending",
+      status: "pending" as const,
       notes: notes || `Phone: ${phone_number}, Date: ${payment_date}`,
+      ...(feeStruct?.id ? { fee_structure_id: feeStruct.id } : {}),
     };
-    if (feeStruct?.id) insertData.fee_structure_id = feeStruct.id;
 
     const { data, error } = await admin
       .from("fee_payments")
@@ -143,14 +151,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to submit payment claim" }, { status: 500 });
     }
 
-    // Create notification for admin/staff
-    await admin.from("notifications").insert({
-      user_id: null, // broadcast or target admin
-      title: "New Fee Payment Claim",
-      content: `A payment claim of KES ${amount.toLocaleString()} has been submitted (Ref: ${transaction_ref}). Please verify.`,
-      type: "fee_claim",
-      action_url: "/admin/fees",
-    });
+    // TODO: Send notification to admin/staff when notifications table supports broadcast
+    // For now, payment claims are visible in admin dashboard via fee_payments.status = "pending"
 
     return NextResponse.json({ success: true, claim: data });
   } catch (error: unknown) {

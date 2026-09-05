@@ -54,7 +54,7 @@ const QUICK_ACTIONS = [
   { label: "Suggestions", icon: MessageSquare, href: `/${ADMIN_SEGMENT}/suggestions`, color: "text-cyan-400 bg-cyan-400/10" },
   { label: "Platform Settings", icon: Settings, href: `/${ADMIN_SEGMENT}/settings`, color: "text-gray-400 bg-gray-400/10" },
   { label: "God Mode", icon: Shield, href: `/${ADMIN_SEGMENT}/god-mode`, color: "text-amber-400 bg-amber-400/10" },
-];
+  { label: "Joy Knowledge", icon: Sparkles, href: `/${ADMIN_SEGMENT}/joy-knowledge`, color: "text-[#D4AF37] bg-[#D4AF37]/10" },];
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { ADMIN_SEGMENT } from "@/lib/constants";
 import { JoyChat } from "@/components/joy/JoyChat";
+import { JoyPageBubble } from "@/components/joy/JoyPageBubble";
 import { ParentProvider, ChildSelector } from "@/contexts/ParentContext";
 
 interface NavItem {
@@ -36,6 +37,12 @@ const adminNav: NavItem[] = [
   { label: "Calendar", href: "/manage/calendar", icon: Calendar },
   { label: "Suggestions", href: `/${ADMIN_SEGMENT}/suggestions`, icon: MessageSquare },
   { label: "Analytics", href: `/${ADMIN_SEGMENT}/analytics`, icon: BarChart3 },
+
+  { label: "Joy AI", href: "#", icon: Sparkles, children: [
+    { label: "Knowledge Base", href: `/${ADMIN_SEGMENT}/joy-knowledge` },
+    { label: "Page Assistants", href: `/${ADMIN_SEGMENT}/joy-assistants` },
+    { label: "Request Inbox", href: `/${ADMIN_SEGMENT}/joy-requests` },
+  ]},
   { label: "Audit Logs", href: `/${ADMIN_SEGMENT}/audit`, icon: Shield },
   { label: "Error Logs", href: `/${ADMIN_SEGMENT}/errors`, icon: Bug },
   { label: "God Mode", href: `/${ADMIN_SEGMENT}/god-mode`, icon: UserCog },
@@ -327,7 +334,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         </header>
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
       </div>
-      <JoyChat />
+      <JoyPageBubble />
+          <JoyChat />
     </div>
   );
 }

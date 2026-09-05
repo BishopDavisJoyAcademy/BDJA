@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Search, UserPlus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 
 interface UserRecord {

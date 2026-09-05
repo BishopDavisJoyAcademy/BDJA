@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Video, Plus, Trash2, Edit3, ExternalLink, Search, X } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 
 interface VoraVideo {

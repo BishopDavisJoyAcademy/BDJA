@@ -124,3 +124,57 @@ export interface JoyToolResult {
   name: string;
   content: string;
 }
+
+export interface ToolExecutionContext {
+  userId: string;
+  userCategory: string;
+  userName?: string;
+  campusId?: string;
+}
+
+export interface JoyKnowledgeBase {
+  id: string;
+  key: string;
+  content: string;
+  category: string;
+  is_public: boolean;
+  updated_by: string | null;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface JoyPageAssistant {
+  id: string;
+  page_route: string;
+  page_name: string;
+  context_prompt: string;
+  suggested_actions: Array<{
+    text: string;
+    action: string;
+  }>;
+  required_permission: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JoyAuditLog {
+  id: string;
+  user_id: string;
+  user_category: string;
+  action_type: string;
+  target_table: string | null;
+  target_record_id: string | null;
+  tool_name: string | null;
+  query_text: string | null;
+  ai_response_preview: string | null;
+  permission_key: string | null;
+  permission_granted: boolean;
+  success: boolean;
+  error_message: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+

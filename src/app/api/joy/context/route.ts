@@ -1,24 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { buildJoyContext } from "@/lib/joy-context";
+import { requireAuth } from "@/lib/session";
 import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const token = authHeader.slice(7);
-    const admin = getSupabaseAdmin();
-    const { data: { user }, error } = await admin.auth.getUser(token);
-    if (error || !user) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-
-    const context = await buildJoyContext(user.id);
+    const session = await requireAuth(req);
+    const context = await buildJoyContext(session.userId);
     return NextResponse.json({ context });
   } catch (error: unknown) {
+    if (error instanceof Error && error.name === "AuthRequiredError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -6,7 +6,7 @@ import { Search, X, Globe, Youtube, Play, ExternalLink, Loader2 } from "lucide-r
 import { ThemeConfig } from "@/lib/joy-themes";
 import { JoySearchResult, JoyVideoResult } from "@/types/joy";
 import { supabase } from "@/lib/supabase";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface JoySearchModalProps {

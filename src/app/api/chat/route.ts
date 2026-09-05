@@ -7,7 +7,8 @@ import { getErrorMessage, AuthRequiredError } from "@/lib/errors";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { buildJoyContext } from "@/lib/joy-context";
 import { buildSystemPrompt, getAevibronEndpoint, getAevibronKey } from "@/lib/aevibron";
-import { JOY_TOOLS, executeTool } from "@/lib/joy-tools";
+import { JOY_TOOLS, executeTool, getToolsForUser, ToolExecutionContext } from "@/lib/joy-tools";
+import { checkInputGuardrails, sanitizeOutput, classifyQueryIntent } from "@/lib/joy-guardrails";
 
 export const dynamic = "force-dynamic";
 
@@ -42,16 +43,18 @@ interface ChatResponse {
 }
 
 function resolveEndpoint(raw: string): string {
-  // If the env var already includes the full path, use it as-is.
-  // Otherwise append /api/v1/chat for backward compatibility.
   if (raw.endsWith("/api/v1/chat")) return raw;
   return `${raw.replace(/\/$/, "")}/api/v1/chat`;
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const session = await requireAuth(req);
+  const startTime = Date.now();
+  let session: { userId: string; email?: string } | null = null;
 
+  try {
+    session = await requireAuth(req);
+
+    // Rate limiting
     const identifier = getClientIP(req) + ":chat";
     const { success: rateOk } = await rateLimit(identifier, RATE_LIMITS.chat);
     if (!rateOk) {
@@ -74,6 +77,40 @@ export async function POST(req: NextRequest) {
     const conversationId = body.conversationId as string | undefined;
     const attachments = body.attachments as Array<{ name: string; type: string; url?: string; extractedContent?: string }> | undefined;
     const preferences = body.preferences as { personality_mode?: string; language_preference?: string } | undefined;
+
+    // Get user profile for guardrails
+    const admin = getSupabaseAdmin();
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("user_category, full_name, campus_id")
+      .eq("id", session.userId)
+      .single();
+
+    const userCategory = profile?.user_category || "student";
+    const userName = profile?.full_name || "User";
+
+    // ============================================================
+    // GUARDRAILS: Check user input before sending to AI
+    // ============================================================
+    const lastUserMessage = messages[messages.length - 1];
+    if (lastUserMessage?.role === "user") {
+      const guardrailResult = await checkInputGuardrails(
+        lastUserMessage.content,
+        session.userId,
+        userCategory
+      );
+
+      if (!guardrailResult.allowed) {
+        // Log blocked query
+        await logAnalytics(session.userId, conversationId, lastUserMessage.content, "blocked", 0, "guardrail", true, guardrailResult.violationType);
+
+        return NextResponse.json({
+          reply: guardrailResult.reason || "I cannot process that request. Please ask about school-related topics.",
+          blocked: true,
+          violationType: guardrailResult.violationType,
+        });
+      }
+    }
 
     const endpoint = resolveEndpoint(getAevibronEndpoint());
     const apiKey = getAevibronKey();
@@ -111,8 +148,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Filter tools by user category
+    const availableTools = getToolsForUser(userCategory);
+
     // Save user message to DB
-    const admin = getSupabaseAdmin();
     if (conversationId) {
       const userMsg = messages[messages.length - 1];
       if (userMsg && userMsg.role === "user") {
@@ -120,13 +159,15 @@ export async function POST(req: NextRequest) {
           conversation_id: conversationId,
           role: "user",
           content: userMsg.content,
+          metadata: attachments && attachments.length > 0 ? { attachments } : undefined,
         });
       }
     }
 
+    // Streaming response
     if (stream) {
       const encoder = new TextEncoder();
-      const readable = new ReadableStream({
+      const streamResponse = new ReadableStream({
         async start(controller) {
           try {
             const res = await fetch(endpoint, {
@@ -141,45 +182,34 @@ export async function POST(req: NextRequest) {
                 temperature: 0.7,
                 max_tokens: 4096,
                 stream: true,
-                tools: JOY_TOOLS,
+                tools: availableTools.length > 0 ? availableTools : undefined,
               }),
             });
 
             if (!res.ok) {
-              let errMessage = `AI service error: ${res.status}`;
-              try {
-                const errData = await res.json() as { error?: { message?: string } | string };
-                if (typeof errData.error === "string") errMessage = errData.error;
-                else if (errData.error?.message) errMessage = errData.error.message;
-              } catch {
-                // ignore parse errors on error response
-              }
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ error: errMessage })}\n\n`)
-              );
+              const errText = await res.text().catch(() => "Unknown error");
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errText })}\n\n`));
               controller.close();
               return;
             }
 
             const reader = res.body?.getReader();
             if (!reader) {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ error: "No response body from AI service" })}\n\n`)
-              );
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "No response body" })}\n\n`));
               controller.close();
               return;
             }
 
-            let assistantText = "";
+            let fullContent = "";
+            let toolCalls: Array<Record<string, unknown>> = [];
             const decoder = new TextDecoder();
-            let buffer = "";
 
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split("\n");
-              buffer = lines.pop() || "";
+
+              const chunk = decoder.decode(value);
+              const lines = chunk.split("\n");
 
               for (const line of lines) {
                 if (!line.startsWith("data: ")) continue;
@@ -187,76 +217,67 @@ export async function POST(req: NextRequest) {
                 if (data === "[DONE]") continue;
 
                 try {
-                  const parsed = JSON.parse(data) as SseChunk;
-                  if (parsed.error) {
-                    controller.enqueue(
-                      encoder.encode(`data: ${JSON.stringify({ error: String(parsed.error) })}\n\n`)
-                    );
-                    continue;
+                  const parsed: SseChunk = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta;
+
+                  if (delta?.content) {
+                    fullContent += delta.content;
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk: delta.content })}\n\n`));
                   }
 
-                  const content = parsed.choices?.[0]?.delta?.content;
-                  if (typeof content === "string" && content.length > 0) {
-                    assistantText += content;
-                    controller.enqueue(
-                      encoder.encode(`data: ${JSON.stringify({ chunk: content })}\n\n`)
-                    );
+                  if (delta?.tool_calls) {
+                    for (const tc of delta.tool_calls) {
+                      toolCalls.push(tc as Record<string, unknown>);
+                    }
                   }
                 } catch {
-                  // Ignore parse errors for malformed SSE lines
+                  // Ignore parse errors in stream
                 }
               }
             }
 
-            // Process any remaining data in buffer
-            if (buffer.startsWith("data: ")) {
-              const data = buffer.slice(6);
-              if (data !== "[DONE]") {
-                try {
-                  const parsed = JSON.parse(data) as SseChunk;
-                  const content = parsed.choices?.[0]?.delta?.content;
-                  if (typeof content === "string" && content.length > 0) {
-                    assistantText += content;
-                    controller.enqueue(
-                      encoder.encode(`data: ${JSON.stringify({ chunk: content })}\n\n`)
-                    );
-                  }
-                } catch {
-                  // ignore
-                }
-              }
+            // Execute any tool calls
+            if (toolCalls.length > 0) {
+              const toolResults = await executeToolCalls(toolCalls, session!.userId, userCategory);
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ toolCalls: toolResults })}\n\n`));
             }
 
-            // Save assistant message to DB
-            if (conversationId && assistantText) {
+            // Sanitize final output
+            const sanitizedContent = sanitizeOutput(fullContent);
+
+            // Save assistant message
+            if (conversationId) {
               await admin.from("conversation_messages").insert({
                 conversation_id: conversationId,
                 role: "assistant",
-                content: assistantText,
+                content: sanitizedContent,
+                metadata: toolCalls.length > 0 ? { toolCalls } : undefined,
               });
             }
 
+            // Log analytics
+            const responseTime = Date.now() - startTime;
+            await logAnalytics(session!.userId, conversationId, lastUserMessage?.content || "", classifyQueryIntent(lastUserMessage?.content || ""), responseTime, "aevibron-core-v3", false, undefined, toolCalls.map((tc) => String((tc as { function?: { name?: string } }).function?.name || "")).filter(Boolean));
+
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             controller.close();
           } catch (err) {
-            const message = err instanceof Error ? err.message : "Streaming failed";
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`)
-            );
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: getErrorMessage(err) })}\n\n`));
             controller.close();
           }
         },
       });
 
-      return new Response(readable, {
+      return new Response(streamResponse, {
         headers: {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
-          Connection: "keep-alive",
+          "Connection": "keep-alive",
         },
       });
     }
 
-    // Non-streaming path
+    // Non-streaming response
     const res = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -269,82 +290,118 @@ export async function POST(req: NextRequest) {
         temperature: 0.7,
         max_tokens: 4096,
         stream: false,
-        tools: JOY_TOOLS,
+        tools: availableTools.length > 0 ? availableTools : undefined,
       }),
     });
 
     if (!res.ok) {
-      let errMessage = `AI service error: ${res.status}`;
-      try {
-        const errData = await res.json() as { error?: { message?: string } | string };
-        if (typeof errData.error === "string") errMessage = errData.error;
-        else if (errData.error?.message) errMessage = errData.error.message;
-      } catch {
-        // ignore
-      }
-      return NextResponse.json({ error: errMessage }, { status: res.status });
+      const errText = await res.text().catch(() => "Unknown error");
+      return NextResponse.json({ error: errText }, { status: res.status });
     }
 
-    const data = (await res.json()) as ChatResponse;
-    let replyText = data.reply ?? data.content ?? data.choices?.[0]?.message?.content ?? "";
-    const actions = Array.isArray(data.actions) ? data.actions : [];
+    const json: ChatResponse = await res.json();
+    let replyText = json.reply || json.content || json.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that.";
 
-    // Handle tool calls from either top-level or choices[0].message
-    const rawToolCalls = data.toolCalls ?? data.choices?.[0]?.message?.tool_calls;
-    if (Array.isArray(rawToolCalls) && rawToolCalls.length > 0) {
-      const toolResults = [];
-      for (const tc of rawToolCalls) {
-        const result = await executeTool(tc as { id: string; type: "function"; function: { name: string; arguments: string } });
-        toolResults.push(result);
-      }
-
-      const toolMessages = toolResults.map((tr) => ({
-        role: "tool" as const,
-        content: tr.content,
-        tool_call_id: tr.tool_call_id,
-      }));
-
-      const finalRes = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Aevibron-Key": apiKey,
-        },
-        body: JSON.stringify({
-          model: "aevibron-core-v3",
-          messages: [
-            ...fullMessages,
-            { role: "assistant", content: replyText },
-            ...toolMessages,
-          ],
-          temperature: 0.7,
-          max_tokens: 4096,
-          stream: false,
-        }),
-      });
-
-      if (finalRes.ok) {
-        const finalData = (await finalRes.json()) as ChatResponse;
-        replyText = finalData.reply ?? finalData.content ?? finalData.choices?.[0]?.message?.content ?? replyText;
-      }
+    // Handle tool calls in non-streaming
+    const toolCalls = json.choices?.[0]?.message?.tool_calls;
+    if (toolCalls && toolCalls.length > 0) {
+      const toolResults = await executeToolCalls(toolCalls, session.userId, userCategory);
+      // Append tool results to reply
+      replyText += "\n\n[Tool Results]\n" + JSON.stringify(toolResults, null, 2);
     }
 
-    // Save assistant message to DB
-    if (conversationId && replyText) {
+    // Sanitize output
+    replyText = sanitizeOutput(replyText);
+
+    // Save assistant message
+    if (conversationId) {
       await admin.from("conversation_messages").insert({
         conversation_id: conversationId,
         role: "assistant",
         content: replyText,
+        metadata: toolCalls && toolCalls.length > 0 ? { toolCalls } : undefined,
       });
     }
 
-    return NextResponse.json({ reply: replyText, actions });
+    // Log analytics
+    const responseTime = Date.now() - startTime;
+    await logAnalytics(session.userId, conversationId, lastUserMessage?.content || "", classifyQueryIntent(lastUserMessage?.content || ""), responseTime, "aevibron-core-v3", false, undefined, toolCalls?.map((tc) => String(tc.function?.name || "")).filter(Boolean));
+
+    return NextResponse.json({
+      reply: replyText,
+      actions: json.actions,
+      toolCalls: toolCalls,
+    });
+
   } catch (error: unknown) {
-    const message = error instanceof Error ? getErrorMessage(error) : "Chat request failed";
     if (error instanceof AuthRequiredError) {
-      return NextResponse.json({ error: message }, { status: error.statusCode || 401 });
+      return NextResponse.json({ error: error.message }, { status: error.statusCode || 401 });
     }
-    console.error("[chat] Error:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[chat] Error:", getErrorMessage(error));
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================================
+// Helper: Execute tool calls with validation
+// ============================================================
+async function executeToolCalls(
+  toolCalls: Array<Record<string, unknown>>,
+  userId: string,
+  userCategory: string
+): Promise<Array<Record<string, unknown>>> {
+  const results: Array<Record<string, unknown>> = [];
+  const toolCtx: ToolExecutionContext = { userId, userCategory };
+
+  for (const tc of toolCalls) {
+    const toolCall = tc as {
+      id: string;
+      type: string;
+      function: { name: string; arguments: string };
+    };
+
+    const result = await executeTool(toolCall, toolCtx);
+    results.push({
+      tool_call_id: result.tool_call_id,
+      name: result.name,
+      content: result.content,
+    });
+  }
+
+  return results;
+}
+
+// ============================================================
+// Helper: Log analytics
+// ============================================================
+async function logAnalytics(
+  userId: string,
+  conversationId: string | undefined,
+  query: string,
+  category: string,
+  responseTimeMs: number,
+  modelUsed: string,
+  guardrailTriggered: boolean,
+  guardrailReason?: string,
+  toolCallsUsed?: string[]
+): Promise<void> {
+  try {
+    const admin = getSupabaseAdmin();
+    await admin.from("joy_conversation_analytics").insert({
+      user_id: userId,
+      conversation_id: conversationId,
+      query: query.slice(0, 1000),
+      query_category: category,
+      response_time_ms: responseTimeMs,
+      model_used: modelUsed,
+      guardrail_triggered: guardrailTriggered,
+      guardrail_reason: guardrailReason,
+      tool_calls_used: toolCallsUsed || [],
+    });
+  } catch (err) {
+    console.error("[chat] Analytics log failed:", getErrorMessage(err));
   }
 }

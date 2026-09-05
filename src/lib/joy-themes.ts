@@ -7,7 +7,8 @@ export type JoyTheme =
   | "forest"
   | "sunset"
   | "midnight"
-  | "cream";
+  | "cream"
+  | "gold";
 
 export interface ThemeConfig {
   name: string;

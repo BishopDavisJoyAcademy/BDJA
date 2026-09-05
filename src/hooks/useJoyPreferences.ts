@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { JoyUserPreferences, JoyTheme } from "@/types/joy";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
 const DEFAULT_PREFS: JoyUserPreferences = {
   id: "",

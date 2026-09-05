@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Search, Eye, EyeOff, Shield, AlertTriangle } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 
 interface UserResult {

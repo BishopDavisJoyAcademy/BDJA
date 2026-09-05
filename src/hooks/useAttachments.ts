@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { AttachmentFile, PollData, WhiteboardData, SearchQueryData } from "@/types/attachments";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 
 export function useAttachments() {

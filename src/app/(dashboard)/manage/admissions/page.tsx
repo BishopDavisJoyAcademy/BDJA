@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { BookOpen, CheckCircle, XCircle, Clock, Loader2, Trash2, Eye, Plus } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
 interface Admission {
   id: string;

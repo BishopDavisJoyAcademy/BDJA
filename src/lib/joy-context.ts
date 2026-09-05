@@ -215,6 +215,19 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
     thumbnail: v.thumbnail_url,
   }));
 
+  // Knowledge Base — Admin-configurable school info
+  try {
+    const { data: kb } = await admin
+      .from("joy_knowledge_base")
+      .select("key, content, category")
+      .eq("is_public", true);
+    if (kb && kb.length > 0) {
+      ctx.knowledgeBase = kb.map((item) => `${item.category}: ${item.key} = ${item.content}`).join("\n");
+    }
+  } catch {
+    ctx.knowledgeBase = undefined;
+  }
+
   return ctx;
 }
 

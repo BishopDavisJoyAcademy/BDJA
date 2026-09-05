@@ -39,6 +39,20 @@ interface AuditLogEntry {
 }
 
 /**
+ * Untyped admin client for generic table operations
+ */
+function getUntypedAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error("Supabase admin credentials not configured");
+  }
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+/**
  * Map tables to required permission keys
  */
 const TABLE_PERMISSION_MAP: Record<string, string> = {
@@ -59,9 +73,6 @@ const TABLE_PERMISSION_MAP: Record<string, string> = {
   campuses: "admin.access",
 };
 
-/**
- * Map tables to view permission keys (for query operations)
- */
 const TABLE_VIEW_PERMISSION_MAP: Record<string, string> = {
   timetable: "timetable.view",
   assignments: "assignments.view",
@@ -130,7 +141,7 @@ export async function executeJoyAction(
   }
 
   // 3. Check permission
-  const permissionKey = actionType === "query" 
+  const permissionKey = actionType === "query"
     ? (TABLE_VIEW_PERMISSION_MAP[table] || TABLE_PERMISSION_MAP[table])
     : (TABLE_PERMISSION_MAP[table] || `${table}.manage`);
 
@@ -154,8 +165,8 @@ export async function executeJoyAction(
     };
   }
 
-  // 4. Execute the action
-  const admin = getSupabaseAdmin();
+  // 4. Execute the action using untyped client for generic table access
+  const admin = getUntypedAdmin();
   let result: ActionResult;
 
   try {
@@ -192,7 +203,7 @@ export async function executeJoyAction(
     };
   }
 
-  // 5. Log audit
+  // 5. Log audit using untyped client
   await logAudit({
     user_id: userId,
     user_category: userCategory,
@@ -210,7 +221,7 @@ export async function executeJoyAction(
 }
 
 async function actionCreate(
-  admin: ReturnType<typeof getSupabaseAdmin>,
+  admin: ReturnType<typeof getUntypedAdmin>,
   table: string,
   payload: ActionPayload
 ): Promise<ActionResult> {
@@ -218,7 +229,6 @@ async function actionCreate(
     return { success: false, message: "No data provided for create action" };
   }
 
-  // Sanitize data — remove any id fields to prevent ID injection
   const sanitizedData = { ...payload.data };
   delete sanitizedData.id;
   delete sanitizedData.created_at;
@@ -241,7 +251,7 @@ async function actionCreate(
 }
 
 async function actionUpdate(
-  admin: ReturnType<typeof getSupabaseAdmin>,
+  admin: ReturnType<typeof getUntypedAdmin>,
   table: string,
   payload: ActionPayload
 ): Promise<ActionResult> {
@@ -249,7 +259,6 @@ async function actionUpdate(
     return { success: false, message: "ID and data required for update" };
   }
 
-  // Sanitize — prevent changing critical fields
   const sanitizedData = { ...payload.data };
   delete sanitizedData.id;
   delete sanitizedData.created_at;
@@ -275,7 +284,7 @@ async function actionUpdate(
 }
 
 async function actionDelete(
-  admin: ReturnType<typeof getSupabaseAdmin>,
+  admin: ReturnType<typeof getUntypedAdmin>,
   table: string,
   payload: ActionPayload
 ): Promise<ActionResult> {
@@ -299,7 +308,7 @@ async function actionDelete(
 }
 
 async function actionQuery(
-  admin: ReturnType<typeof getSupabaseAdmin>,
+  admin: ReturnType<typeof getUntypedAdmin>,
   table: string,
   payload: ActionPayload
 ): Promise<ActionResult> {
@@ -316,7 +325,6 @@ async function actionQuery(
     }
   }
 
-  // Limit results to prevent data exfiltration
   query = query.limit(50);
 
   const { data, error } = await query;
@@ -334,7 +342,7 @@ async function actionQuery(
 
 async function logAudit(entry: AuditLogEntry): Promise<void> {
   try {
-    const admin = getSupabaseAdmin();
+    const admin = getUntypedAdmin();
     await admin.from("joy_audit_log").insert({
       user_id: entry.user_id,
       user_category: entry.user_category,
@@ -348,7 +356,6 @@ async function logAudit(entry: AuditLogEntry): Promise<void> {
       metadata: entry.metadata || {},
     });
   } catch (err) {
-    // Fail silently — audit logging should never block operations
     console.error("[joy-actions] Audit log failed:", getErrorMessage(err));
   }
 }

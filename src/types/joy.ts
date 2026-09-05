@@ -37,7 +37,8 @@ export type JoyTheme =
   | "forest"
   | "sunset"
   | "midnight"
-  | "cream";
+  | "cream"
+  | "gold";
 
 export interface JoyAction {
   type: "navigate" | "refresh" | "open_modal" | "create_record" | "update_record" | "delete_record" | "export" | "notify" | "search" | "send_message";
@@ -61,6 +62,7 @@ export interface JoyContext {
   voraResults?: Record<string, unknown>[];
   children?: Record<string, unknown>[];
   availableActions?: string[];
+  knowledgeBase?: string;
 }
 
 export interface JoyAnalytics {

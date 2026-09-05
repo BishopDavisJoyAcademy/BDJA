@@ -217,15 +217,24 @@ export async function buildJoyContext(userId: string): Promise<JoyContext> {
 
   // Knowledge Base — Admin-configurable school info
   try {
-    const { data: kb } = await admin
-      .from("joy_knowledge_base")
-      .select("key, content, category")
-      .eq("is_public", true);
-    if (kb && kb.length > 0) {
-      ctx.knowledgeBase = kb.map((item) => `${item.category}: ${item.key} = ${item.content}`).join("\n");
+    const { createClient } = await import("@supabase/supabase-js");
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (url && key) {
+      const untypedAdmin = createClient(url, key, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { data: kb } = await untypedAdmin
+        .from("joy_knowledge_base")
+        .select("key, content, category")
+        .eq("is_public", true);
+      if (kb && Array.isArray(kb) && kb.length > 0) {
+        const entries = kb as Array<{ key: string; content: string; category: string }>;
+        ctx.knowledgeBase = entries.map((item) => `${item.category}: ${item.key} = ${item.content}`).join("\n");
+      }
     }
   } catch {
-    ctx.knowledgeBase = undefined;
+    // Knowledge base not available yet
   }
 
   return ctx;

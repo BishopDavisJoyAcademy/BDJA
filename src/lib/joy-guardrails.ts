@@ -1,6 +1,4 @@
-"use server";
-
-import { getSupabaseAdmin } from "./supabase-server";
+import { createClient } from "@supabase/supabase-js";
 
 // ============================================================
 // JOY GUARDRAILS — Input/Output Security Layer
@@ -89,6 +87,20 @@ export interface PiiScanResult {
 }
 
 /**
+ * Untyped admin client for new tables not in generated types
+ */
+function getUntypedAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error("Supabase admin credentials not configured");
+  }
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+/**
  * Check if a query passes all input guardrails
  */
 export async function checkInputGuardrails(
@@ -140,17 +152,14 @@ export async function checkInputGuardrails(
   // 4. Check for harmful content patterns
   for (const category of HARMFUL_CATEGORIES) {
     if (lowerQuery.includes(category.toLowerCase())) {
-      // Flag but don't block — could be legitimate (e.g., "how to make a timetable")
-      const flagged = await logGuardrailViolation(userId, "harmful_content", query, "medium", false);
-      if (flagged) {
-        return {
-          allowed: true,
-          reason: "Your query was flagged for review. Proceeding with caution.",
-          violationType: "harmful_content",
-          severity: "medium",
-          sanitizedQuery: query,
-        };
-      }
+      await logGuardrailViolation(userId, "harmful_content", query, "medium", false);
+      return {
+        allowed: true,
+        reason: "Your query was flagged for review. Proceeding with caution.",
+        violationType: "harmful_content",
+        severity: "medium",
+        sanitizedQuery: query,
+      };
     }
   }
 
@@ -196,19 +205,16 @@ export function redactPii(text: string): PiiScanResult {
  * Sanitize AI output before sending to user
  */
 export function sanitizeOutput(text: string): string {
-  // Redact any PII that might have leaked through
   const piiResult = redactPii(text);
-
-  // Remove any system prompt leakage
   let sanitized = piiResult.redactedText;
 
-  // Remove common prompt leakage patterns
+  // Remove common prompt leakage patterns using [\s\S] instead of s flag
   const leakagePatterns = [
-    /You are Joy.*?Bishop Davis Joy Academy/s,
-    /IDENTITY RULES.*?CORE VALUES/s,
-    /SYSTEM PROMPT.*?END SYSTEM PROMPT/s,
-    /<system>.*?<\/system>/s,
-    /\[SYSTEM\].*?\[\/SYSTEM\]/s,
+    /You are Joy[\s\S]*?Bishop Davis Joy Academy/,
+    /IDENTITY RULES[\s\S]*?CORE VALUES/,
+    /SYSTEM PROMPT[\s\S]*?END SYSTEM PROMPT/,
+    /<system>[\s\S]*?<\/system>/,
+    /\[SYSTEM\][\s\S]*?\[\/SYSTEM\]/,
   ];
 
   for (const pattern of leakagePatterns) {
@@ -238,7 +244,7 @@ async function logGuardrailViolation(
   blocked: boolean = true
 ): Promise<boolean> {
   try {
-    const admin = getSupabaseAdmin();
+    const admin = getUntypedAdmin();
     await admin.from("joy_guardrail_violations").insert({
       user_id: userId,
       violation_type: violationType,
@@ -248,7 +254,6 @@ async function logGuardrailViolation(
     });
     return true;
   } catch {
-    // Fail silently — don't block the guardrail itself
     return false;
   }
 }

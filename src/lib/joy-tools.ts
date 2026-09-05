@@ -504,7 +504,7 @@ async function runTool(
           .from("assessments")
           .select("score, max_score")
           .gte("created_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString());
-        const scores = (data || []).map((r) => (r.score / r.max_score) * 100);
+        const scores = (data || []).map((r) => ((r.score ?? 0) / (r.max_score || 1)) * 100);
         const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
         result = { average: Math.round(avg * 10) / 10, count: scores.length };
       } else if (metric === "fees") {
@@ -605,8 +605,14 @@ async function logToolAudit(
   errorMessage?: string
 ): Promise<void> {
   try {
-    const admin = getSupabaseAdmin();
-    await admin.from("joy_audit_log").insert({
+    const { createClient } = await import("@supabase/supabase-js");
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) return;
+    const untypedAdmin = createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    await untypedAdmin.from("joy_audit_log").insert({
       user_id: userId,
       user_category: "unknown",
       action_type: "tool_call",

@@ -5,6 +5,7 @@ import { getClientIP } from "@/lib/security";
 import { joyChatMessageSchema } from "@/lib/validation";
 import { getErrorMessage, AuthRequiredError } from "@/lib/errors";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { createClient } from "@supabase/supabase-js";
 import { buildJoyContext } from "@/lib/joy-context";
 import { buildSystemPrompt, getAevibronEndpoint, getAevibronKey } from "@/lib/aevibron";
 import { JOY_TOOLS, executeTool, getToolsForUser, ToolExecutionContext } from "@/lib/joy-tools";
@@ -251,13 +252,13 @@ export async function POST(req: NextRequest) {
                 conversation_id: conversationId,
                 role: "assistant",
                 content: sanitizedContent,
-                metadata: toolCalls.length > 0 ? { toolCalls } : undefined,
+                metadata: toolCalls.length > 0 ? { toolCalls: toolCalls.map((tc) => ({ id: (tc as { id?: string }).id, name: (tc as { function?: { name?: string } }).function?.name })) } : undefined,
               });
             }
 
             // Log analytics
             const responseTime = Date.now() - startTime;
-            await logAnalytics(session!.userId, conversationId, lastUserMessage?.content || "", classifyQueryIntent(lastUserMessage?.content || ""), responseTime, "aevibron-core-v3", false, undefined, toolCalls.map((tc) => String((tc as { function?: { name?: string } }).function?.name || "")).filter(Boolean));
+            await logAnalytics(session!.userId, conversationId, lastUserMessage?.content || "", classifyQueryIntent(lastUserMessage?.content || ""), responseTime, "aevibron-core-v3", false, undefined, toolCalls.map((tc) => String(((tc as { function?: { name?: string } }).function)?.name || "")).filter(Boolean));
 
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             controller.close();
@@ -319,7 +320,7 @@ export async function POST(req: NextRequest) {
         conversation_id: conversationId,
         role: "assistant",
         content: replyText,
-        metadata: toolCalls && toolCalls.length > 0 ? { toolCalls } : undefined,
+        metadata: toolCalls && toolCalls.length > 0 ? { toolCalls: toolCalls.map((tc) => ({ id: (tc as { id?: string }).id, name: (tc as { function?: { name?: string } }).function?.name })) } : undefined,
       });
     }
 
@@ -357,10 +358,13 @@ async function executeToolCalls(
   const toolCtx: ToolExecutionContext = { userId, userCategory };
 
   for (const tc of toolCalls) {
-    const toolCall = tc as {
-      id: string;
-      type: string;
-      function: { name: string; arguments: string };
+    const toolCall = {
+      id: String((tc as { id?: string }).id || ""),
+      type: "function" as const,
+      function: {
+        name: String(((tc as { function?: { name?: string } }).function)?.name || ""),
+        arguments: String(((tc as { function?: { arguments?: string } }).function)?.arguments || "{}"),
+      },
     };
 
     const result = await executeTool(toolCall, toolCtx);
@@ -389,8 +393,13 @@ async function logAnalytics(
   toolCallsUsed?: string[]
 ): Promise<void> {
   try {
-    const admin = getSupabaseAdmin();
-    await admin.from("joy_conversation_analytics").insert({
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) return;
+    const untypedAdmin = createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    await untypedAdmin.from("joy_conversation_analytics").insert({
       user_id: userId,
       conversation_id: conversationId,
       query: query.slice(0, 1000),

@@ -212,6 +212,31 @@ export const THEME_MAP: Record<JoyTheme, ThemeConfig> = {
     sendButtonHover: "#78350f",
     shadow: "0 10px 40px -10px rgba(146,64,14,0.15)",
   },
+  gold: {
+    name: "Gold",
+    primary: "#D4AF37",
+    primaryLight: "#E8C84A",
+    primaryDark: "#B8941F",
+    accent: "#F0C040",
+    background: "#0f172a",
+    surface: "rgba(15, 23, 42, 0.85)",
+    surfaceHover: "rgba(30, 41, 59, 0.9)",
+    text: "#f1f5f9",
+    textMuted: "#94a3b8",
+    textInverse: "#0f172a",
+    border: "rgba(148, 163, 184, 0.15)",
+    userBubble: "rgba(212, 175, 55, 0.15)",
+    userBubbleText: "#f1f5f9",
+    assistantBubble: "rgba(30, 41, 59, 0.7)",
+    assistantBubbleText: "#e2e8f0",
+    codeBg: "#1e293b",
+    scrollbarThumb: "rgba(212, 175, 55, 0.3)",
+    scrollbarTrack: "rgba(15, 23, 42, 0.5)",
+    headerGradient: "linear-gradient(135deg, #D4AF37 0%, #B8941F 100%)",
+    sendButton: "#D4AF37",
+    sendButtonHover: "#E8C84A",
+    shadow: "0 8px 32px rgba(212, 175, 55, 0.15)",
+  },
 };
 
 export function getThemeConfig(theme: JoyTheme): ThemeConfig {
@@ -219,6 +244,7 @@ export function getThemeConfig(theme: JoyTheme): ThemeConfig {
 }
 
 export const THEME_LIST: { key: JoyTheme; name: string; preview: string }[] = [
+  { key: "gold", name: "Gold", preview: "#D4AF37" },
   { key: "light", name: "Light", preview: "#1e3a5f" },
   { key: "dark", name: "Dark", preview: "#3b82f6" },
   { key: "ocean", name: "Ocean", preview: "#0891b2" },

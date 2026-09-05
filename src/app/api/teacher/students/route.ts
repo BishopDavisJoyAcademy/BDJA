@@ -18,9 +18,10 @@ export async function GET(req: NextRequest) {
 
     const canManage =
       session.userCategory === "admin" ||
-      session.permissions.includes("classes.manage") ||
-      session.permissions.includes("timetables.manage") ||
-      session.permissions.includes("staff.manage");
+      session.permissions.includes("timetable.manage") ||
+      session.permissions.includes("students.manage") ||
+      session.permissions.includes("staff.manage") ||
+      session.permissions.includes("admin.access");
 
     // Verify teacher has access to this class (skip for managers)
     if (!canManage) {

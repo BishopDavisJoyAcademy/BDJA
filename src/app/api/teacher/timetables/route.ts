@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const classId = searchParams.get("class_id");
 
-    const canManage = session.permissions.includes("timetables.manage") || session.userCategory === "admin";
+    const canManage = session.permissions.includes("timetable.manage") || session.userCategory === "admin";
 
     let query = admin
       .from("timetable")

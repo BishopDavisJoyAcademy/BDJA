@@ -10,7 +10,8 @@ import {
   LayoutDashboard, Users, GraduationCap, FileText, MessageSquare, BarChart3, Shield, Settings, Bug,
   BookOpen, Video, Building2, Calendar, LogOut, ChevronDown, ChevronRight,
   Wrench, UserCog, AlertCircle, Globe, X, Menu,
-  ClipboardCheck, Receipt, Award, Megaphone, UserCheck, Wallet, Clock, Baby
+  ClipboardCheck, Receipt, Award, Megaphone, UserCheck, Wallet, Clock, Baby,
+  Sparkles
 } from "lucide-react";
 import { ADMIN_SEGMENT } from "@/lib/constants";
 import { JoyChat } from "@/components/joy/JoyChat";

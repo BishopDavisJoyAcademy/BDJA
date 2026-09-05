@@ -10,7 +10,7 @@ import {
   Loader2, Users, GraduationCap, BookOpen, DollarSign, Calendar,
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock,
   ArrowRight, RefreshCw, MessageSquare, Video, FileText, Settings,
-  Shield, Activity
+  Shield, Activity, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";

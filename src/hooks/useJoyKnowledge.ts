@@ -6,11 +6,18 @@ import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 import { JoyKnowledgeBase } from "@/types/joy";
 
+interface KnowledgeFormData {
+  key: string;
+  content: string;
+  category: JoyKnowledgeBase["category"];
+  is_public: boolean;
+}
+
 interface UseJoyKnowledgeReturn {
   knowledge: JoyKnowledgeBase[];
   loading: boolean;
   fetchKnowledge: (category?: string) => Promise<void>;
-  saveKnowledge: (data: Omit<JoyKnowledgeBase, "id" | "created_at" | "updated_at">) => Promise<JoyKnowledgeBase | null>;
+  saveKnowledge: (data: KnowledgeFormData) => Promise<JoyKnowledgeBase | null>;
   deleteKnowledge: (key: string) => Promise<boolean>;
 }
 
@@ -43,7 +50,7 @@ export function useJoyKnowledge(): UseJoyKnowledgeReturn {
     }
   }, [getHeaders]);
 
-  const saveKnowledge = useCallback(async (data) => {
+  const saveKnowledge = useCallback(async (data: KnowledgeFormData) => {
     try {
       const headers = await getHeaders();
       const res = await fetch("/api/joy/knowledge", {

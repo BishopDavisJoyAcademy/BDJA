@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -50,7 +51,7 @@ export default function JoyPageAssistantsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const getHeaders = useCallback(async () => {
-    const { data: { session: s } } = await import("@/lib/supabase-client").then((m) => m.supabase.auth.getSession());
+    const { data: { session: s } } = await supabase.auth.getSession();
     const headers: Record<string, string> = {};
     if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
     return headers;

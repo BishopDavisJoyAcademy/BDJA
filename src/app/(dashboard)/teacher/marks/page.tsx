@@ -710,7 +710,7 @@ export default function TeacherMarksPage() {
                               <p className="text-[10px] text-slate-500">{student.admission_number}</p>
                             </div>
                             {hasExisting && (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" title="Previously graded" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
                             )}
                           </div>
                         </td>

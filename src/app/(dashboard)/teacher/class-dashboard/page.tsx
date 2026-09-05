@@ -151,7 +151,7 @@ export default function TeacherClassDashboardPage() {
   const totalStudents = data?.total_students || 0;
   const atRisk = data?.at_risk || [];
   const subjects = data?.subject_performance || [];
-  const allStudents = data?.students || [];
+  const allStudents = useMemo(() => data?.students || [], [data?.students]);
 
   const filteredStudents = useMemo(() => {
     let list = allStudents;

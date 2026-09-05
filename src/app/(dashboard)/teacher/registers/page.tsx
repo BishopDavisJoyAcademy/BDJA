@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ClipboardList, CheckCircle, XCircle, Clock, AlertTriangle,
+  ClipboardList, CheckCircle, XCircle, Clock, AlertTriangle, AlertCircle,
   Loader2, Save, CalendarDays, Users, Search, Filter,
   ChevronDown, ChevronLeft, ChevronRight, Sparkles,
   BarChart3, TrendingUp, TrendingDown, Minus,

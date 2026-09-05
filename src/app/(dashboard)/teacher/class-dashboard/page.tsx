@@ -178,10 +178,22 @@ export default function TeacherClassDashboardPage() {
 
   if (classes.length === 0 && !loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <GraduationCap className="w-12 h-12 text-slate-700" />
-        <p className="text-slate-500 text-sm">You are not assigned to any classes</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center justify-center min-h-[60vh] gap-4"
+      >
+        <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}20` }}>
+          <GraduationCap className="w-10 h-10" style={{ color: GOLD }} />
+        </div>
+        <div className="text-center max-w-sm">
+          <h3 className="text-lg font-semibold text-white mb-2">No Classes Assigned</h3>
+          <p className="text-slate-500 text-sm">
+            You are not currently assigned as a class teacher or subject teacher for any class. 
+            Contact your administrator to be assigned to a class.
+          </p>
+        </div>
+      </motion.div>
     );
   }
 

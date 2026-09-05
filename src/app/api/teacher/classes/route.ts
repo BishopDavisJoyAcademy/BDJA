@@ -10,10 +10,31 @@ export async function GET(req: NextRequest) {
     const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
 
+    const canManage =
+      session.userCategory === "admin" ||
+      session.permissions.includes("classes.manage") ||
+      session.permissions.includes("timetables.manage") ||
+      session.permissions.includes("staff.manage");
+
+    if (canManage) {
+      // Staff with manage permissions see ALL classes
+      const { data: allClasses, error } = await admin
+        .from("classes")
+        .select("id, name, grade_level, stream")
+        .order("grade_level", { ascending: true });
+
+      if (error) {
+        console.error("[teacher/classes GET] all classes error:", error.message);
+        return NextResponse.json({ error: "Failed to fetch classes" }, { status: 500 });
+      }
+
+      return NextResponse.json({ classes: allClasses || [] });
+    }
+
     // 1. Classes where this teacher is the class teacher
     const { data: classTeacherClasses, error: ctErr } = await admin
       .from("classes")
-      .select("id, name, grade_level")
+      .select("id, name, grade_level, stream")
       .eq("class_teacher_id", session.userId);
 
     if (ctErr) {
@@ -42,15 +63,12 @@ export async function GET(req: NextRequest) {
     // 4. Fetch full class details for all unique IDs
     const { data: classes, error: classesErr } = await admin
       .from("classes")
-      .select("id, name, grade_level")
+      .select("id, name, grade_level, stream")
       .in("id", Array.from(classIds));
 
     if (classesErr) {
       console.error("[teacher/classes GET] classes fetch error:", classesErr.message);
-      return NextResponse.json(
-        { error: "Failed to fetch classes" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to fetch classes" }, { status: 500 });
     }
 
     return NextResponse.json({ classes: classes || [] });
@@ -62,9 +80,6 @@ export async function GET(req: NextRequest) {
       );
     }
     console.error("[teacher/classes GET] Unhandled error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

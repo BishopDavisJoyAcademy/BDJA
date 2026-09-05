@@ -10,6 +10,12 @@ export async function GET(req: NextRequest) {
     const session = await requireAuth(req);
     const admin = getSupabaseAdmin();
 
+    const canManage =
+      session.userCategory === "admin" ||
+      session.permissions.includes("classes.manage") ||
+      session.permissions.includes("timetables.manage") ||
+      session.permissions.includes("staff.manage");
+
     if (session.userCategory !== "staff" && session.userCategory !== "admin") {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
@@ -35,7 +41,7 @@ export async function GET(req: NextRequest) {
     let allClasses = ctClasses || [];
     let allSubjects = Array.from(subjectMap.values());
 
-    if (session.userCategory === "admin") {
+    if (canManage) {
       const [{ data: classes }, { data: subjects }] = await Promise.all([
         admin.from("classes").select("id, name, grade_level"),
         admin.from("subjects").select("id, name, code"),

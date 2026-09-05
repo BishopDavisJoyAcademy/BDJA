@@ -16,36 +16,43 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "class_id is required" }, { status: 400 });
     }
 
-    // Verify teacher has access to this class
-    const { data: classCheck, error: classErr } = await admin
-      .from("classes")
-      .select("id, class_teacher_id")
-      .eq("id", classId)
-      .maybeSingle();
+    const canManage =
+      session.userCategory === "admin" ||
+      session.permissions.includes("classes.manage") ||
+      session.permissions.includes("timetables.manage") ||
+      session.permissions.includes("staff.manage");
 
-    if (classErr) {
-      console.error("[teacher/students GET] class check error:", classErr);
-      return NextResponse.json({ error: "Failed to verify class access" }, { status: 500 });
-    }
+    // Verify teacher has access to this class (skip for managers)
+    if (!canManage) {
+      const { data: classCheck, error: classErr } = await admin
+        .from("classes")
+        .select("id, class_teacher_id")
+        .eq("id", classId)
+        .maybeSingle();
 
-    const isClassTeacher = classCheck?.class_teacher_id === session.userId;
+      if (classErr) {
+        console.error("[teacher/students GET] class check error:", classErr);
+        return NextResponse.json({ error: "Failed to verify class access" }, { status: 500 });
+      }
 
-    const { data: subjectCheck, error: subjErr } = await admin
-      .from("class_subjects")
-      .select("id")
-      .eq("class_id", classId)
-      .eq("teacher_id", session.userId)
-      .maybeSingle();
+      const isClassTeacher = classCheck?.class_teacher_id === session.userId;
 
-    if (subjErr) {
-      console.error("[teacher/students GET] subject check error:", subjErr);
-    }
+      const { data: subjectCheck, error: subjErr } = await admin
+        .from("class_subjects")
+        .select("id")
+        .eq("class_id", classId)
+        .eq("teacher_id", session.userId)
+        .maybeSingle();
 
-    const isSubjectTeacher = !!subjectCheck;
-    const isAdmin = session.userCategory === "admin" || session.role === "admin";
+      if (subjErr) {
+        console.error("[teacher/students GET] subject check error:", subjErr);
+      }
 
-    if (!isClassTeacher && !isSubjectTeacher && !isAdmin) {
-      return NextResponse.json({ error: "You do not have access to this class" }, { status: 403 });
+      const isSubjectTeacher = !!subjectCheck;
+
+      if (!isClassTeacher && !isSubjectTeacher) {
+        return NextResponse.json({ error: "You do not have access to this class" }, { status: 403 });
+      }
     }
 
     // Get students in this class via the students table (profile_id -> profiles)

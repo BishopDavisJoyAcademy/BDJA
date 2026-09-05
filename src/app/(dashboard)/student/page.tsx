@@ -26,7 +26,7 @@ export default function StudentDashboard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Link href="/parent" className="group block relative overflow-hidden rounded-2xl bg-slate-900/60 border border-slate-700/50 hover:border-[#D4AF37]/30 transition-all duration-300">
+        <Link href="/student/parent" className="group block relative overflow-hidden rounded-2xl bg-slate-900/60 border border-slate-700/50 hover:border-[#D4AF37]/30 transition-all duration-300">
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: "linear-gradient(135deg, #D4AF3708 0%, transparent 60%)" }} />
           <div className="relative p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#D4AF3715", border: "1px solid #D4AF3730" }}>

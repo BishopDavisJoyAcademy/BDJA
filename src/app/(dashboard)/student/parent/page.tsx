@@ -1,115 +1,140 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/Card";
-import { Users, GraduationCap, Wallet, UserCheck, Loader2 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errors";
+import {
+  Users, GraduationCap, Wallet, UserCheck, Loader2, Award,
+  BookOpen, CalendarDays, Megaphone, ArrowRight
+} from "lucide-react";
+import Link from "next/link";
+
+const GOLD = "#D4AF37";
+
+const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
+const cardAnim = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
 
 interface Child {
   id: string;
   full_name: string;
   grade_level: string;
   admission_number: string;
+  class_name: string | null;
 }
 
-export default function ParentPortal() {
+export default function StudentParentPortal() {
   const { user } = useAuth();
   const [children, setChildren] = useState<Child[]>([]);
   const [fetching, setFetching] = useState(true);
 
-  useEffect(() => {
-    if (user) fetchChildren();
-  }, [user]);
-
-  async function fetchChildren() {
+  const fetchChildren = useCallback(async () => {
+    setFetching(true);
     try {
-      setFetching(true);
-      const res = await fetch("/api/parent/children");
+      const { data: { session: s } } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+      const headers: Record<string, string> = {};
+      if (s?.access_token) headers["Authorization"] = `Bearer ${s.access_token}`;
+      const res = await fetch("/api/parent/children", { headers });
+      if (!res.ok) throw new Error("Failed to fetch children");
       const data = await res.json();
       setChildren(data.children || []);
-    } catch (err) {
-      console.error(err);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setFetching(false);
     }
-  }
+  }, []);
+
+  useEffect(() => { fetchChildren(); }, [fetchChildren]);
+
+  const quickLinks = [
+    { label: "Grades", href: "/student/grades", icon: Award, desc: "View assessments" },
+    { label: "Attendance", href: "/student/attendance", icon: UserCheck, desc: "Track attendance" },
+    { label: "Assignments", href: "/student/assignments", icon: BookOpen, desc: "Due & submitted" },
+    { label: "Fees", href: "/student/fees", icon: Wallet, desc: "Payment & balance" },
+    { label: "Calendar", href: "/student/calendar", icon: CalendarDays, desc: "School events" },
+    { label: "Announcements", href: "/student/announcements", icon: Megaphone, desc: "School updates" },
+  ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Parent Portal</h1>
-        <p className="text-gray-500">View your children's progress and school information</p>
-      </div>
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-2xl font-bold text-white">Parent Portal</h1>
+        <p className="text-slate-400 mt-1">View your children&apos;s progress and school information</p>
+      </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-              <Users className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Children</p>
-              <p className="text-xl font-bold text-gray-900">{children.length}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Grades</p>
-              <p className="text-xl font-bold text-gray-900">View</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Fees</p>
-              <p className="text-xl font-bold text-gray-900">View</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-              <UserCheck className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Attendance</p>
-              <p className="text-xl font-bold text-gray-900">View</p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Your Children</h3>
-        {fetching ? (
-          <div className="flex items-center justify-center h-32"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>
-        ) : children.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">No children linked to your account.</div>
-        ) : (
-          <div className="space-y-3">
-            {children.map((child) => (
-              <div key={child.id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg hover:bg-gray-50">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-blue-600" />
+      {fetching ? (
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: GOLD }} />
+        </div>
+      ) : (
+        <>
+          {/* Stats */}
+          <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <motion.div variants={cardAnim} className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#3b82f615", border: "1px solid #3b82f630" }}>
+                  <Users className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900">{child.full_name}</h4>
-                  <p className="text-xs text-gray-500">Grade {child.grade_level} · Admission #{child.admission_number}</p>
+                  <p className="text-xs text-slate-500">Children</p>
+                  <p className="text-xl font-bold text-white">{children.length}</p>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </Card>
+            </motion.div>
+            <motion.div variants={cardAnim} className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#22c55e15", border: "1px solid #22c55e30" }}>
+                  <GraduationCap className="w-5 h-5 text-green-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Active</p>
+                  <p className="text-xl font-bold text-white">{children.filter((c) => c.class_name).length}</p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Children List */}
+          {children.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-white">Your Children</h3>
+              {children.map((child) => (
+                <motion.div key={child.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{child.full_name}</p>
+                      <p className="text-xs text-slate-500">{child.admission_number} · {child.class_name || "No class assigned"}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {/* Quick Links */}
+          <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {quickLinks.map((link) => {
+              const Icon = link.icon;
+              return (
+                <motion.div key={link.label} variants={cardAnim}>
+                  <Link href={link.href} className="group flex items-center gap-4 rounded-2xl bg-slate-900/40 border border-slate-700/30 hover:border-[#D4AF37]/20 p-4 transition-all duration-300">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#D4AF3710", border: "1px solid #D4AF3720" }}>
+                      <Icon className="w-5 h-5" style={{ color: GOLD }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white group-hover:text-[#D4AF37] transition-colors">{link.label}</p>
+                      <p className="text-xs text-slate-500">{link.desc}</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-[#D4AF37] transition-colors shrink-0" />
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </>
+      )}
     </div>
   );
 }

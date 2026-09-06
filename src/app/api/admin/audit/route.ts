@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     let logs = data || [];
 
     // Resolve user names
-    const userIds = [...new Set(logs.map((l: Record<string, unknown>) => l.user_id).filter(Boolean))];
+    const userIds = [...new Set(logs.map((l: Record<string, unknown>) => l.user_id).filter(Boolean))] as string[];
     let userMap = new Map<string, { full_name: string; email: string }>();
     if (userIds.length > 0) {
       const { data: profiles } = await admin

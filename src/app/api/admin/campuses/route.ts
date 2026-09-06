@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
     const campusList = campuses || [];
     const enriched = await Promise.all(
-      campusList.map(async (campus: Record<string, unknown>) => {
+      campusList.map(async (campus: Record<string, unknown> & { id: string }) => {
         const [{ count: studentCount }, { count: staffCount }] = await Promise.all([
           admin.from("profiles").select("id", { count: "exact", head: true }).eq("campus_id", campus.id).eq("user_category", "student"),
           admin.from("profiles").select("id", { count: "exact", head: true }).eq("campus_id", campus.id).eq("user_category", "staff"),
@@ -115,7 +115,7 @@ export async function PUT(req: NextRequest) {
       action: "UPDATE",
       table_name: "campuses",
       record_id: id,
-      old_data: current,
+      old_data: current as Record<string, unknown> | undefined,
       new_data: updates,
       ip_address: getClientIP(req),
     });
@@ -153,7 +153,7 @@ export async function DELETE(req: NextRequest) {
       action: "DELETE",
       table_name: "campuses",
       record_id: id,
-      old_data: current,
+      old_data: current as Record<string, unknown> | undefined,
       ip_address: getClientIP(req),
     });
 

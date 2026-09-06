@@ -108,7 +108,7 @@ export async function PATCH(req: NextRequest) {
 
     const { data, error } = await admin
       .from("profiles")
-      .update(updateData)
+      .update(updateData as Record<string, unknown>)
       .eq("id", id)
       .select()
       .single();

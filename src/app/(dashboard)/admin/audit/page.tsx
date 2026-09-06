@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiGet } from "@/lib/api-client";
 import { Card } from "@/components/ui/Card";
+import { Table, TableHead, TableBody, TableCell, TableHeader } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";

@@ -92,7 +92,7 @@ export function JoyAIDrawPanel({ theme, onDraw, onClose, canvasWidth, canvasHeig
         rows={3}
         className="w-full px-3 py-2 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 mb-3"
         style={{
-          background: theme.inputBg,
+          background: theme.surface,
           border: `1px solid ${theme.border}`,
           color: theme.text,
           caretColor: theme.primary,
@@ -113,7 +113,7 @@ export function JoyAIDrawPanel({ theme, onDraw, onClose, canvasWidth, canvasHeig
           className="text-xs font-semibold"
           style={{
             background: theme.primary,
-            color: theme.isDark ? "#0f172a" : "#ffffff",
+            color: "#0f172a",
           }}
         >
           {generating ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { JoyConversation, JoyMessage } from "@/types/joy";
 
@@ -26,7 +27,6 @@ export function useJoyConversations() {
       const json = await res.json();
       if (json.conversations) {
         setConversations(json.conversations);
-        // Pre-load messages
         for (const conv of json.conversations) {
           if (!messageCache.has(conv.id)) {
             const msgsRes = await fetch(`/api/joy/messages?conversation_id=${conv.id}`, {
@@ -131,17 +131,24 @@ export function useJoyConversations() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     try {
-      await fetch(`/api/conversations?id=${id}`, {
+      const res = await fetch(`/api/conversations?id=${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ error: "Delete failed" }));
+        throw new Error(json.error || `HTTP ${res.status}`);
+      }
       setConversations((prev) => prev.filter((c) => c.id !== id));
       messageCache.delete(id);
       if (currentConversation?.id === id) {
         setCurrentConversation(null);
         setMessages([]);
       }
+      toast.success("Conversation deleted");
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Delete failed";
+      toast.error(msg);
       console.error("[useJoyConversations] delete error:", err);
     }
   }, [currentConversation]);

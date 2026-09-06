@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { PenTool, Eraser, Trash, Undo, X } from "lucide-react";
+import { PenTool, Eraser, Trash, Undo, X, Wand2 } from "lucide-react";
+import { JoyAIDrawPanel, AIDrawingStroke } from "./JoyAIDrawPanel";
 import { ThemeConfig } from "@/lib/joy-themes";
 
 interface JoyWhiteboardProps {
@@ -19,6 +20,7 @@ export function JoyWhiteboard({ isOpen, theme, onClose, onSave }: JoyWhiteboardP
   const [color, setColor] = useState("#1e3a5f");
   const [size, setSize] = useState(3);
   const [tool, setTool] = useState<"pen" | "eraser">("pen");
+  const [showAIDraw, setShowAIDraw] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !canvasRef.current) return;
@@ -104,6 +106,66 @@ export function JoyWhiteboard({ isOpen, theme, onClose, onSave }: JoyWhiteboardP
 
   if (!isOpen) return null;
 
+  const animateAIDrawing = (aiStrokes: AIDrawingStroke[]) => {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
+
+    const cursor = document.createElement("div");
+    cursor.style.position = "absolute";
+    cursor.style.width = "8px";
+    cursor.style.height = "8px";
+    cursor.style.borderRadius = "50%";
+    cursor.style.background = "#D4AF37";
+    cursor.style.boxShadow = "0 0 8px #D4AF37, 0 0 16px #D4AF37";
+    cursor.style.pointerEvents = "none";
+    cursor.style.zIndex = "100";
+    cursor.style.transition = "none";
+    canvas.parentElement?.appendChild(cursor);
+
+    let strokeIndex = 0;
+    let pointIndex = 0;
+
+    const drawNext = () => {
+      if (strokeIndex >= aiStrokes.length) {
+        cursor.remove();
+        setStrokes((prev) => [...prev, ...aiStrokes]);
+        return;
+      }
+
+      const stroke = aiStrokes[strokeIndex];
+      if (pointIndex === 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = stroke.color;
+        ctx.lineWidth = stroke.width;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      }
+
+      if (pointIndex < stroke.points.length - 1) {
+        const p = stroke.points[pointIndex];
+        const nextP = stroke.points[pointIndex + 1];
+        ctx.lineTo(nextP.x, nextP.y);
+        ctx.stroke();
+
+        // Move cursor
+        const rect = canvas.getBoundingClientRect();
+        cursor.style.left = `${rect.left + nextP.x - 4}px`;
+        cursor.style.top = `${rect.top + nextP.y - 4}px`;
+
+        pointIndex++;
+        requestAnimationFrame(drawNext);
+      } else {
+        strokeIndex++;
+        pointIndex = 0;
+        requestAnimationFrame(drawNext);
+      }
+    };
+
+    drawNext();
+  };
+
   return (
     <div className="absolute inset-0 z-50 flex flex-col" style={{ background: theme.background }}>
       <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: theme.border }}>
@@ -145,6 +207,18 @@ export function JoyWhiteboard({ isOpen, theme, onClose, onSave }: JoyWhiteboardP
           onTouchMove={handleMove}
           onTouchEnd={handleEnd}
         />
+      {showAIDraw && (
+        <JoyAIDrawPanel
+          theme={theme}
+          onClose={() => setShowAIDraw(false)}
+          canvasWidth={canvasRef.current?.width || 800}
+          canvasHeight={canvasRef.current?.height || 600}
+          onDraw={(aiStrokes) => {
+            setShowAIDraw(false);
+            animateAIDrawing(aiStrokes);
+          }}
+        />
+      )}
       </div>
     </div>
   );

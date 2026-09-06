@@ -13,6 +13,8 @@ import {
   Search, Globe, Youtube, Play, ExternalLink, ChevronRight, AlertCircle,
   RefreshCw, MessageCircle, Wand2, Table, FileSpreadsheet, Users, Bell
 } from "lucide-react";
+import { JoyThinkingIndicator, ThinkingPhase } from "./JoyThinkingIndicator";
+import { JoySourceViewer, SearchSource } from "./JoySourceViewer";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -28,7 +30,6 @@ import { JoyMessage, JoyTheme, JoyAction, JoyUserPreferences } from "@/types/joy
 import { AttachmentFile } from "@/types/attachments";
 import { AttachmentChip } from "./AttachmentChip";
 import { JoyVoiceInput } from "./JoyVoiceInput";
-import { AttachmentPreview } from "./AttachmentPreview";
 import { BottomSheet } from "./BottomSheet";
 import { JoyHeader } from "./JoyHeader";
 import { JoySidebar } from "./JoySidebar";
@@ -83,6 +84,8 @@ export function JoyChat() {
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [thinkingPhase, setThinkingPhase] = useState<ThinkingPhase | null>(null);
+  const [searchSources, setSearchSources] = useState<Record<string, SearchSource[]>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -218,18 +221,59 @@ export function JoyChat() {
   };
 
   const speakText = useCallback((text: string, messageId: string) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
     if (speakingId === messageId) {
       window.speechSynthesis.cancel();
       setSpeakingId(null);
       return;
     }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
-    utterance.rate = 1;
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      toast.error("Text-to-speech is not supported in this browser.");
+      return;
+    }
+
+    // Strip markdown for clean speech
+    const cleanText = text
+      .replace(/#+\s/g, "")
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/`{1,3}[^`]*`{1,3}/g, "")
+      .replace(/\[.*?\]\(.*?\)/g, "")
+      .replace(/!\[.*?\]\(.*?\)/g, "")
+      .replace(/\|/g, ", ")
+      .replace(/-{3,}/g, "")
+      .replace(/>\s?/g, "")
+      .replace(/\n{2,}/g, "\n")
+      .trim();
+
+    if (!cleanText) {
+      toast.error("Nothing to read aloud.");
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+
+    // Detect language from text
+    const hasSwahili = /\b(ni|na|wa|ya|kwa|za|si|ha|hu|li|me|ka|ta|fa|ja|sha|nye|mwa|pwa|twa|lwa|zwa|shwa|jwa|chwa|vwa|bwa|gwa|dwa|nwa|rwa|swa|twi|kwi|pwi|mwi|bwi|nwi|lwi|shwi|zi|ki|vi|mi|ma|pa|ku|mu|i|u|a|e|o)\b/i.test(cleanText);
+    utterance.lang = hasSwahili ? "sw-KE" : "en-KE";
+
+    // Select best available voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find((v) => v.lang === utterance.lang && !v.name.includes("Microsoft")) ||
+      voices.find((v) => v.lang.startsWith("en") && v.name.includes("Google")) ||
+      voices.find((v) => v.lang.startsWith("en") && !v.name.includes("Microsoft")) ||
+      voices[0];
+    if (preferredVoice) utterance.voice = preferredVoice;
+
+    utterance.rate = 0.95;
+    utterance.pitch = 1.05;
     utterance.onend = () => setSpeakingId(null);
-    utterance.onerror = () => setSpeakingId(null);
+    utterance.onerror = (e) => {
+      console.error("TTS error:", e);
+      setSpeakingId(null);
+      toast.error("Speech playback failed.");
+    };
+
+    window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
     setSpeakingId(messageId);
   }, [speakingId]);
@@ -352,6 +396,7 @@ export function JoyChat() {
 
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    setThinkingPhase("thinking");
     setIsLoading(true);
     setStreamingText("");
     setSuggestions([]);
@@ -365,9 +410,46 @@ export function JoyChat() {
         .filter((a) => a.url)
         .map((a) => ({ name: a.name, type: a.type, url: a.url, metadata: a.metadata, extractedContent: a.extractedContent }));
 
-      const chatMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      // Check for search attachment and perform search
+      let searchContext = "";
+      let searchResults: SearchSource[] = [];
+      const searchAttachment = attachments.find((a) => a.type === "search" && a.metadata && "searchData" in a.metadata);
+      if (searchAttachment) {
+        const searchData = (searchAttachment.metadata as { searchData: { query: string; source: string } }).searchData;
+        setThinkingPhase("searching");
+        try {
+          const searchRes = await fetch("/api/joy/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ query: searchData.query, source: searchData.source }),
+          });
+          const searchJson = await searchRes.json();
+          if (searchJson.results && searchJson.results.length > 0) {
+            searchResults = searchJson.results.map((r: Record<string, string>, i: number) => ({
+              id: `src-${i}`,
+              title: r.title || "Untitled",
+              url: r.url || "",
+              snippet: r.snippet || "",
+              domain: r.domain || new URL(r.url || "https://example.com").hostname.replace("www.", ""),
+            }));
+            searchContext = `\n\nSEARCH RESULTS FOR "${searchData.query}":\n${searchResults.map((r, i) => `[${i + 1}] ${r.title}: ${r.snippet}`).join("\n")}\n\nPlease cite sources using [^1^], [^2^] etc. when referencing search results.`;
+          }
+        } catch (searchErr) {
+          console.error("[JoyChat] Search error:", searchErr);
+        }
+      }
 
-      const apiBody = {
+      const chatMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      // Inject search context into the last user message
+      if (searchContext && chatMessages.length > 0) {
+        const lastMsg = chatMessages[chatMessages.length - 1];
+        if (lastMsg.role === "user") {
+          lastMsg.content = lastMsg.content + searchContext;
+        }
+      }
+
+      // Check for search attachment and perform search
+const apiBody = {
         messages: chatMessages,
         conversationId,
         stream: preferences.enable_streaming,
@@ -380,6 +462,7 @@ export function JoyChat() {
 
       if (preferences.enable_streaming) {
         setIsStreaming(true);
+        setThinkingPhase("typing");
         let fullText = "";
         let receivedAnyChunk = false;
 
@@ -431,9 +514,13 @@ export function JoyChat() {
             conversation_id: conversationId,
             role: "assistant",
             content: fullText || "I processed your request.",
+            metadata: searchResults.length > 0 ? { sources: searchResults } : undefined,
             created_at: new Date().toISOString(),
           };
           setMessages((prev) => [...prev, assistantMsg]);
+          if (searchResults.length > 0) {
+            setSearchSources((prev) => ({ ...prev, [assistantMsg.id]: searchResults }));
+          }
           generateSuggestions(fullText);
           const actionMatch = fullText.match(/\{\s*"actions"\s*:\s*(\[[\s\S]*?\])\s*\}/);
           if (actionMatch) {
@@ -446,6 +533,7 @@ export function JoyChat() {
           throw new Error("No response received from AI. Please try again.");
         }
       } else {
+        setThinkingPhase("typing");
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
@@ -459,10 +547,13 @@ export function JoyChat() {
           conversation_id: conversationId,
           role: "assistant",
           content: replyText,
-          metadata: json.actions ? { actions: json.actions } : undefined,
+          metadata: json.actions ? { actions: json.actions } : (searchResults.length > 0 ? { sources: searchResults } : undefined),
           created_at: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
+        if (searchResults.length > 0) {
+          setSearchSources((prev) => ({ ...prev, [assistantMsg.id]: searchResults }));
+        }
         generateSuggestions(replyText);
         if (json.actions?.length > 0) {
           executeFrontendActions(json.actions as JoyAction[]);
@@ -478,6 +569,7 @@ export function JoyChat() {
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
+      setThinkingPhase(null);
       setStreamingText("");
       clearAttachments();
     }
@@ -735,6 +827,10 @@ export function JoyChat() {
                   </>
                 )}
               </div>
+              {/* Search Sources */}
+              {msg.role === "assistant" && searchSources[msg.id] && searchSources[msg.id].length > 0 && (
+                <JoySourceViewer sources={searchSources[msg.id]} theme={theme} />
+              )}
             </div>
           </div>
         ))}
@@ -757,20 +853,11 @@ export function JoyChat() {
           </div>
         )}
 
-        {isLoading && !isStreaming && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: theme.primary + "15" }}>
-              <Image src="/joy-logo.png" alt="Joy" width={20} height={20} className="object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-            </div>
-            <div className="px-4 py-3 rounded-2xl rounded-bl-md" style={{ background: theme.assistantBubble }}>
-              <div className="flex gap-1">
-                <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.primary, animationDelay: "0ms" }} />
-                <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.primary, animationDelay: "150ms" }} />
-                <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.primary, animationDelay: "300ms" }} />
-              </div>
-            </div>
-          </div>
-        )}
+        <AnimatePresence>
+          {isLoading && !isStreaming && thinkingPhase && (
+            <JoyThinkingIndicator phase={thinkingPhase} theme={theme} />
+          )}
+        </AnimatePresence>
 
         {suggestions.length > 0 && !isLoading && (
           <div className="flex flex-wrap gap-2 justify-center">
@@ -781,6 +868,8 @@ export function JoyChat() {
             ))}
           </div>
         )}
+
+
 
         <div ref={messagesEndRef} />
       </div>

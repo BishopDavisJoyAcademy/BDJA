@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { JoyPublicChat } from "@/components/joy/JoyPublicChat";
 import {
   Mail, BookOpen, GraduationCap, Library, HelpCircle, Download,
   Search, Menu, X, ArrowRight, Send, XCircle, CheckCircle
@@ -339,6 +340,7 @@ ${contactForm.message}`);
           </motion.div>
         )}
       </AnimatePresence>
+      <JoyPublicChat />
     </div>
   );
 }

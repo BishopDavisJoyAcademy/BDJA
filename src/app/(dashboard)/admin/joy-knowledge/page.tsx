@@ -24,6 +24,7 @@ const CATEGORIES = [
   { key: "contacts", label: "Contacts", icon: BookOpen },
   { key: "procedures", label: "Procedures", icon: BookOpen },
   { key: "rules", label: "Rules", icon: BookOpen },
+  { key: "public", label: "Public (Website)", icon: Globe },
   { key: "general", label: "General", icon: BookOpen },
 ];
 

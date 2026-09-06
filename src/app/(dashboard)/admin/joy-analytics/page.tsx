@@ -40,8 +40,8 @@ export default function JoyAnalyticsPage() {
     setRefreshing(true);
     try {
       await Promise.all([
-        fetchGradeAnalytics(classFilter || undefined, termFilter),
-        fetchAttendanceAnalytics(classFilter || undefined),
+        fetchGradeAnalytics({ class_id: classFilter || undefined, term: termFilter }),
+        fetchAttendanceAnalytics({ class_id: classFilter || undefined }),
         fetchAnomalies(),
       ]);
     } catch (err) {

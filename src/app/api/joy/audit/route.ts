@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get("end_date");
 
     let query = admin
-      .from("joy_audit_logs")
-      .select("*, profiles!joy_audit_logs_user_id_fkey(full_name, user_category)")
+      .from("joy_audit_log")
+      .select("*")
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -39,8 +39,23 @@ export async function GET(req: NextRequest) {
     const { data: logs, error } = await query;
     if (error) throw error;
 
-    // Get total count
-    let countQuery = admin.from("joy_audit_logs").select("id", { count: "exact", head: true });
+    // Enrich with profile names
+    const userIds = [...new Set((logs || []).map((l) => l.user_id).filter(Boolean))];
+    const { data: profiles } = await admin
+      .from("profiles")
+      .select("id, full_name, user_category")
+      .in("id", userIds);
+    const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+    const enrichedLogs = (logs || []).map((l) => ({
+      ...l,
+      profiles: profileMap.get(l.user_id) || null,
+    }));
+
+    // Count
+    let countQuery = admin
+      .from("joy_audit_log")
+      .select("id", { count: "exact", head: true });
     if (userId) countQuery = countQuery.eq("user_id", userId);
     if (actionType) countQuery = countQuery.eq("action_type", actionType);
     if (startDate) countQuery = countQuery.gte("created_at", startDate);
@@ -49,7 +64,7 @@ export async function GET(req: NextRequest) {
     const { count } = await countQuery;
 
     return NextResponse.json({
-      logs: logs || [],
+      logs: enrichedLogs,
       total: count || 0,
       limit,
       offset,

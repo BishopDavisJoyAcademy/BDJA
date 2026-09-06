@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   BookOpen, Plus, Pencil, Trash2, Search, Filter,
-  Save, X, BookMarked, Shield, Loader2, Sparkles
+  Save, X, BookMarked, Shield, Loader2, Sparkles, Globe
 } from "lucide-react";
 import { useJoyKnowledge } from "@/hooks/useJoyKnowledge";
 import { JoyKnowledgeBase } from "@/types/joy";

@@ -2476,6 +2476,88 @@ export type Database = {
           },
         ]
       }
+      parent_communication_drafts: {
+        Row: {
+          ai_drafted: boolean | null
+          ai_model_used: string | null
+          body: string
+          created_at: string | null
+          id: string
+          language: string | null
+          recipient_parent_id: string | null
+          recipient_student_id: string | null
+          scheduled_for: string | null
+          sender_id: string
+          sent_at: string | null
+          sent_via: string | null
+          status: string | null
+          subject: string
+          teacher_edited: boolean | null
+          tone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_drafted?: boolean | null
+          ai_model_used?: string | null
+          body: string
+          created_at?: string | null
+          id?: string
+          language?: string | null
+          recipient_parent_id?: string | null
+          recipient_student_id?: string | null
+          scheduled_for?: string | null
+          sender_id: string
+          sent_at?: string | null
+          sent_via?: string | null
+          status?: string | null
+          subject: string
+          teacher_edited?: boolean | null
+          tone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_drafted?: boolean | null
+          ai_model_used?: string | null
+          body?: string
+          created_at?: string | null
+          id?: string
+          language?: string | null
+          recipient_parent_id?: string | null
+          recipient_student_id?: string | null
+          scheduled_for?: string | null
+          sender_id?: string
+          sent_at?: string | null
+          sent_via?: string | null
+          status?: string | null
+          subject?: string
+          teacher_edited?: boolean | null
+          tone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_communication_drafts_recipient_parent_id_fkey"
+            columns: ["recipient_parent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_communication_drafts_recipient_student_id_fkey"
+            columns: ["recipient_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_communication_drafts_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parent_students: {
         Row: {
           created_at: string | null
@@ -2838,9 +2920,75 @@ export type Database = {
           },
         ]
       }
+      report_card_subject_entries: {
+        Row: {
+          ai_confidence: number | null
+          ai_generated: boolean | null
+          attendance_rate: number | null
+          created_at: string | null
+          grade_average: number | null
+          id: string
+          improvement_areas: string | null
+          narrative_comment: string | null
+          report_card_id: string
+          strengths: string | null
+          subject_id: string
+          teacher_override: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_generated?: boolean | null
+          attendance_rate?: number | null
+          created_at?: string | null
+          grade_average?: number | null
+          id?: string
+          improvement_areas?: string | null
+          narrative_comment?: string | null
+          report_card_id: string
+          strengths?: string | null
+          subject_id: string
+          teacher_override?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_generated?: boolean | null
+          attendance_rate?: number | null
+          created_at?: string | null
+          grade_average?: number | null
+          id?: string
+          improvement_areas?: string | null
+          narrative_comment?: string | null
+          report_card_id?: string
+          strengths?: string | null
+          subject_id?: string
+          teacher_override?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_card_subject_entries_report_card_id_fkey"
+            columns: ["report_card_id"]
+            isOneToOne: false
+            referencedRelation: "report_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_card_subject_entries_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_cards: {
         Row: {
           academic_year: string
+          ai_generated_at: string | null
+          ai_model_used: string | null
+          ai_narrative: string | null
           class_id: string | null
           generated_at: string | null
           generated_by: string | null
@@ -2851,6 +2999,10 @@ export type Database = {
           pdf_url: string | null
           principal_remarks: string | null
           principal_signature_url: string | null
+          publish_method: string | null
+          published_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string | null
           student_id: string
           teacher_remarks: string | null
@@ -2859,6 +3011,9 @@ export type Database = {
         }
         Insert: {
           academic_year: string
+          ai_generated_at?: string | null
+          ai_model_used?: string | null
+          ai_narrative?: string | null
           class_id?: string | null
           generated_at?: string | null
           generated_by?: string | null
@@ -2869,6 +3024,10 @@ export type Database = {
           pdf_url?: string | null
           principal_remarks?: string | null
           principal_signature_url?: string | null
+          publish_method?: string | null
+          published_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
           student_id: string
           teacher_remarks?: string | null
@@ -2877,6 +3036,9 @@ export type Database = {
         }
         Update: {
           academic_year?: string
+          ai_generated_at?: string | null
+          ai_model_used?: string | null
+          ai_narrative?: string | null
           class_id?: string | null
           generated_at?: string | null
           generated_by?: string | null
@@ -2887,6 +3049,10 @@ export type Database = {
           pdf_url?: string | null
           principal_remarks?: string | null
           principal_signature_url?: string | null
+          publish_method?: string | null
+          published_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
           student_id?: string
           teacher_remarks?: string | null
@@ -2904,6 +3070,13 @@ export type Database = {
           {
             foreignKeyName: "report_cards_generated_by_fkey"
             columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_cards_reviewed_by_fkey"
+            columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -3625,6 +3798,85 @@ export type Database = {
           {
             foreignKeyName: "timetable_teacher_id_fkey"
             columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timetable_suggestions: {
+        Row: {
+          academic_year: string
+          applied: boolean | null
+          applied_at: string | null
+          applied_by: string | null
+          campus_id: string | null
+          created_at: string | null
+          created_by: string
+          current_layout: Json
+          id: string
+          impact_score: number | null
+          reasoning: string
+          rejected: boolean | null
+          rejection_reason: string | null
+          suggested_layout: Json
+          suggestion_type: string
+          term: string
+        }
+        Insert: {
+          academic_year: string
+          applied?: boolean | null
+          applied_at?: string | null
+          applied_by?: string | null
+          campus_id?: string | null
+          created_at?: string | null
+          created_by: string
+          current_layout: Json
+          id?: string
+          impact_score?: number | null
+          reasoning: string
+          rejected?: boolean | null
+          rejection_reason?: string | null
+          suggested_layout: Json
+          suggestion_type: string
+          term: string
+        }
+        Update: {
+          academic_year?: string
+          applied?: boolean | null
+          applied_at?: string | null
+          applied_by?: string | null
+          campus_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          current_layout?: Json
+          id?: string
+          impact_score?: number | null
+          reasoning?: string
+          rejected?: boolean | null
+          rejection_reason?: string | null
+          suggested_layout?: Json
+          suggestion_type?: string
+          term?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_suggestions_applied_by_fkey"
+            columns: ["applied_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_suggestions_campus_id_fkey"
+            columns: ["campus_id"]
+            isOneToOne: false
+            referencedRelation: "campuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_suggestions_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

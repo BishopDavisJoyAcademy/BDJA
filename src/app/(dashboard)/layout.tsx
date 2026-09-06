@@ -44,6 +44,7 @@ const adminNav: NavItem[] = [
     { label: "Page Assistants", href: `/${ADMIN_SEGMENT}/joy-assistants` },
     { label: "AI Reports", href: `/${ADMIN_SEGMENT}/joy-reports` },
     { label: "Communication", href: `/${ADMIN_SEGMENT}/joy-communication` },
+    { label: "Analytics", href: `/${ADMIN_SEGMENT}/joy-analytics` },
     { label: "Request Inbox", href: `/${ADMIN_SEGMENT}/joy-requests` },
   ]},
   { label: "Audit Logs", href: `/${ADMIN_SEGMENT}/audit`, icon: Shield },

@@ -28,12 +28,14 @@ export async function POST(req: NextRequest) {
       .eq("is_public", true)
       .order("updated_at", { ascending: false });
 
-    // ONLY fetch PUBLIC announcements
+    // ONLY fetch PUBLIC announcements (target_audience='all', published, not expired)
     const { data: announcements } = await admin
       .from("announcements")
       .select("title, content, category, created_at")
-      .eq("is_public", true)
-      .order("created_at", { ascending: false })
+      .eq("target_audience", "all")
+      .lte("published_at", new Date().toISOString())
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+      .order("published_at", { ascending: false })
       .limit(10);
 
     // ONLY fetch platform settings (general school info)

@@ -27,6 +27,7 @@ import { getThemeConfig, THEME_MAP, THEME_LIST } from "@/lib/joy-themes";
 import { JoyMessage, JoyTheme, JoyAction, JoyUserPreferences } from "@/types/joy";
 import { AttachmentFile } from "@/types/attachments";
 import { AttachmentChip } from "./AttachmentChip";
+import { JoyVoiceInput } from "./JoyVoiceInput";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { BottomSheet } from "./BottomSheet";
 import { JoyHeader } from "./JoyHeader";

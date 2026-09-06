@@ -135,10 +135,10 @@ export default function SovereignViewPage() {
     }
   };
 
-  const fetchPermissions = async (userId: string) => {
+  const fetchPermissions = async (profileId: string) => {
     setLoadingPermissions(true);
     try {
-      const data = await apiGet<{ permissions: PermissionRecord[] }>(`/api/admin/sovereign-view/permissions?userId=${userId}`);
+      const data = await apiGet<{ permissions: PermissionRecord[] }>(`/api/admin/sovereign-view/permissions?profileId=${profileId}`);
       setPermissions(data.permissions || []);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));
@@ -170,7 +170,7 @@ export default function SovereignViewPage() {
 
   const togglePermission = async (userId: string, permissionKey: string, granted: boolean) => {
     try {
-      await apiPost("/api/admin/sovereign-view/permissions", { userId, permissionKey, granted });
+      await apiPost("/api/admin/sovereign-view/permissions", { profileId: userId, permissionKey, granted });
       setPermissions((prev) =>
         prev.map((p) => (p.key === permissionKey ? { ...p, granted } : p))
       );

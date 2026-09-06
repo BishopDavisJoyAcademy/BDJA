@@ -14,29 +14,31 @@ export async function GET(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
+    const profileId = searchParams.get("profileId");
 
-    if (!userId) {
-      return NextResponse.json({ error: "userId required" }, { status: 400 });
+    if (!profileId) {
+      return NextResponse.json({ error: "profileId required" }, { status: 400 });
     }
 
+    // Get all permissions with their UUIDs
     const { data: allPerms } = await admin
       .from("permissions")
-      .select("key, name, category")
+      .select("id, key, name, category")
       .order("category", { ascending: true });
 
+    // Get user's granted permission UUIDs
     const { data: userPerms } = await admin
       .from("staff_permissions")
-      .select("permission_key")
-      .eq("user_id", userId);
+      .select("permission_id")
+      .eq("profile_id", profileId);
 
-    const grantedKeys = new Set((userPerms || []).map((p: Record<string, unknown>) => p.permission_key));
+    const grantedIds = new Set((userPerms || []).map((p: Record<string, unknown>) => p.permission_id));
 
     const permissions = (allPerms || []).map((p: Record<string, unknown>) => ({
       key: p.key,
       name: p.name,
       category: p.category,
-      granted: grantedKeys.has(p.key),
+      granted: grantedIds.has(p.id),
     }));
 
     return NextResponse.json({ permissions });
@@ -57,25 +59,41 @@ export async function POST(req: NextRequest) {
     requirePermission(session, "permissions.edit");
 
     const body = await req.json();
-    const { userId, permissionKey, granted } = body;
+    const { profileId, permissionKey, granted } = body;
 
-    if (!userId || !permissionKey || typeof granted !== "boolean") {
-      return NextResponse.json({ error: "userId, permissionKey, and granted required" }, { status: 400 });
+    if (!profileId || !permissionKey || typeof granted !== "boolean") {
+      return NextResponse.json({ error: "profileId, permissionKey, and granted required" }, { status: 400 });
     }
 
     const admin = getSupabaseAdmin();
 
+    // Look up permission UUID from key
+    const { data: permRow, error: permErr } = await admin
+      .from("permissions")
+      .select("id")
+      .eq("key", permissionKey)
+      .single();
+
+    if (permErr || !permRow) {
+      return NextResponse.json({ error: "Permission not found" }, { status: 404 });
+    }
+
+    const permissionId = permRow.id;
+
     if (granted) {
       const { error } = await admin
         .from("staff_permissions")
-        .upsert({ user_id: userId, permission_key: permissionKey }, { onConflict: "user_id,permission_key" });
+        .upsert(
+          { profile_id: profileId, permission_id: permissionId, granted_by: session.userId },
+          { onConflict: "profile_id,permission_id" }
+        );
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     } else {
       const { error } = await admin
         .from("staff_permissions")
         .delete()
-        .eq("user_id", userId)
-        .eq("permission_key", permissionKey);
+        .eq("profile_id", profileId)
+        .eq("permission_id", permissionId);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -83,7 +101,7 @@ export async function POST(req: NextRequest) {
       user_id: session.userId,
       action: "PERMISSION_CHANGE",
       table_name: "staff_permissions",
-      record_id: userId,
+      record_id: profileId,
       new_data: { permissionKey, granted },
       ip_address: getClientIP(req),
     });

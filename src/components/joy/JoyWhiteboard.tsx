@@ -348,21 +348,7 @@ export function JoyWhiteboard({ isOpen, theme, onClose, onSave }: JoyWhiteboardP
 
   if (!isOpen) return null;
 
-  const toolBtn = (t: Tool, icon: React.ElementType, label: string) => (
-    <button
-      key={t}
-      onClick={() => setTool(t)}
-      className={`p-2 rounded-xl transition-all duration-200 ${
-        tool === t
-          ? "bg-[#D4AF37]/20 text-[#D4AF37] ring-1 ring-[#D4AF37]/40 shadow-sm"
-          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-      }`}
-      title={label}
-    >
-      <icon className="w-4 h-4" />
-    </button>
-  );
-
+  
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -387,14 +373,62 @@ export function JoyWhiteboard({ isOpen, theme, onClose, onSave }: JoyWhiteboardP
 
         {/* Tools */}
         <div className="flex items-center gap-1">
-          {toolBtn("pen", PenTool, "Pen")}
-          {toolBtn("eraser", Eraser, "Eraser")}
-          {toolBtn("line", Minus, "Line")}
-          {toolBtn("rect", Square, "Rectangle")}
-          {toolBtn("circle", Circle, "Circle")}
-          {toolBtn("triangle", Triangle, "Triangle")}
-          {toolBtn("text", Type, "Text")}
-          {toolBtn("select", MousePointer2, "Select / Pan")}
+          <button
+            onClick={() => setTool("pen")}
+            className={`p-2 rounded-xl transition-all duration-200 ${tool === "pen" ? "bg-[#D4AF37]/20 text-[#D4AF37] ring-1 ring-[#D4AF37]/40 shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}
+            title="Pen"
+          >
+            <PenTool className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setTool("eraser")}
+            className={`p-2 rounded-xl transition-all duration-200 ${tool === "eraser" ? "bg-[#D4AF37]/20 text-[#D4AF37] ring-1 ring-[#D4AF37]/40 shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}
+            title="Eraser"
+          >
+            <Eraser className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setTool("line")}
+            className={`p-2 rounded-xl transition-all duration-200 ${tool === "line" ? "bg-[#D4AF37]/20 text-[#D4AF37] ring-1 ring-[#D4AF37]/40 shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}
+            title="Line"
+          >
+            <Minus className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setTool("rect")}
+            className={`p-2 rounded-xl transition-all duration-200 ${tool === "rect" ? "bg-[#D4AF37]/20 text-[#D4AF37] ring-1 ring-[#D4AF37]/40 shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}
+            title="Rectangle"
+          >
+            <Square className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setTool("circle")}
+            className={`p-2 rounded-xl transition-all duration-200 ${tool === "circle" ? "bg-[#D4AF37]/20 text-[#D4AF37] ring-1 ring-[#D4AF37]/40 shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}
+            title="Circle"
+          >
+            <Circle className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setTool("triangle")}
+            className={`p-2 rounded-xl transition-all duration-200 ${tool === "triangle" ? "bg-[#D4AF37]/20 text-[#D4AF37] ring-1 ring-[#D4AF37]/40 shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}
+            title="Triangle"
+          >
+            <Triangle className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setTool("text")}
+            className={`p-2 rounded-xl transition-all duration-200 ${tool === "text" ? "bg-[#D4AF37]/20 text-[#D4AF37] ring-1 ring-[#D4AF37]/40 shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}
+            title="Text"
+          >
+            <Type className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setTool("select")}
+            className={`p-2 rounded-xl transition-all duration-200 ${tool === "select" ? "bg-[#D4AF37]/20 text-[#D4AF37] ring-1 ring-[#D4AF37]/40 shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}
+            title="Select / Pan"
+          >
+            <MousePointer2 className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="w-px h-6 bg-slate-700/50 shrink-0 mx-1" />

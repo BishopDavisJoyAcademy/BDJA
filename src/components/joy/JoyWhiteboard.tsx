@@ -85,7 +85,7 @@ export function JoyWhiteboard({ isOpen, theme, onClose, onSave }: JoyWhiteboardP
     if (!ctx) return;
     ctxRef.current = ctx;
     redrawCanvas();
-  }, [isOpen, canvasSize, strokes, backgroundColor, zoom, pan, currentStroke]);
+  }, [isOpen, canvasSize, strokes, backgroundColor, zoom, pan, currentStroke, redrawCanvas, showGrid]);
 
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;

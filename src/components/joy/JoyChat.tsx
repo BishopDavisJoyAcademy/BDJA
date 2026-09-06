@@ -194,8 +194,6 @@ export function JoyChat() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showAttachmentMenu]);
 
-  
-  };
 
   const generateSuggestions = (lastResponse: string) => {
     const lower = lastResponse.toLowerCase();

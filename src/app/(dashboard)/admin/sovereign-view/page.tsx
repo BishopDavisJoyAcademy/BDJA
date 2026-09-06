@@ -603,23 +603,35 @@ export default function SovereignViewPage() {
               </div>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {sessions.map((s) => (
-                  <Card key={s.id} className="p-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-200 font-medium">{s.device_info || "Unknown Device"}</p>
-                      <p className="text-xs text-slate-500">{s.ip_address || "Unknown IP"}</p>
-                      <p className="text-xs text-slate-600">Started {new Date(s.created_at).toLocaleString()}</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => revokeSession(s.id)}
-                      className="text-red-400 hover:bg-red-500/10"
-                    >
-                      <UserX className="w-4 h-4" />
-                    </Button>
-                  </Card>
-                ))}
+                {sessions.map((s) => {
+                  const deviceLabel = (() => {
+                    if (!s.device_info) return "Unknown Device";
+                    if (typeof s.device_info === "string") return s.device_info;
+                    if (typeof s.device_info === "object" && s.device_info !== null) {
+                      const obj = s.device_info as Record<string, unknown>;
+                      return String(obj.user_agent || obj.browser || obj.device || JSON.stringify(s.device_info));
+                    }
+                    return "Unknown Device";
+                  })();
+                  const ipLabel = typeof s.ip_address === "string" ? s.ip_address : "Unknown IP";
+                  return (
+                    <Card key={s.id} className="p-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-200 font-medium">{deviceLabel}</p>
+                        <p className="text-xs text-slate-500">{ipLabel}</p>
+                        <p className="text-xs text-slate-600">Started {new Date(s.created_at).toLocaleString()}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => revokeSession(s.id)}
+                        className="text-red-400 hover:bg-red-500/10"
+                      >
+                        <UserX className="w-4 h-4" />
+                      </Button>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>

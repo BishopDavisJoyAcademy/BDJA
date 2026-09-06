@@ -68,8 +68,8 @@ export default function JoyCommunicationPage() {
   const [selectedStudent, setSelectedStudent] = useState<string>("");
   const [subject, setSubject] = useState("");
   const [context, setContext] = useState("");
-  const [tone, setTone] = useState<typeof TONE_OPTIONS[number]["key"]>"professional";
-  const [language, setLanguage] = useState<typeof LANGUAGE_OPTIONS[number]["key"]>"english";
+  const [tone, setTone] = useState<ToneKey>("professional");
+  const [language, setLanguage] = useState<LanguageKey>("english");
   const [includeGrades, setIncludeGrades] = useState(false);
   const [includeAttendance, setIncludeAttendance] = useState(false);
 

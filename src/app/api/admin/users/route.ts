@@ -103,12 +103,12 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "You cannot deactivate your own account" }, { status: 403 });
     }
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: { is_active?: boolean } = {};
     if (typeof is_active === "boolean") updateData.is_active = is_active;
 
     const { data, error } = await admin
       .from("profiles")
-      .update(updateData as Record<string, unknown>)
+      .update(updateData)
       .eq("id", id)
       .select()
       .single();

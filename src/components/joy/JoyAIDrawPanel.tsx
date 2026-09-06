@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ThemeConfig } from "@/lib/joy-themes";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/errors";
+import { supabase } from "@/lib/supabase";
 
 export interface AIDrawingStroke {
   points: Array<{ x: number; y: number }>;
@@ -40,9 +41,16 @@ export function JoyAIDrawPanel({ theme, onDraw, onClose, canvasWidth, canvasHeig
     }
     setGenerating(true);
     try {
+      // FIX: Add Authorization header
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch("/api/joy/draw", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           prompt: prompt.trim(),
           canvasWidth,
@@ -92,7 +100,7 @@ export function JoyAIDrawPanel({ theme, onDraw, onClose, canvasWidth, canvasHeig
         rows={3}
         className="w-full px-3 py-2 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 mb-3"
         style={{
-          background: theme.surface,
+          background: theme.background,
           border: `1px solid ${theme.border}`,
           color: theme.text,
           caretColor: theme.primary,

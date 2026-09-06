@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { requireAuth } from "@/lib/session";
+import { getErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
     if (!data) {
       const defaults = {
         user_id: session.userId,
-        theme: "light",
+        theme: "gold",
         personality_mode: "auto",
         language_preference: "auto",
         font_size: "medium",
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
 
     const upsertData = {
       user_id: session.userId,
-      theme: theme ?? existing?.theme ?? "light",
+      theme: theme ?? existing?.theme ?? "gold",
       personality_mode: personality_mode ?? existing?.personality_mode ?? "auto",
       language_preference: language_preference ?? existing?.language_preference ?? "auto",
       font_size: font_size ?? existing?.font_size ?? "medium",
@@ -79,14 +80,28 @@ export async function POST(req: NextRequest) {
       enable_streaming: enable_streaming ?? existing?.enable_streaming ?? true,
     };
 
-    const { data, error: dbError } = await admin
-      .from("joy_user_preferences")
-      .upsert(upsertData, { onConflict: "user_id" })
-      .select()
-      .maybeSingle();
+    // FIX: Use update+insert fallback instead of upsert (missing unique constraint)
+    let result;
+    if (existing) {
+      const { data, error: dbError } = await admin
+        .from("joy_user_preferences")
+        .update(upsertData)
+        .eq("user_id", session.userId)
+        .select()
+        .maybeSingle();
+      if (dbError) throw dbError;
+      result = data;
+    } else {
+      const { data, error: dbError } = await admin
+        .from("joy_user_preferences")
+        .insert(upsertData)
+        .select()
+        .maybeSingle();
+      if (dbError) throw dbError;
+      result = data;
+    }
 
-    if (dbError) throw dbError;
-    return NextResponse.json({ preferences: data });
+    return NextResponse.json({ preferences: result });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Failed to save preferences";
     console.error("[joy/preferences POST] Error:", error);

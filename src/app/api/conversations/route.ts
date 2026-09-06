@@ -104,6 +104,23 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
+    // FIX: Delete messages first to avoid FK constraint violation
+    const { error: msgDeleteError } = await admin
+      .from("conversation_messages")
+      .delete()
+      .eq("conversation_id", id);
+
+    if (msgDeleteError) {
+      console.error("[conversations DELETE] Failed to delete messages:", msgDeleteError);
+    }
+
+    // Also clean legacy messages table if it has this conversation
+    try {
+      await admin.from("messages").delete().eq("conversation_id", id);
+    } catch {
+      // Legacy table may not have this column — ignore
+    }
+
     const { error: dbError } = await admin
       .from("conversations")
       .delete()

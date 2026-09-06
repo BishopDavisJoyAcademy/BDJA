@@ -11,7 +11,7 @@ import {
   BookOpen, Video, Building2, Calendar, LogOut, ChevronDown, ChevronRight,
   Wrench, UserCog, AlertCircle, Globe, X, Menu,
   ClipboardCheck, Receipt, Award, Megaphone, UserCheck, Wallet, Clock, Baby,
-  Sparkles
+  Sparkles, DollarSign
 } from "lucide-react";
 import { ADMIN_SEGMENT } from "@/lib/constants";
 import { JoyChat } from "@/components/joy/JoyChat";
@@ -28,17 +28,37 @@ const adminNav: NavItem[] = [
   { label: "People", href: "#", icon: Users, children: [
     { label: "Staff", href: `/${ADMIN_SEGMENT}/staff` },
     { label: "Students", href: `/${ADMIN_SEGMENT}/students` },
+    { label: "Parents", href: `/${ADMIN_SEGMENT}/parents` },
     { label: "All Users", href: `/${ADMIN_SEGMENT}/users` },
   ]},
-  { label: "CMS Pages", href: `/${ADMIN_SEGMENT}/pages`, icon: FileText },
-  { label: "Content", href: `/${ADMIN_SEGMENT}/content`, icon: Globe },
-  { label: "Subjects", href: `/${ADMIN_SEGMENT}/subjects`, icon: BookOpen },
-  { label: "VORA Videos", href: `/${ADMIN_SEGMENT}/vora`, icon: Video },
-  { label: "Campuses", href: `/${ADMIN_SEGMENT}/campuses`, icon: Building2 },
-  { label: "Calendar", href: "/manage/calendar", icon: Calendar },
-  { label: "Suggestions", href: `/${ADMIN_SEGMENT}/suggestions`, icon: MessageSquare },
-  { label: "Analytics", href: `/${ADMIN_SEGMENT}/analytics`, icon: BarChart3 },
-
+  { label: "Academics", href: "#", icon: BookOpen, children: [
+    { label: "Classes", href: `/${ADMIN_SEGMENT}/classes` },
+    { label: "Subjects", href: `/${ADMIN_SEGMENT}/subjects` },
+    { label: "Timetable Builder", href: `/${ADMIN_SEGMENT}/timetable-builder` },
+    { label: "Admissions", href: "/manage/admissions" },
+  ]},
+  { label: "Finance", href: "#", icon: DollarSign, children: [
+    { label: "Fee Management", href: `/${ADMIN_SEGMENT}/fees` },
+    { label: "Reports", href: `/${ADMIN_SEGMENT}/reports` },
+  ]},
+  { label: "Resources", href: "#", icon: Globe, children: [
+    { label: "Content", href: `/${ADMIN_SEGMENT}/content` },
+    { label: "VORA Videos", href: `/${ADMIN_SEGMENT}/vora` },
+    { label: "Library", href: `/${ADMIN_SEGMENT}/library` },
+    { label: "IMS", href: `/${ADMIN_SEGMENT}/ims` },
+  ]},
+  { label: "Operations", href: "#", icon: Calendar, children: [
+    { label: "Calendar", href: "/manage/calendar" },
+    { label: "Campuses", href: `/${ADMIN_SEGMENT}/campuses` },
+    { label: "Bulk Import", href: `/${ADMIN_SEGMENT}/import` },
+    { label: "Data Backup", href: `/${ADMIN_SEGMENT}/backup` },
+  ]},
+  { label: "Governance", href: "#", icon: Shield, children: [
+    { label: "Audit Logs", href: `/${ADMIN_SEGMENT}/audit` },
+    { label: "Error Logs", href: `/${ADMIN_SEGMENT}/errors` },
+    { label: "Suggestions", href: `/${ADMIN_SEGMENT}/suggestions` },
+    { label: "Sovereign View", href: `/${ADMIN_SEGMENT}/sovereign-view` },
+  ]},
   { label: "Joy AI", href: "#", icon: Sparkles, children: [
     { label: "Knowledge Base", href: `/${ADMIN_SEGMENT}/joy-knowledge` },
     { label: "Page Assistants", href: `/${ADMIN_SEGMENT}/joy-assistants` },
@@ -47,9 +67,6 @@ const adminNav: NavItem[] = [
     { label: "Analytics", href: `/${ADMIN_SEGMENT}/joy-analytics` },
     { label: "Request Inbox", href: `/${ADMIN_SEGMENT}/joy-requests` },
   ]},
-  { label: "Audit Logs", href: `/${ADMIN_SEGMENT}/audit`, icon: Shield },
-  { label: "Error Logs", href: `/${ADMIN_SEGMENT}/errors`, icon: Bug },
-  { label: "God Mode", href: `/${ADMIN_SEGMENT}/god-mode`, icon: UserCog },
   { label: "Setup", href: `/${ADMIN_SEGMENT}/setup`, icon: Wrench },
   { label: "Settings", href: "/settings", icon: Settings },
 ];

@@ -29,19 +29,22 @@ interface StudentOption {
   class_name: string;
 }
 
-const TONE_OPTIONS = [
+type ToneKey = "formal" | "professional" | "casual" | "urgent" | "encouraging";
+type LanguageKey = "english" | "kiswahili" | "both";
+
+const TONE_OPTIONS: Array<{ key: ToneKey; label: string; desc: string }> = [
   { key: "formal", label: "Formal", desc: "Professional, structured language" },
   { key: "professional", label: "Professional", desc: "Warm but business-appropriate" },
   { key: "casual", label: "Casual", desc: "Friendly, conversational tone" },
   { key: "urgent", label: "Urgent", desc: "Direct, action-required language" },
   { key: "encouraging", label: "Encouraging", desc: "Positive, supportive, uplifting" },
-] as const;
+];
 
-const LANGUAGE_OPTIONS = [
+const LANGUAGE_OPTIONS: Array<{ key: LanguageKey; label: string; flag: string }> = [
   { key: "english", label: "English", flag: "🇬🇧" },
   { key: "kiswahili", label: "Kiswahili", flag: "🇰🇪" },
   { key: "both", label: "English + Kiswahili", flag: "🌍" },
-] as const;
+];
 
 const containerVariants = {
   hidden: { opacity: 0 },

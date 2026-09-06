@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const { data, error } = await admin
       .from("report_cards")
-      .update(updateData)
+      .update(updateData as never)
       .eq("id", id)
       .select()
       .single();

@@ -182,7 +182,8 @@ Format as a structured JSON with these keys: openingParagraph, subjectComments (
         .insert(reportData)
         .select("id")
         .single();
-      reportId = inserted?.id;
+      reportId = inserted?.id ?? "";
+      if (!reportId) throw new Error("Failed to create report card");
     }
 
     // Insert per-subject entries

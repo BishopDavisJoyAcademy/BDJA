@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ADMIN_SEGMENT } from "@/lib/constants";
 import {
-  Bot, X, Send, Plus, Download, Copy, Check,
+  Bot, X, Send, Mic, MicOff, Plus, Download, Copy, Check,
   ThumbsUp, ThumbsDown, Sparkles, BookOpen, Calendar,
   GraduationCap, Lightbulb, Volume2, VolumeX, Keyboard,
   Link2, PenTool, BarChart3, ScanLine, Camera, FileText,
@@ -73,6 +73,7 @@ export function JoyChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [reactions, setReactions] = useState<Record<string, "like" | "dislike">>({});
+  const [isListening, setIsListening] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -92,6 +93,7 @@ export function JoyChat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const photosInputRef = useRef<HTMLInputElement>(null);
   const docsInputRef = useRef<HTMLInputElement>(null);
@@ -194,6 +196,386 @@ export function JoyChat() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showAttachmentMenu]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
+      const SpeechRecognitionCtor = window.webkitSpeechRecognition;
+      if (!SpeechRecognitionCtor) return;
+      const rec = new SpeechRecognitionCtor();
+      rec.interimResults = true;
+      rec.lang = "en-US";
+      rec.onresult = (event: SpeechRecognitionEvent) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setInput(transcript);
+      };
+      rec.onend = () => setIsListening(false);
+      rec.onerror = () => setIsListening(false);
+      recognitionRef.current = rec;
+    }
+  }, []);
+
+  const toggleVoice = () => {
+    if (!recognitionRef.current) { toast.error("Voice input not supported in this browser"); return; }
+    if (isListening) { recognitionRef.current.stop(); setIsListening(false); }
+    else { recognitionRef.current.start(); setIsListening(true); }
+  };
+
+  const speakText = useCallback((text: string, messageId: string) => {
+    if (speakingId === messageId) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+      return;
+    }
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      toast.error("Text-to-speech is not supported in this browser.");
+      return;
+    }
+
+    // Strip markdown for clean speech
+    const cleanText = text
+      .replace(/#+\s/g, "")
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/`{1,3}[^`]*`{1,3}/g, "")
+      .replace(/\[.*?\]\(.*?\)/g, "")
+      .replace(/!\[.*?\]\(.*?\)/g, "")
+      .replace(/\|/g, ", ")
+      .replace(/-{3,}/g, "")
+      .replace(/>\s?/g, "")
+      .replace(/\n{2,}/g, "\n")
+      .trim();
+
+    if (!cleanText) {
+      toast.error("Nothing to read aloud.");
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+
+    // Detect language from text
+    const hasSwahili = /\b(ni|na|wa|ya|kwa|za|si|ha|hu|li|me|ka|ta|fa|ja|sha|nye|mwa|pwa|twa|lwa|zwa|shwa|jwa|chwa|vwa|bwa|gwa|dwa|nwa|rwa|swa|twi|kwi|pwi|mwi|bwi|nwi|lwi|shwi|zi|ki|vi|mi|ma|pa|ku|mu|i|u|a|e|o)\b/i.test(cleanText);
+    utterance.lang = hasSwahili ? "sw-KE" : "en-KE";
+
+    // Select best available voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find((v) => v.lang === utterance.lang && !v.name.includes("Microsoft")) ||
+      voices.find((v) => v.lang.startsWith("en") && v.name.includes("Google")) ||
+      voices.find((v) => v.lang.startsWith("en") && !v.name.includes("Microsoft")) ||
+      voices[0];
+    if (preferredVoice) utterance.voice = preferredVoice;
+
+    utterance.rate = 0.95;
+    utterance.pitch = 1.05;
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = (e) => {
+      console.error("TTS error:", e);
+      setSpeakingId(null);
+      toast.error("Speech playback failed.");
+    };
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    setSpeakingId(messageId);
+  }, [speakingId]);
+
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(false); };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files, "documents");
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          addFiles(dt.files, "photos");
+        }
+      }
+    }
+  };
+
+  const handleCamera = () => { cameraInputRef.current?.click(); };
+  const handlePhotos = () => { photosInputRef.current?.click(); };
+  const handleDocuments = () => { docsInputRef.current?.click(); };
+  const handleScanner = () => { scannerInputRef.current?.click(); };
+  const handleWhiteboardOpen = () => { setShowWhiteboard(true); setShowAttachmentMenu(false); };
+  const handlePoll = () => { setShowPollInput(true); setShowAttachmentMenu(false); };
+  const handleLink = () => { setShowLinkInput(true); setShowAttachmentMenu(false); };
+
+  const submitLink = () => {
+    if (!linkUrl.trim()) return;
+    addLink(linkUrl.trim());
+    setLinkUrl("");
+    setShowLinkInput(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const submitPoll = () => {
+    if (!pollQuestion.trim() || pollOptions.some((o) => !o.trim())) return;
+    addPoll({
+      question: pollQuestion.trim(),
+      options: pollOptions.filter((o) => o.trim()).map((o, i) => ({ id: `opt-${i}`, label: o.trim(), votes: 0 })),
+      allowMultiple: false,
+    });
+    setPollQuestion("");
+    setPollOptions(["", ""]);
+    setShowPollInput(false);
+  };
+
+  const executeFrontendActions = useCallback((actions: JoyAction[]) => {
+    if (!actions || actions.length === 0) return;
+    for (const action of actions) {
+      if (action.type === "navigate" && action.target) {
+        const target = action.target;
+        const pathMap: Record<string, string> = {
+          fees_management: "/fees", vora: "/vora", grades: "/grades",
+          timetable: "/timetable", assignments: "/assignments", attendance: "/attendance",
+          calendar: "/calendar", library: "/library", messages: "/messages",
+          admissions: "/manage/admissions", admin: `/${ADMIN_SEGMENT}`,
+          teacher: "/teacher", student: "/student", parent: "/parent",
+          profile: "/profile", settings: "/settings",
+        };
+        const path = pathMap[target] || (target.startsWith("/") ? target : `/${target}`);
+        toast.success(`Navigating to ${action.target}...`);
+        setTimeout(() => router.push(path), 800);
+      } else if (action.type === "refresh") {
+        toast.success("Refreshing...");
+        setTimeout(() => router.refresh(), 500);
+      } else if (action.type === "notify") {
+        toast.success(action.payload?.message as string || "Notification sent");
+      } else if (action.type === "open_modal" && action.target) {
+        toast(`Opening ${action.target}...`);
+      } else if (action.type === "send_message" && action.payload) {
+        toast.success("Message prepared for sending");
+      }
+    }
+  }, [router]);
+
+  const handleSend = async (text?: string) => {
+    const messageText = text || input.trim();
+    if (!messageText && attachments.length === 0) return;
+    if (isLoading || isStreaming) return;
+    setErrorMessage(null);
+
+    let fullContent = messageText;
+    const linkAttachments = attachments.filter((a) => a.type === "link" && a.url);
+    if (linkAttachments.length > 0) {
+      const linksText = linkAttachments.map((a) => a.url).join("\n");
+      fullContent = fullContent ? `${fullContent}\n\n${linksText}` : linksText;
+    }
+
+    const extractedAttachments = attachments.filter((a) => a.extractedContent);
+    if (extractedAttachments.length > 0) {
+      const extractText = extractedAttachments
+        .map((a) => `[Document: ${a.name}]\n${a.extractedContent?.slice(0, 3000)}`)
+        .join("\n\n");
+      fullContent = fullContent ? `${fullContent}\n\n${extractText}` : extractText;
+    }
+
+    let conversationId = currentConversation?.id;
+    if (!conversationId) {
+      const conv = await createConversation(fullContent.slice(0, 30) || "New Chat");
+      if (!conv) return;
+      conversationId = conv.id;
+    }
+    if (!conversationId) return;
+
+    const userMsg: JoyMessage = {
+      id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+      conversation_id: conversationId,
+      role: "user",
+      content: fullContent,
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setThinkingPhase("thinking");
+    setIsLoading(true);
+    setStreamingText("");
+    setSuggestions([]);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated. Please log in again.");
+
+      const uploadedAttachments = await uploadAll();
+      const attachmentUrls = uploadedAttachments
+        .filter((a) => a.url)
+        .map((a) => ({ name: a.name, type: a.type, url: a.url, metadata: a.metadata, extractedContent: a.extractedContent }));
+
+      // Check for search attachment and perform search
+      let searchContext = "";
+      let searchResults: SearchSource[] = [];
+      const searchAttachment = attachments.find((a) => a.type === "search" && a.metadata && "searchData" in a.metadata);
+      if (searchAttachment) {
+        const searchData = (searchAttachment.metadata as { searchData: { query: string; source: string } }).searchData;
+        setThinkingPhase("searching");
+        try {
+          const searchRes = await fetch("/api/joy/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ query: searchData.query, source: searchData.source }),
+          });
+          const searchJson = await searchRes.json();
+          if (searchJson.results && searchJson.results.length > 0) {
+            searchResults = searchJson.results.map((r: Record<string, string>, i: number) => ({
+              id: `src-${i}`,
+              title: r.title || "Untitled",
+              url: r.url || "",
+              snippet: r.snippet || "",
+              domain: r.domain || new URL(r.url || "https://example.com").hostname.replace("www.", ""),
+            }));
+            searchContext = `\n\nSEARCH RESULTS FOR "${searchData.query}":\n${searchResults.map((r, i) => `[${i + 1}] ${r.title}: ${r.snippet}`).join("\n")}\n\nPlease cite sources using [^1^], [^2^] etc. when referencing search results.`;
+          }
+        } catch (searchErr) {
+          console.error("[JoyChat] Search error:", searchErr);
+        }
+      }
+
+      const chatMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      // Inject search context into the last user message
+      if (searchContext && chatMessages.length > 0) {
+        const lastMsg = chatMessages[chatMessages.length - 1];
+        if (lastMsg.role === "user") {
+          lastMsg.content = lastMsg.content + searchContext;
+        }
+      }
+
+      // Check for search attachment and perform search
+const apiBody = {
+        messages: chatMessages,
+        conversationId,
+        stream: preferences.enable_streaming,
+        attachments: attachmentUrls,
+        preferences: {
+          personality_mode: preferences.personality_mode,
+          language_preference: preferences.language_preference,
+        },
+      };
+
+      if (preferences.enable_streaming) {
+        setIsStreaming(true);
+        setThinkingPhase("typing");
+        let fullText = "";
+        let receivedAnyChunk = false;
+
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify(apiBody),
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.error || `HTTP ${res.status}`);
+        }
+
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error("No response body from server");
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6);
+            if (data === "[DONE]") break;
+            try {
+              const parsed = JSON.parse(data) as { chunk?: string; toolCalls?: unknown[]; toolResult?: unknown; error?: string };
+              if (parsed.error) throw new Error(parsed.error);
+              if (parsed.chunk) {
+                receivedAnyChunk = true;
+                fullText += parsed.chunk;
+                setStreamingText(fullText);
+              }
+            } catch (parseErr) {
+              if (parseErr instanceof Error && !parseErr.message.includes("Unexpected token")) {
+                console.warn("[JoyChat] Parse error:", parseErr.message);
+              }
+            }
+          }
+        }
+
+        setIsStreaming(false);
+
+        if (fullText || receivedAnyChunk) {
+          const assistantMsg: JoyMessage = {
+            id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+            conversation_id: conversationId,
+            role: "assistant",
+            content: fullText || "I processed your request.",
+            metadata: searchResults.length > 0 ? { sources: searchResults } : undefined,
+            created_at: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+          if (searchResults.length > 0) {
+            setSearchSources((prev) => ({ ...prev, [assistantMsg.id]: searchResults }));
+          }
+          generateSuggestions(fullText);
+          const actionMatch = fullText.match(/\{\s*"actions"\s*:\s*(\[[\s\S]*?\])\s*\}/);
+          if (actionMatch) {
+            try {
+              const actions = JSON.parse(`{"actions":${actionMatch[1]}}`).actions as JoyAction[];
+              executeFrontendActions(actions);
+            } catch { /* ignore */ }
+          }
+        } else if (!receivedAnyChunk) {
+          throw new Error("No response received from AI. Please try again.");
+        }
+      } else {
+        setThinkingPhase("typing");
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify(apiBody),
+        });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        const replyText = json.reply || "I\'m sorry, I couldn\'t process that.";
+        const assistantMsg: JoyMessage = {
+          id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+          conversation_id: conversationId,
+          role: "assistant",
+          content: replyText,
+          metadata: json.actions ? { actions: json.actions } : (searchResults.length > 0 ? { sources: searchResults } : undefined),
+          created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+        if (searchResults.length > 0) {
+          setSearchSources((prev) => ({ ...prev, [assistantMsg.id]: searchResults }));
+        }
+        generateSuggestions(replyText);
+        if (json.actions?.length > 0) {
+          executeFrontendActions(json.actions as JoyAction[]);
+        }
+      }
+      setRetryCount(0);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to send message";
+      console.error("[JoyChat] Send error:", error);
+      setErrorMessage(msg);
+      toast.error(msg);
+      setRetryCount((c) => c + 1);
+    } finally {
+      setIsLoading(false);
+      setIsStreaming(false);
+      setThinkingPhase(null);
+      setStreamingText("");
+      clearAttachments();
+    }
+  };
 
   const generateSuggestions = (lastResponse: string) => {
     const lower = lastResponse.toLowerCase();

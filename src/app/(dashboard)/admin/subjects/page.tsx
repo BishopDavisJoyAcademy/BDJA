@@ -13,7 +13,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Table, TableHead, TableBody, TableCell, TableHeader } from "@/components/ui/Table";
 import {
   BookOpen, Plus, Trash2, Edit3, X, Save, Search, Loader2, CheckCircle, XCircle,
-  GraduationCap, Hash, FileText, Layers, Eye, ChevronDown, ChevronUp
+  GraduationCap, Hash, FileText, Layers, Eye, ChevronDown, ChevronUp, Palette
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
@@ -22,6 +22,7 @@ interface Subject {
   id: string;
   name: string;
   code: string | null;
+  color: string | null;
   grade_levels: string[] | null;
   description: string | null;
   grading_scales: GradingScale[] | null;
@@ -76,6 +77,7 @@ export default function SubjectsPage() {
   const [form, setForm] = useState({
     name: "",
     code: "",
+    color: "",
     grade_levels: [] as string[],
     description: "",
     grading_scales: [] as GradingScale[],
@@ -107,7 +109,7 @@ export default function SubjectsPage() {
   }, [user, fetchSubjects]);
 
   const resetForm = () => {
-    setForm({ name: "", code: "", grade_levels: [], description: "", grading_scales: [], curriculum_strands: [] });
+    setForm({ name: "", code: "", color: "", grade_levels: [], description: "", grading_scales: [], curriculum_strands: [] });
     setEditingId(null);
   };
 
@@ -119,6 +121,7 @@ export default function SubjectsPage() {
       const payload = {
         name: form.name.trim(),
         code: form.code || null,
+        color: form.color || null,
         grade_levels: form.grade_levels.length > 0 ? form.grade_levels : null,
         description: form.description || null,
         grading_scales: form.grading_scales.length > 0 ? form.grading_scales : null,
@@ -156,6 +159,7 @@ export default function SubjectsPage() {
     setForm({
       name: sub.name,
       code: sub.code || "",
+      color: sub.color || "",
       grade_levels: sub.grade_levels || [],
       description: sub.description || "",
       grading_scales: sub.grading_scales || [],
@@ -278,6 +282,35 @@ export default function SubjectsPage() {
                   <div>
                     <label className="block text-sm text-slate-400 mb-1">Subject Code</label>
                     <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="e.g. MATH-101" className="bg-slate-900/60 border-slate-700/50" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1 flex items-center gap-1">
+                      <Palette className="w-3 h-3" /> Timetable Color
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={form.color || "#3b82f6"}
+                        onChange={(e) => setForm({ ...form, color: e.target.value })}
+                        className="w-10 h-9 rounded-lg bg-slate-800 border border-slate-700/50 cursor-pointer"
+                      />
+                      <Input
+                        value={form.color || ""}
+                        onChange={(e) => setForm({ ...form, color: e.target.value })}
+                        placeholder="#3b82f6"
+                        className="flex-1 bg-slate-900/60 border-slate-700/50 text-xs font-mono"
+                      />
+                      {form.color && (
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, color: "" })}
+                          className="text-slate-500 hover:text-slate-300"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-600 mt-1">Used for timetable display. Leave empty for auto-assigned color.</p>
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm text-slate-400 mb-1">Description</label>
@@ -406,6 +439,7 @@ export default function SubjectsPage() {
                 <tr>
                   <TableHeader>Subject</TableHeader>
                   <TableHeader>Code</TableHeader>
+                  <TableHeader>Color</TableHeader>
                   <TableHeader>Grades</TableHeader>
                   <TableHeader>Grading</TableHeader>
                   <TableHeader>Strands</TableHeader>
@@ -426,6 +460,16 @@ export default function SubjectsPage() {
                         </div>
                       </TableCell>
                       <TableCell><span className="text-slate-400">{s.code || "—"}</span></TableCell>
+                      <TableCell>
+                        {s.color ? (
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full border border-slate-600 shrink-0" style={{ backgroundColor: s.color }} />
+                            <span className="text-xs font-mono text-slate-400">{s.color}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-600">Auto</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {(s.grade_levels || []).slice(0, 3).map((g) => (
@@ -476,10 +520,23 @@ export default function SubjectsPage() {
           </div>
         ) : selectedSubject && (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <Card className="p-4 bg-slate-900/60 border-slate-700/50 rounded-xl">
                 <p className="text-xs text-slate-500 uppercase">Code</p>
                 <p className="text-lg font-semibold text-slate-200">{selectedSubject.code || "—"}</p>
+              </Card>
+              <Card className="p-4 bg-slate-900/60 border-slate-700/50 rounded-xl">
+                <p className="text-xs text-slate-500 uppercase">Color</p>
+                <div className="flex items-center gap-2 mt-1">
+                  {selectedSubject.color ? (
+                    <>
+                      <span className="w-5 h-5 rounded-full border border-slate-600" style={{ backgroundColor: selectedSubject.color }} />
+                      <span className="text-sm font-mono text-slate-300">{selectedSubject.color}</span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-slate-500">Auto-assigned</span>
+                  )}
+                </div>
               </Card>
               <Card className="p-4 bg-slate-900/60 border-slate-700/50 rounded-xl">
                 <p className="text-xs text-slate-500 uppercase">Grade Levels</p>

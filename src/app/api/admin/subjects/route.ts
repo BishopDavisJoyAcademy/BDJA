@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await admin.from("subjects").insert({
       name: String(body.name).trim(),
       code: body.code || null,
+      color: body.color || null,
       grade_levels: body.grade_levels || null,
       description: body.description || null,
       grading_scales: body.grading_scales || null,
@@ -140,6 +141,7 @@ export async function PUT(req: NextRequest) {
     const updateData: {
       name?: string;
       code?: string | null;
+      color?: string | null;
       grade_levels?: string[] | null;
       description?: string | null;
       grading_scales?: Json;
@@ -147,6 +149,7 @@ export async function PUT(req: NextRequest) {
     } = {};
     if (body.name !== undefined) updateData.name = String(body.name).trim();
     if (body.code !== undefined) updateData.code = body.code || null;
+    if (body.color !== undefined) updateData.color = body.color || null;
     if (body.grade_levels !== undefined) updateData.grade_levels = body.grade_levels || null;
     if (body.description !== undefined) updateData.description = body.description || null;
     if (body.grading_scales !== undefined) updateData.grading_scales = body.grading_scales || null;
@@ -194,7 +197,6 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Subject ID required" }, { status: 400 });
 
-    // Check if subject is assigned to any classes
     const { data: assignments } = await admin
       .from("class_subjects")
       .select("id", { count: "exact", head: true })

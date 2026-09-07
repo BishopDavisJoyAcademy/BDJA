@@ -36,6 +36,8 @@ const PUBLIC_API_PREFIXES = [
   "/api/onboarding",
   "/api/pages/public",
   "/api/library",
+  "/api/public/admissions",
+  "/api/admin/timetable-config",
 ];
 
 const STATIC_ASSETS = ["/_next", "/static", "/favicon.ico", "/logo", "/images", "/grades", "/slides", "/manifest.json"];

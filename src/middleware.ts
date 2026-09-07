@@ -37,6 +37,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/pages/public",
   "/api/library",
   "/api/public/admissions",
+  "/api/public/campuses",
   "/api/admin/timetable-config",
 ];
 

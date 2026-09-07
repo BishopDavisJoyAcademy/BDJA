@@ -114,7 +114,7 @@ export default function AdmissionsPage() {
   useEffect(() => {
     // Fetch campuses and grade levels
     Promise.all([
-      fetch("/api/admin/campuses").then((r) => r.json().catch(() => ({}))),
+      fetch("/api/public/campuses").then((r) => r.json().catch(() => ({}))),
       fetch("/api/admin/timetable-config").then((r) => r.json().catch(() => ({}))),
     ])
       .then(([campusData, configData]) => {

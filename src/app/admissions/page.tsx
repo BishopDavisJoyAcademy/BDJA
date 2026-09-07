@@ -117,10 +117,15 @@ export default function AdmissionsPage() {
   useEffect(() => {
     // Fetch campuses and grade levels
     Promise.all([
-      fetch("/api/public/campuses").then((r) => r.json().catch(() => ({}))),
+      fetch("/api/public/campuses").then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) console.error("[Admissions] Campuses fetch failed:", r.status, data);
+        return data;
+      }),
       fetch("/api/admin/timetable-config").then((r) => r.json().catch(() => ({}))),
     ])
       .then(([campusData, configData]) => {
+        console.log("[Admissions] Campuses loaded:", campusData.campuses?.length || 0, campusData);
         setCampuses(campusData.campuses || []);
         const grades = (configData.config?.grade_levels || [
           "Playgroup", "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3",
@@ -543,11 +548,18 @@ export default function AdmissionsPage() {
                     className={`w-full px-4 py-2.5 rounded-xl bg-slate-800/50 border text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/20 transition-all ${errors.campus_id ? "border-red-500/50" : "border-slate-700/50"}`}
                     disabled={loadingCampuses}
                   >
-                    <option value="">{loadingCampuses ? "Loading campuses..." : "Select campus"}</option>
+                    <option value="">
+                      {loadingCampuses ? "Loading campuses..." : campuses.length === 0 ? "No campuses available — contact school" : "Select campus"}
+                    </option>
                     {campuses.map((c) => (
                       <option key={c.id} value={c.id}>{c.name} — {c.location}{c.address ? `, ${c.address}` : ""}</option>
                     ))}
                   </select>
+                  {!loadingCampuses && campuses.length === 0 && (
+                    <p className="text-xs text-amber-400 mt-2 flex items-center gap-1.5">
+                      <AlertCircle className="w-3 h-3" /> No campuses are currently open for admissions. Please contact the school directly.
+                    </p>
+                  )}
                   {form.campus_id && (
                     <div className="mt-2 p-3 rounded-xl bg-slate-800/40 border border-slate-700/40">
                       {(() => {

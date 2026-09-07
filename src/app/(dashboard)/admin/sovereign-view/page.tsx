@@ -183,9 +183,21 @@ export default function SovereignViewPage() {
   const impersonate = async (targetUser: UserRecord) => {
     setImpersonating(targetUser.id);
     try {
-      await apiPost("/api/admin/impersonate", { targetUserId: targetUser.id });
-      toast.success(`Now viewing as ${targetUser.full_name}`);
-      router.push("/dashboard");
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId: targetUser.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Impersonation failed");
+        return;
+      }
+      toast.success(`Now viewing as ${data.targetUser.full_name}`);
+      const cat = data.targetUser.user_category;
+      if (cat === "student") router.push("/student");
+      else if (cat === "staff") router.push("/teacher");
+      else router.push("/dashboard");
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));
     } finally {

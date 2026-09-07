@@ -1,529 +1,709 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
-import { getErrorMessage } from "@/lib/errors";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
+import { Table, TableHead, TableBody, TableCell, TableHeader } from "@/components/ui/Table";
 import {
-  Loader2, Plus, Pencil, Trash2, GraduationCap, Key, X, CheckCircle, Search,
-  Filter, Power, PowerOff, Eye, Copy, Check, RefreshCw, ChevronDown, ChevronUp,
-  AlertTriangle, UserCheck, UserX, BookOpen, Hash
+  Loader2, Plus, Pencil, Trash2, Users, Key, X, CheckCircle, Search,
+  Filter, Power, PowerOff, Eye, Copy, ChevronDown, ChevronUp, RefreshCw,
+  GraduationCap, ArrowUpCircle, Archive, Shuffle, AlertTriangle,
+  BookOpen, Calendar, BarChart3, Fingerprint, Activity
 } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
-import { ADMIN_SEGMENT } from "@/lib/constants";
+import { getErrorMessage } from "@/lib/errors";
 
-interface StudentProfile {
+interface StudentRecord {
   id: string;
   full_name: string;
-  email: string | null;
+  email: string;
   phone: string | null;
+  role: string;
+  user_category: string;
   is_active: boolean;
   password_changed: boolean;
-  created_at: string | null;
+  campus_id: string | null;
+  campus_name?: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  last_login_at: string | null;
   students?: {
-    admission_number: string;
-    grade_level: string;
+    admission_number: string | null;
+    grade_level: string | null;
     class_id: string | null;
+    class_name?: string | null;
+    status: string | null;
     enrollment_date: string | null;
-    status: string;
-  };
+    guardian_name: string | null;
+    guardian_phone: string | null;
+    guardian_email: string | null;
+  } | null;
 }
 
-interface CredentialData {
-  id: string;
-  fullName: string;
-  admissionNumber: string;
-  tempPassword: string;
-  phone: string | null;
-}
+const GRADE_LEVELS = ["Playgroup", "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
 
-interface Stats {
-  total: number;
-  active: number;
-  inactive: number;
-  firstLogin: number;
-}
-
-const GRADES = ["Playgroup", "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9"];
-type StatusFilter = "all" | "active" | "inactive";
-type SortField = "name" | "admission" | "grade" | "status" | "created";
-type SortDir = "asc" | "desc";
-
-export default function StudentsPage() {
-  const [students, setStudents] = useState<StudentProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+export default function StudentManagementPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [students, setStudents] = useState<StudentRecord[]>([]);
   const [search, setSearch] = useState("");
-  const [filterGrade, setFilterGrade] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [sortField, setSortField] = useState<SortField>("created");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [credentials, setCredentials] = useState<CredentialData | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [promotingId, setPromotingId] = useState<string | null>(null);
-  const [newGrade, setNewGrade] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortField, setSortField] = useState("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [isLoading, setIsLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [showBulkPromote, setShowBulkPromote] = useState(false);
+  const [showBulkTransfer, setShowBulkTransfer] = useState(false);
+  const [showCredentials, setShowCredentials] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [stats, setStats] = useState<Stats>({ total: 0, active: 0, inactive: 0, firstLogin: 0 });
+  const [saving, setSaving] = useState(false);
+  const [credentials, setCredentials] = useState<{ email: string; tempPassword: string } | null>(null);
+  const [targetGrade, setTargetGrade] = useState("");
+  const [targetClass, setTargetClass] = useState("");
+  const [classes, setClasses] = useState<{ id: string; name: string; grade_level: string }[]>([]);
+  const [detailTab, setDetailTab] = useState<"profile" | "academics" | "attendance" | "fees">("profile");
 
-  const fetchStudents = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = new URLSearchParams();
-      if (filterGrade !== "all") params.set("grade", filterGrade);
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (search.trim()) params.set("q", search.trim());
-
-      const endpoint = `/api/admin/students${params.toString() ? `?${params.toString()}` : ""}`;
-      const data = await apiGet<{ students: StudentProfile[]; count: number }>(endpoint);
-      const list = data.students || [];
-      setStudents(list);
-
-      const activeCount = list.filter((s) => s.is_active).length;
-      const firstLoginCount = list.filter((s) => !s.password_changed).length;
-      setStats({
-        total: list.length,
-        active: activeCount,
-        inactive: list.length - activeCount,
-        firstLogin: firstLoginCount,
-      });
-    } catch (err: unknown) {
-      const msg = getErrorMessage(err);
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [filterGrade, statusFilter, search]);
+  const [form, setForm] = useState({
+    full_name: "", email: "", phone: "", grade_level: "Grade 1",
+    admission_number: "", guardian_name: "", guardian_phone: "", guardian_email: "",
+  });
 
   useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
+    if (!authLoading && user?.user_category !== "admin") {
+      router.push("/unauthorized");
+    }
+  }, [user, authLoading, router]);
 
-  const handleToggleStatus = async (student: StudentProfile) => {
-    const newStatus = !student.is_active;
-    setTogglingId(student.id);
+  const fetchStudents = useCallback(async () => {
+    setIsLoading(true);
     try {
-      await apiPatch("/api/admin/students", { id: student.id, is_active: newStatus });
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.id === student.id ? { ...s, is_active: newStatus, students: { ...s.students, status: newStatus ? "active" : "inactive" } as StudentProfile["students"] } : s
-        )
-      );
-      toast.success(`${student.full_name} is now ${newStatus ? "active" : "inactive"}`);
-      setStats((prev) => ({
-        ...prev,
-        active: newStatus ? prev.active + 1 : prev.active - 1,
-        inactive: newStatus ? prev.inactive - 1 : prev.inactive + 1,
-      }));
+      const params = new URLSearchParams();
+      if (gradeFilter !== "all") params.set("grade", gradeFilter);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (search.trim()) params.set("q", search.trim());
+      params.set("sort", sortField);
+      params.set("dir", sortDir);
+
+      const data = await apiGet<{ students: StudentRecord[] }>(`/api/admin/students?${params.toString()}`);
+      setStudents(data.students || []);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));
     } finally {
-      setTogglingId(null);
+      setIsLoading(false);
     }
-  };
+  }, [gradeFilter, statusFilter, search, sortField, sortDir]);
 
-  const handleDelete = async (student: StudentProfile) => {
-    if (!confirm(`Delete "${student.full_name}" permanently? This cannot be undone.`)) return;
-    setDeletingId(student.id);
+  const fetchClasses = async () => {
     try {
-      await apiDelete(`/api/admin/students?id=${student.id}`);
-      setStudents((prev) => prev.filter((s) => s.id !== student.id));
-      toast.success(`${student.full_name} deleted`);
-      setStats((prev) => ({
-        total: prev.total - 1,
-        active: student.is_active ? prev.active - 1 : prev.active,
-        inactive: !student.is_active ? prev.inactive - 1 : prev.inactive,
-        firstLogin: !student.password_changed ? prev.firstLogin - 1 : prev.firstLogin,
-      }));
+      const data = await apiGet<{ classes: { id: string; name: string; grade_level: string }[] }>("/api/admin/classes");
+      setClasses(data.classes || []);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));
-    } finally {
-      setDeletingId(null);
     }
   };
 
-  const handlePromote = async (id: string) => {
-    if (!newGrade) { toast.error("Select a new grade level"); return; }
-    try {
-      await apiPatch("/api/admin/students", { id, new_grade_level: newGrade });
-      toast.success("Student promoted successfully");
-      setPromotingId(null);
-      setNewGrade("");
+  useEffect(() => {
+    if (user?.user_category === "admin") {
       fetchStudents();
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err));
+      fetchClasses();
     }
+  }, [user, fetchStudents]);
+
+  const resetForm = () => {
+    setForm({ full_name: "", email: "", phone: "", grade_level: "Grade 1", admission_number: "", guardian_name: "", guardian_phone: "", guardian_email: "" });
   };
 
-  const handleGenerateCredentials = async (student: StudentProfile) => {
-    setGeneratingId(student.id);
+  const openCreate = () => { resetForm(); setShowCreate(true); };
+  const openEdit = (s: StudentRecord) => {
+    setForm({
+      full_name: s.full_name, email: s.email, phone: s.phone || "",
+      grade_level: s.students?.grade_level || "Grade 1",
+      admission_number: s.students?.admission_number || "",
+      guardian_name: s.students?.guardian_name || "",
+      guardian_phone: s.students?.guardian_phone || "",
+      guardian_email: s.students?.guardian_email || "",
+    });
+    setSelectedStudent(s);
+    setShowEdit(true);
+  };
+
+  const openDetail = (s: StudentRecord) => {
+    setSelectedStudent(s);
+    setDetailTab("profile");
+    setShowDetail(true);
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.full_name.trim() || !form.email.trim()) { toast.error("Name and email required"); return; }
+    setSaving(true);
     try {
-      const data = await apiPost<{ success: boolean; credentials: CredentialData; message: string }>(
-        "/api/admin/students/credentials",
-        { id: student.id }
-      );
-      setCredentials(data.credentials);
-      toast.success("New credentials generated");
-      setStudents((prev) =>
-        prev.map((s) => (s.id === student.id ? { ...s, password_changed: false } : s))
-      );
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setGeneratingId(null);
-    }
+      const data = await apiPost<{ success: boolean; credentials?: { email: string; tempPassword: string } }>("/api/admin/students", form);
+      if (data.credentials) { setCredentials(data.credentials); setShowCredentials(true); }
+      toast.success("Student enrolled");
+      setShowCreate(false); resetForm(); fetchStudents();
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); }
+    finally { setSaving(false); }
   };
 
-  const handleCopyCredentials = async () => {
-    if (!credentials) return;
-    const text = `BDJA Student Account\n\nAdmission Number: ${credentials.admissionNumber}\nTemporary PIN: ${credentials.tempPassword}\n\nPlease log in and change your PIN immediately.`;
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudent) return;
+    setSaving(true);
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast.success("Copied to clipboard");
-    } catch {
-      toast.error("Failed to copy");
-    }
+      await apiPatch("/api/admin/students", { id: selectedStudent.id, ...form });
+      toast.success("Student updated");
+      setShowEdit(false); fetchStudents();
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); }
+    finally { setSaving(false); }
   };
 
-  const toggleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDir("asc");
-    }
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this student?")) return;
+    setDeletingId(id);
+    try {
+      await apiDelete(`/api/admin/students?id=${id}`);
+      setStudents((prev) => prev.filter((s) => s.id !== id));
+      toast.success("Student deleted");
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); }
+    finally { setDeletingId(null); }
   };
 
-  const sortedStudents = [...students].sort((a, b) => {
-    const dir = sortDir === "asc" ? 1 : -1;
-    switch (sortField) {
-      case "name":
-        return a.full_name.localeCompare(b.full_name) * dir;
-      case "admission":
-        return (a.students?.admission_number || "").localeCompare(b.students?.admission_number || "") * dir;
-      case "grade":
-        return (a.students?.grade_level || "").localeCompare(b.students?.grade_level || "") * dir;
-      case "status":
-        return (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1) * dir;
-      case "created":
-      default:
-        return ((a.created_at || "") > (b.created_at || "") ? 1 : -1) * dir;
-    }
-  });
+  const toggleStatus = async (s: StudentRecord) => {
+    setTogglingId(s.id);
+    try {
+      await apiPatch("/api/admin/students", { id: s.id, is_active: !s.is_active });
+      setStudents((prev) => prev.map((st) => st.id === s.id ? { ...st, is_active: !st.is_active } : st));
+      toast.success(`${s.full_name} is now ${!s.is_active ? "active" : "inactive"}`);
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); }
+    finally { setTogglingId(null); }
+  };
+
+  const promoteStudent = async (s: StudentRecord) => {
+    const currentIdx = GRADE_LEVELS.indexOf(s.students?.grade_level || "");
+    const nextGrade = currentIdx >= 0 && currentIdx < GRADE_LEVELS.length - 1 ? GRADE_LEVELS[currentIdx + 1] : null;
+    if (!nextGrade) { toast.error("Already at highest grade"); return; }
+    if (!confirm(`Promote ${s.full_name} to ${nextGrade}?`)) return;
+    try {
+      await apiPatch("/api/admin/students", { id: s.id, grade_level: nextGrade, action: "promote" });
+      setStudents((prev) => prev.map((st) => st.id === s.id ? { ...st, students: { ...st.students!, grade_level: nextGrade } } : st));
+      toast.success(`${s.full_name} promoted to ${nextGrade}`);
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); }
+  };
+
+  const bulkPromote = async () => {
+    if (selectedIds.size === 0 || !targetGrade) { toast.error("Select students and target grade"); return; }
+    setSaving(true);
+    try {
+      await apiPost("/api/admin/students/bulk", { action: "promote", userIds: Array.from(selectedIds), targetGrade });
+      setStudents((prev) => prev.map((s) => selectedIds.has(s.id) ? { ...s, students: { ...s.students!, grade_level: targetGrade } } : s));
+      setSelectedIds(new Set()); setShowBulkPromote(false);
+      toast.success(`${selectedIds.size} students promoted to ${targetGrade}`);
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); }
+    finally { setSaving(false); }
+  };
+
+  const bulkTransfer = async () => {
+    if (selectedIds.size === 0 || !targetClass) { toast.error("Select students and target class"); return; }
+    setSaving(true);
+    try {
+      await apiPost("/api/admin/students/bulk", { action: "transfer", userIds: Array.from(selectedIds), targetClass });
+      setSelectedIds(new Set()); setShowBulkTransfer(false);
+      toast.success(`${selectedIds.size} students transferred`);
+      fetchStudents();
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); }
+    finally { setSaving(false); }
+  };
+
+  const bulkArchive = async () => {
+    if (selectedIds.size === 0) { toast.error("Select students first"); return; }
+    if (!confirm(`Archive ${selectedIds.size} students? They will be marked as graduated.`)) return;
+    setSaving(true);
+    try {
+      await apiPost("/api/admin/students/bulk", { action: "archive", userIds: Array.from(selectedIds) });
+      setStudents((prev) => prev.map((s) => selectedIds.has(s.id) ? { ...s, is_active: false, students: { ...s.students!, status: "graduated" } } : s));
+      setSelectedIds(new Set());
+      toast.success(`${selectedIds.size} students archived`);
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); }
+    finally { setSaving(false); }
+  };
+
+  const generatePassword = async (id: string) => {
+    setGeneratingId(id);
+    try {
+      const data = await apiPost<{ credentials: { email: string; tempPassword: string } }>("/api/admin/students/generate-password", { id });
+      setCredentials(data.credentials); setShowCredentials(true);
+      toast.success("Temporary password generated");
+    } catch (err: unknown) { toast.error(getErrorMessage(err)); }
+    finally { setGeneratingId(null); }
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === students.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(students.map((s) => s.id)));
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const stats = {
+    total: students.length,
+    active: students.filter((s) => s.is_active).length,
+    inactive: students.filter((s) => !s.is_active).length,
+    passwordPending: students.filter((s) => !s.password_changed).length,
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+      </div>
+    );
+  }
+
+  if (user?.user_category !== "admin") return null;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Student Management</h1>
-          <p className="text-sm text-gray-400 mt-1">Manage student records, grades, and credentials</p>
+          <h1 className="text-2xl font-bold text-slate-100">Student Management</h1>
+          <p className="text-slate-400">Enroll, promote, transfer, and archive students</p>
         </div>
-        <Link href={`/${ADMIN_SEGMENT}/students/create`}>
-          <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/20">
-            <Plus className="w-4 h-4 mr-2" />Add Student
+        <div className="flex gap-2">
+          <Button onClick={fetchStudents} variant="outline" className="border-slate-700/50 text-slate-300">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
           </Button>
-        </Link>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 bg-slate-800/50 border-slate-700/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400"><GraduationCap className="w-5 h-5" /></div>
-            <div>
-              <p className="text-2xl font-bold text-white">{stats.total}</p>
-              <p className="text-xs text-gray-400">Total Students</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 bg-slate-800/50 border-slate-700/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400"><UserCheck className="w-5 h-5" /></div>
-            <div>
-              <p className="text-2xl font-bold text-white">{stats.active}</p>
-              <p className="text-xs text-gray-400">Active</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 bg-slate-800/50 border-slate-700/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-red-500/10 text-red-400"><UserX className="w-5 h-5" /></div>
-            <div>
-              <p className="text-2xl font-bold text-white">{stats.inactive}</p>
-              <p className="text-xs text-gray-400">Inactive</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 bg-slate-800/50 border-slate-700/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400"><Key className="w-5 h-5" /></div>
-            <div>
-              <p className="text-2xl font-bold text-white">{stats.firstLogin}</p>
-              <p className="text-xs text-gray-400">First Login</p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Search by name or admission number..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-slate-800/50 border-slate-700"
-          />
+          <Button onClick={openCreate} className="bg-[#D4AF37] hover:bg-[#C4A030] text-slate-900 font-semibold">
+            <Plus className="w-4 h-4 mr-2" />
+            Enroll Student
+          </Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-400" />
-          <select
-            value={filterGrade}
-            onChange={(e) => setFilterGrade(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500/50"
-          >
-            <option value="all">All Grades</option>
-            {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500/50"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active Only</option>
-            <option value="inactive">Inactive Only</option>
-          </select>
-        </div>
-        <Button variant="outline" size="sm" onClick={fetchStudents} className="border-slate-600 text-gray-300 hover:bg-slate-700">
-          <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
-        </Button>
-      </div>
+      </motion.div>
 
-      {/* Credentials Banner */}
-      {credentials && (
-        <Card className="p-5 border-emerald-500/30 bg-emerald-500/5 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-3">
-            <Button size="sm" variant="ghost" onClick={() => setCredentials(null)} className="text-gray-400 hover:text-white">
+      {/* Stats */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+        className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Total", value: stats.total, icon: Users, color: "text-[#D4AF37]" },
+          { label: "Active", value: stats.active, icon: Power, color: "text-emerald-400" },
+          { label: "Inactive", value: stats.inactive, icon: PowerOff, color: "text-red-400" },
+          { label: "First Login", value: stats.passwordPending, icon: Key, color: "text-amber-400" },
+        ].map((s) => (
+          <Card key={s.label} className="p-4 flex items-center gap-3">
+            <s.icon className={`w-5 h-5 ${s.color}`} />
+            <div>
+              <p className="text-2xl font-bold text-slate-100">{s.value}</p>
+              <p className="text-xs text-slate-500">{s.label}</p>
+            </div>
+          </Card>
+        ))}
+      </motion.div>
+
+      {/* Bulk Actions */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            className="flex items-center gap-3 p-3 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl">
+            <span className="text-sm text-[#D4AF37] font-medium">{selectedIds.size} selected</span>
+            <div className="flex-1" />
+            <Button size="sm" onClick={() => setShowBulkPromote(true)}
+              className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20">
+              <ArrowUpCircle className="w-4 h-4 mr-1" />
+              Promote
+            </Button>
+            <Button size="sm" onClick={() => setShowBulkTransfer(true)}
+              className="bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20">
+              <Shuffle className="w-4 h-4 mr-1" />
+              Transfer
+            </Button>
+            <Button size="sm" onClick={bulkArchive}
+              className="bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20">
+              <Archive className="w-4 h-4 mr-1" />
+              Archive
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="text-slate-500">
               <X className="w-4 h-4" />
             </Button>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400"><Key className="w-5 h-5" /></div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-emerald-400 flex items-center gap-2">
-                Generated Credentials — {credentials.fullName}
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-700/50">
-                  <p className="text-xs text-gray-500 mb-1">Admission Number</p>
-                  <p className="text-sm text-white font-mono font-medium">{credentials.admissionNumber}</p>
-                </div>
-                <div className="p-3 bg-slate-900/60 rounded-lg border border-emerald-500/20">
-                  <p className="text-xs text-emerald-400 mb-1">Temporary PIN</p>
-                  <p className="text-sm text-white font-mono tracking-wide">{credentials.tempPassword}</p>
-                </div>
-                <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-700/50">
-                  <p className="text-xs text-gray-500 mb-1">Phone</p>
-                  <p className="text-sm text-white font-medium">{credentials.phone || "—"}</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-4">
-                <Button size="sm" variant="outline" onClick={handleCopyCredentials} className="border-slate-600 text-gray-300 hover:bg-slate-700">
-                  {copied ? <><Check className="w-3.5 h-3.5 mr-1 text-emerald-400" /> Copied</> : <><Copy className="w-3.5 h-3.5 mr-1" /> Copy</>}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Students Table */}
-      <Card className="overflow-hidden border-slate-700/50">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-800/80 text-gray-300">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort("name")}>
-                  <div className="flex items-center gap-1">Name {sortField === "name" && (sortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</div>
-                </th>
-                <th className="px-4 py-3 text-left font-medium cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort("admission")}>
-                  <div className="flex items-center gap-1">Admission # {sortField === "admission" && (sortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</div>
-                </th>
-                <th className="px-4 py-3 text-left font-medium cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort("grade")}>
-                  <div className="flex items-center gap-1">Grade {sortField === "grade" && (sortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</div>
-                </th>
-                <th className="px-4 py-3 text-left font-medium cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort("status")}>
-                  <div className="flex items-center gap-1">Status {sortField === "status" && (sortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</div>
-                </th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {sortedStudents.map((s) => (
-                <>
-                  <tr key={s.id} className={`text-gray-300 transition-colors ${expandedId === s.id ? "bg-slate-800/40" : "hover:bg-slate-800/30"}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${s.is_active ? "bg-emerald-500/15 text-emerald-400" : "bg-gray-500/15 text-gray-400"}`}>
-                          {s.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+      {/* Search & Filters */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+        className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Input placeholder="Search students..." value={search} onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && fetchStudents()}
+            className="pl-10 bg-slate-900/60 border-slate-700/50 text-slate-100 placeholder:text-slate-600" />
+        </div>
+        <select value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}
+          className="px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30">
+          <option value="all">All Grades</option>
+          {GRADE_LEVELS.map((g) => <option key={g} value={g}>{g}</option>)}
+        </select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <Button onClick={fetchStudents} className="bg-[#D4AF37] hover:bg-[#C4A030] text-slate-900 font-semibold">
+          <Search className="w-4 h-4 mr-2" />
+          Search
+        </Button>
+      </motion.div>
+
+      {/* Select All */}
+      <div className="flex items-center gap-2">
+        <input type="checkbox" checked={selectedIds.size === students.length && students.length > 0} onChange={selectAll}
+          className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-[#D4AF37] focus:ring-[#D4AF37]/30" />
+        <span className="text-sm text-slate-500">Select all ({students.length})</span>
+      </div>
+
+      {/* Table */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <Card className="overflow-hidden">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+            </div>
+          ) : students.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+              <GraduationCap className="w-12 h-12 mb-3 text-slate-600" />
+              <p className="text-lg font-medium text-slate-400">No students found</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHead>
+                <tr>
+                  <TableHeader className="w-8"></TableHeader>
+                  <TableHeader className="cursor-pointer" onClick={() => handleSort("full_name")}>Name {sortField === "full_name" && (sortDir === "asc" ? <ChevronUp className="inline w-3 h-3" /> : <ChevronDown className="inline w-3 h-3" />)}</TableHeader>
+                  <TableHeader>Admission</TableHeader>
+                  <TableHeader>Grade</TableHeader>
+                  <TableHeader>Status</TableHeader>
+                  <TableHeader className="text-right">Actions</TableHeader>
+                </tr>
+              </TableHead>
+              <TableBody>
+                <AnimatePresence>
+                  {students.map((s, index) => (
+                    <motion.tr key={s.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }} transition={{ delay: index * 0.02 }}
+                      className="hover:bg-slate-800/50 transition-colors">
+                      <TableCell>
+                        <input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSelection(s.id)}
+                          className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-[#D4AF37] focus:ring-[#D4AF37]/30" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700/50">
+                            {s.avatar_url ? (
+                              <Image src={s.avatar_url} alt={s.full_name} width={36} height={36} className="object-cover" />
+                            ) : (
+                              <GraduationCap className="w-4 h-4 text-slate-400" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-200">{s.full_name}</p>
+                            <p className="text-xs text-slate-500">{s.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-white">{s.full_name}</p>
-                          {s.phone && <p className="text-xs text-gray-500">{s.phone}</p>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-gray-400">
-                      <div className="flex items-center gap-1.5">
-                        <Hash className="w-3.5 h-3.5 text-gray-600" />
-                        {s.students?.admission_number || "—"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <BookOpen className="w-3.5 h-3.5 text-gray-500" />
-                        <span>{s.students?.grade_level || "—"}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge className={`text-xs border-0 ${s.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
-                          {s.is_active ? <><CheckCircle className="w-3 h-3 mr-1" />Active</> : <><PowerOff className="w-3 h-3 mr-1" />Inactive</>}
-                        </Badge>
-                        {!s.password_changed && (
-                          <Badge className="bg-amber-500/10 text-amber-400 border-0 text-xs">
-                            <Key className="w-3 h-3 mr-1" />First Login
-                          </Badge>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => setExpandedId(expandedId === s.id ? null : s.id)} className="text-gray-400 hover:text-white">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Link href={`/${ADMIN_SEGMENT}/students/edit/${s.id}`}>
-                          <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
+                      </TableCell>
+                      <TableCell><span className="text-slate-300">{s.students?.admission_number || "—"}</span></TableCell>
+                      <TableCell><Badge variant="info">{s.students?.grade_level || "—"}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant={s.is_active ? "success" : "secondary"}>{s.is_active ? "Active" : "Inactive"}</Badge>
+                        {!s.password_changed && <Badge variant="warning" className="ml-1.5">First Login</Badge>}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => openDetail(s)}
+                            className="text-slate-400 hover:text-[#D4AF37] hover:bg-[#D4AF37]/10" title="View Details">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => promoteStudent(s)}
+                            className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10" title="Promote">
+                            <ArrowUpCircle className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => generatePassword(s.id)}
+                            disabled={generatingId === s.id}
+                            className="text-slate-400 hover:text-amber-400 hover:bg-amber-500/10" title="Generate Password">
+                            {generatingId === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(s)}
+                            className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10" title="Edit">
                             <Pencil className="w-4 h-4" />
                           </Button>
-                        </Link>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => { setPromotingId(promotingId === s.id ? null : s.id); setNewGrade(""); }}
-                          className="text-amber-400 hover:text-amber-300"
-                        >
-                          <GraduationCap className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleToggleStatus(s)}
-                          disabled={togglingId === s.id}
-                          className={s.is_active ? "text-red-400 hover:text-red-300" : "text-emerald-400 hover:text-emerald-300"}
-                        >
-                          {togglingId === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : s.is_active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleGenerateCredentials(s)}
-                          disabled={generatingId === s.id}
-                          className="text-cyan-400 hover:text-cyan-300"
-                        >
-                          {generatingId === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDelete(s)}
-                          disabled={deletingId === s.id}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          {deletingId === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        </Button>
-                      </div>
-                      {promotingId === s.id && (
-                        <div className="mt-2 flex items-center gap-2 justify-end">
-                          <select value={newGrade} onChange={(e) => setNewGrade(e.target.value)} className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500/50">
-                            <option value="">Select grade</option>
-                            {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
-                          </select>
-                          <Button size="sm" onClick={() => handlePromote(s.id)}>Promote</Button>
-                          <Button size="sm" variant="outline" onClick={() => setPromotingId(null)}>Cancel</Button>
+                          <Button size="sm" variant="ghost" onClick={() => toggleStatus(s)}
+                            disabled={togglingId === s.id}
+                            className={s.is_active ? "text-emerald-400 hover:text-red-400 hover:bg-red-500/10" : "text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10"}
+                            title={s.is_active ? "Deactivate" : "Activate"}>
+                            {togglingId === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : s.is_active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(s.id)}
+                            disabled={deletingId === s.id}
+                            className="text-slate-400 hover:text-red-400 hover:bg-red-500/10" title="Delete">
+                            {deletingId === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                          </Button>
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                  {expandedId === s.id && (
-                    <tr className="bg-slate-800/20">
-                      <td colSpan={5} className="px-4 py-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                          <div className="space-y-2">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Contact</p>
-                            <p className="text-gray-300"><span className="text-gray-500">Phone:</span> {s.phone || "—"}</p>
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Academic</p>
-                            <p className="text-gray-300"><span className="text-gray-500">Admission #:</span> {s.students?.admission_number || "—"}</p>
-                            <p className="text-gray-300"><span className="text-gray-500">Grade:</span> {s.students?.grade_level || "—"}</p>
-                            <p className="text-gray-300"><span className="text-gray-500">Class ID:</span> {s.students?.class_id || "—"}</p>
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Account</p>
-                            <p className="text-gray-300"><span className="text-gray-500">Password Changed:</span> {s.password_changed ? "Yes" : "No (First Login)"}</p>
-                            <p className="text-gray-300"><span className="text-gray-500">Account Status:</span> {s.is_active ? "Active" : "Inactive"}</p>
-                            <p className="text-gray-300"><span className="text-gray-500">Enrolled:</span> {s.students?.enrollment_date || "—"}</p>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {sortedStudents.length === 0 && !loading && (
-          <div className="text-center py-12 text-gray-500">
-            <GraduationCap className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p className="font-medium">No students found</p>
-            <p className="text-sm mt-1">{search || filterGrade !== "all" ? "Try adjusting your search or filters" : "Add your first student to get started"}</p>
-          </div>
-        )}
-        {loading && (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
-          </div>
-        )}
-      </Card>
+                      </TableCell>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+      </motion.div>
 
-      {/* Error State */}
-      {error && !loading && (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium">Failed to load students</p>
-            <p className="text-sm mt-1">{error}</p>
-            <Button onClick={fetchStudents} className="mt-3" size="sm" variant="outline">
-              <RefreshCw className="w-3 h-3 mr-1" /> Retry
+      {/* Create Modal */}
+      <Modal isOpen={showCreate} onClose={() => { setShowCreate(false); resetForm(); }} title="Enroll Student">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-sm font-medium text-slate-300 mb-1">Full Name *</label>
+              <Input value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} required
+                className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+            <div><label className="block text-sm font-medium text-slate-300 mb-1">Email *</label>
+              <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} required
+                className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+            <div><label className="block text-sm font-medium text-slate-300 mb-1">Phone</label>
+              <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+            <div><label className="block text-sm font-medium text-slate-300 mb-1">Admission Number</label>
+              <Input value={form.admission_number} onChange={(e) => setForm((f) => ({ ...f, admission_number: e.target.value }))}
+                className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+            <div><label className="block text-sm font-medium text-slate-300 mb-1">Grade Level</label>
+              <select value={form.grade_level} onChange={(e) => setForm((f) => ({ ...f, grade_level: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 text-sm">
+                {GRADE_LEVELS.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select></div>
+          </div>
+          <div className="border-t border-slate-800 pt-4">
+            <p className="text-sm font-medium text-slate-300 mb-2">Guardian Information</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-sm font-medium text-slate-300 mb-1">Guardian Name</label>
+                <Input value={form.guardian_name} onChange={(e) => setForm((f) => ({ ...f, guardian_name: e.target.value }))}
+                  className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+              <div><label className="block text-sm font-medium text-slate-300 mb-1">Guardian Phone</label>
+                <Input value={form.guardian_phone} onChange={(e) => setForm((f) => ({ ...f, guardian_phone: e.target.value }))}
+                  className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+              <div className="col-span-2"><label className="block text-sm font-medium text-slate-300 mb-1">Guardian Email</label>
+                <Input type="email" value={form.guardian_email} onChange={(e) => setForm((f) => ({ ...f, guardian_email: e.target.value }))}
+                  className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" onClick={() => { setShowCreate(false); resetForm(); }} variant="outline" className="flex-1 border-slate-700/50 text-slate-400">Cancel</Button>
+            <Button type="submit" disabled={saving} className="flex-1 bg-[#D4AF37] hover:bg-[#C4A030] text-slate-900 font-semibold">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enroll"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title="Edit Student">
+        {selectedStudent && (
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-sm font-medium text-slate-300 mb-1">Full Name *</label>
+                <Input value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} required
+                  className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+              <div><label className="block text-sm font-medium text-slate-300 mb-1">Email *</label>
+                <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} required
+                  className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+              <div><label className="block text-sm font-medium text-slate-300 mb-1">Phone</label>
+                <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+              <div><label className="block text-sm font-medium text-slate-300 mb-1">Admission Number</label>
+                <Input value={form.admission_number} onChange={(e) => setForm((f) => ({ ...f, admission_number: e.target.value }))}
+                  className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+              <div><label className="block text-sm font-medium text-slate-300 mb-1">Grade Level</label>
+                <select value={form.grade_level} onChange={(e) => setForm((f) => ({ ...f, grade_level: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 text-sm">
+                  {GRADE_LEVELS.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select></div>
+            </div>
+            <div className="border-t border-slate-800 pt-4">
+              <p className="text-sm font-medium text-slate-300 mb-2">Guardian Information</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-sm font-medium text-slate-300 mb-1">Guardian Name</label>
+                  <Input value={form.guardian_name} onChange={(e) => setForm((f) => ({ ...f, guardian_name: e.target.value }))}
+                    className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+                <div><label className="block text-sm font-medium text-slate-300 mb-1">Guardian Phone</label>
+                  <Input value={form.guardian_phone} onChange={(e) => setForm((f) => ({ ...f, guardian_phone: e.target.value }))}
+                    className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+                <div className="col-span-2"><label className="block text-sm font-medium text-slate-300 mb-1">Guardian Email</label>
+                  <Input type="email" value={form.guardian_email} onChange={(e) => setForm((f) => ({ ...f, guardian_email: e.target.value }))}
+                    className="bg-slate-900/60 border-slate-700/50 text-slate-100" /></div>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="button" onClick={() => setShowEdit(false)} variant="outline" className="flex-1 border-slate-700/50 text-slate-400">Cancel</Button>
+              <Button type="submit" disabled={saving} className="flex-1 bg-[#D4AF37] hover:bg-[#C4A030] text-slate-900 font-semibold">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Bulk Promote Modal */}
+      <Modal isOpen={showBulkPromote} onClose={() => setShowBulkPromote(false)} title="Bulk Promote">
+        <div className="space-y-4">
+          <p className="text-slate-400">Promote {selectedIds.size} students to:</p>
+          <select value={targetGrade} onChange={(e) => setTargetGrade(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 text-sm">
+            <option value="">Select target grade</option>
+            {GRADE_LEVELS.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
+          <div className="flex gap-3">
+            <Button onClick={() => setShowBulkPromote(false)} variant="outline" className="flex-1 border-slate-700/50 text-slate-400">Cancel</Button>
+            <Button onClick={bulkPromote} disabled={saving} className="flex-1 bg-[#D4AF37] hover:bg-[#C4A030] text-slate-900 font-semibold">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Promote"}
             </Button>
           </div>
         </div>
-      )}
+      </Modal>
+
+      {/* Bulk Transfer Modal */}
+      <Modal isOpen={showBulkTransfer} onClose={() => setShowBulkTransfer(false)} title="Bulk Transfer">
+        <div className="space-y-4">
+          <p className="text-slate-400">Transfer {selectedIds.size} students to class:</p>
+          <select value={targetClass} onChange={(e) => setTargetClass(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 text-sm">
+            <option value="">Select target class</option>
+            {classes.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.grade_level})</option>)}
+          </select>
+          <div className="flex gap-3">
+            <Button onClick={() => setShowBulkTransfer(false)} variant="outline" className="flex-1 border-slate-700/50 text-slate-400">Cancel</Button>
+            <Button onClick={bulkTransfer} disabled={saving} className="flex-1 bg-[#D4AF37] hover:bg-[#C4A030] text-slate-900 font-semibold">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Transfer"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Credentials Modal */}
+      <Modal isOpen={showCredentials} onClose={() => setShowCredentials(null)} title="Temporary Credentials" size="sm">
+        {credentials && (
+          <div className="space-y-4">
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+              <p className="text-amber-400 text-sm font-medium">Share these credentials securely</p>
+            </div>
+            <div className="space-y-2">
+              <Card className="p-3"><p className="text-xs text-slate-500">Email</p><p className="text-slate-200 font-mono">{credentials.email}</p></Card>
+              <Card className="p-3"><p className="text-xs text-slate-500">Temporary Password</p><p className="text-slate-200 font-mono">{credentials.tempPassword}</p></Card>
+            </div>
+            <Button onClick={() => { navigator.clipboard.writeText(`Email: ${credentials.email}\nPassword: ${credentials.tempPassword}`); toast.success("Copied"); }}
+              className="w-full bg-[#D4AF37] hover:bg-[#C4A030] text-slate-900 font-semibold">
+              <Copy className="w-4 h-4 mr-2" />
+              Copy to Clipboard
+            </Button>
+          </div>
+        )}
+      </Modal>
+
+      {/* Detail Modal */}
+      <Modal isOpen={showDetail} onClose={() => setShowDetail(false)} title="Student Profile" size="lg">
+        {selectedStudent && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center border-2 border-[#D4AF37]/30">
+                {selectedStudent.avatar_url ? (
+                  <Image src={selectedStudent.avatar_url} alt={selectedStudent.full_name} width={64} height={64} className="rounded-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-bold text-[#D4AF37]">{selectedStudent.full_name.charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-100">{selectedStudent.full_name}</h3>
+                <p className="text-slate-400">{selectedStudent.email}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant={selectedStudent.is_active ? "success" : "secondary"}>{selectedStudent.is_active ? "Active" : "Inactive"}</Badge>
+                  <Badge variant="info">{selectedStudent.students?.grade_level || "—"}</Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-1 border-b border-slate-800">
+              {[
+                { key: "profile", label: "Profile", icon: GraduationCap },
+                { key: "academics", label: "Academics", icon: BookOpen },
+                { key: "attendance", label: "Attendance", icon: Calendar },
+                { key: "fees", label: "Fees", icon: BarChart3 },
+              ].map((tab) => (
+                <button key={tab.key} onClick={() => setDetailTab(tab.key as never)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    detailTab === tab.key ? "border-[#D4AF37] text-[#D4AF37]" : "border-transparent text-slate-500 hover:text-slate-300"
+                  }`}>
+                  <tab.icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {detailTab === "profile" && (
+              <div className="grid grid-cols-2 gap-3">
+                <Card className="p-3"><p className="text-xs text-slate-500 uppercase">Admission</p><p className="text-slate-200">{selectedStudent.students?.admission_number || "—"}</p></Card>
+                <Card className="p-3"><p className="text-xs text-slate-500 uppercase">Phone</p><p className="text-slate-200">{selectedStudent.phone || "—"}</p></Card>
+                <Card className="p-3"><p className="text-xs text-slate-500 uppercase">Grade</p><p className="text-slate-200">{selectedStudent.students?.grade_level || "—"}</p></Card>
+                <Card className="p-3"><p className="text-xs text-slate-500 uppercase">Class</p><p className="text-slate-200">{selectedStudent.students?.class_name || selectedStudent.students?.class_id || "—"}</p></Card>
+                <Card className="p-3"><p className="text-xs text-slate-500 uppercase">Guardian</p><p className="text-slate-200">{selectedStudent.students?.guardian_name || "—"}</p></Card>
+                <Card className="p-3"><p className="text-xs text-slate-500 uppercase">Guardian Phone</p><p className="text-slate-200">{selectedStudent.students?.guardian_phone || "—"}</p></Card>
+                <Card className="p-3"><p className="text-xs text-slate-500 uppercase">Guardian Email</p><p className="text-slate-200">{selectedStudent.students?.guardian_email || "—"}</p></Card>
+                <Card className="p-3"><p className="text-xs text-slate-500 uppercase">Enrolled</p><p className="text-slate-200">{selectedStudent.students?.enrollment_date ? new Date(selectedStudent.students.enrollment_date).toLocaleDateString() : "—"}</p></Card>
+              </div>
+            )}
+
+            {detailTab === "academics" && (
+              <div className="text-center py-8 text-slate-500">
+                <BookOpen className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                <p>Academic records will appear here</p>
+              </div>
+            )}
+
+            {detailTab === "attendance" && (
+              <div className="text-center py-8 text-slate-500">
+                <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                <p>Attendance records will appear here</p>
+              </div>
+            )}
+
+            {detailTab === "fees" && (
+              <div className="text-center py-8 text-slate-500">
+                <BarChart3 className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                <p>Fee records will appear here</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

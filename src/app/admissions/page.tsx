@@ -116,15 +116,11 @@ export default function AdmissionsPage() {
   useEffect(() => {
     // Fetch campuses and grade levels
     Promise.all([
-      fetch("/api/public/campuses").then(async (r) => {
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok) console.error("[Admissions] Campuses fetch failed:", r.status, data);
-        return data;
-      }),
+      fetch("/api/public/campuses").then((r) => r.json().catch(() => ({}))),
       fetch("/api/admin/timetable-config").then((r) => r.json().catch(() => ({}))),
     ])
       .then(([campusData, configData]) => {
-        console.log("[Admissions] Campuses loaded:", campusData.campuses?.length || 0, campusData);
+        /* campuses loaded */
         setCampuses(campusData.campuses || []);
         const grades = (configData.config?.grade_levels || [
           "Playgroup", "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3",

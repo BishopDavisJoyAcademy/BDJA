@@ -41,7 +41,14 @@ const admissionSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const rawBody = await req.json();
+
+    // Convert empty strings to null/undefined for optional fields
+    const body: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(rawBody)) {
+      body[key] = value === "" ? null : value;
+    }
+
     const parseResult = admissionSchema.safeParse(body);
 
     if (!parseResult.success) {
@@ -106,7 +113,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      console.error("[public/admissions POST] Supabase error:", error);
+      // error logged above
       return NextResponse.json({ error: "Failed to submit application. Please try again." }, { status: 500 });
     }
 
@@ -116,7 +123,7 @@ export async function POST(req: NextRequest) {
       message: "Your application has been received and will be reviewed.",
     });
   } catch (err: unknown) {
-    console.error("[public/admissions POST] Exception:", getErrorMessage(err));
+    // exception handled
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -151,7 +158,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ pendingCount: count || 0 });
   } catch (err: unknown) {
-    console.error("[public/admissions GET] Exception:", getErrorMessage(err));
+    // exception handled
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

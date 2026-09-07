@@ -278,7 +278,7 @@ async function processExport(
   try {
     await admin.from("data_exports").update({ status: "running" }).eq("id", exportId);
 
-    const rawData = await fetchReportData(admin, tableName || "profiles", filters);
+    const rawData = await fetchReportData(admin, tableName || "profiles", filters as Record<string, unknown> | null);
 
     let fileContent: string;
     let contentType: string;

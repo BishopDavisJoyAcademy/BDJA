@@ -376,7 +376,6 @@ async function insertRecord(
       guardian_email: data.parent_email ? String(data.parent_email) : null,
       guardian_phone: data.parent_phone ? String(data.parent_phone) : null,
       date_of_birth: data.date_of_birth ? String(data.date_of_birth) : null,
-      gender: data.gender ? String(data.gender) : null,
       status: "active",
     });
 

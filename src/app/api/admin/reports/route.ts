@@ -423,7 +423,7 @@ async function handleRunReport(
     user_id: session.userId,
     action: "REPORT_RUN",
     table_name: "data_exports",
-    new_data: { report_type: reportType, filters, count: rawData.length },
+    new_data: { report_type: reportType, filters: filters as Json, count: rawData.length },
     ip_address: getClientIP(req),
   });
 

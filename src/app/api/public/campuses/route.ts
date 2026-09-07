@@ -9,8 +9,7 @@ export async function GET(req: NextRequest) {
     const admin = getSupabaseAdmin();
     const { data, error } = await admin
       .from("campuses")
-      .select("id, name, location, address, is_active")
-      .eq("is_active", true)
+      .select("id, name, location, address, email, phone")
       .order("name", { ascending: true });
 
     if (error) {

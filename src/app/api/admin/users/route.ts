@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, requirePermission } from "@/lib/session";
+import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { logAudit } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
@@ -7,18 +7,29 @@ import { getErrorMessage, AuthRequiredError, PermissionDeniedError } from "@/lib
 
 export const dynamic = "force-dynamic";
 
+const SORT_MAP: Record<string, string> = {
+  name: "full_name",
+  category: "user_category",
+  status: "is_active",
+  created: "created_at",
+  last_login: "last_login_at",
+};
+
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "users.view");
+    if (session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category");
     const status = searchParams.get("status");
     const searchQuery = searchParams.get("q");
-    const sort = searchParams.get("sort") || "created_at";
+    const rawSort = searchParams.get("sort") || "created";
     const dir = searchParams.get("dir") || "desc";
+    const sort = SORT_MAP[rawSort] || "created_at";
 
     let query = admin
       .from("profiles")
@@ -81,6 +92,7 @@ export async function GET(req: NextRequest) {
     if (error instanceof PermissionDeniedError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 403 });
     }
+    console.error("[users GET] Unhandled error:", error);
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
@@ -88,7 +100,9 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "users.edit");
+    if (session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const body = await req.json();
     const { id, is_active } = body;
@@ -114,6 +128,7 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error) {
+      console.error("[users PATCH] Error:", error.message);
       return NextResponse.json({ error: error.message || "Failed to update user" }, { status: 500 });
     }
 
@@ -127,7 +142,7 @@ export async function PATCH(req: NextRequest) {
 
     await logAudit({
       user_id: session.userId,
-      action: "UPDATE",
+      action: is_active === false ? "USER_DEACTIVATED" : "USER_ACTIVATED",
       table_name: "profiles",
       record_id: id,
       new_data: updateData,
@@ -142,6 +157,7 @@ export async function PATCH(req: NextRequest) {
     if (error instanceof PermissionDeniedError) {
       return NextResponse.json({ error: getErrorMessage(error) }, { status: error.statusCode || 403 });
     }
+    console.error("[users PATCH] Unhandled error:", error);
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

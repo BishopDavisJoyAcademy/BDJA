@@ -1038,6 +1038,64 @@ export type Database = {
           },
         ]
       }
+      fee_reminders: {
+        Row: {
+          created_at: string | null
+          fee_structure_id: string
+          id: string
+          message: string | null
+          reminder_type: string
+          sent_at: string | null
+          sent_by: string | null
+          status: string | null
+          student_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          fee_structure_id: string
+          id?: string
+          message?: string | null
+          reminder_type: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string | null
+          student_id: string
+        }
+        Update: {
+          created_at?: string | null
+          fee_structure_id?: string
+          id?: string
+          message?: string | null
+          reminder_type?: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_reminders_fee_structure_id_fkey"
+            columns: ["fee_structure_id"]
+            isOneToOne: false
+            referencedRelation: "fee_structures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_reminders_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_reminders_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fee_structures: {
         Row: {
           academic_year: string
@@ -2167,12 +2225,52 @@ export type Database = {
           },
         ]
       }
+      library_fines: {
+        Row: {
+          amount: number
+          borrowing_id: string
+          created_at: string | null
+          id: string
+          paid: boolean | null
+          paid_at: string | null
+          reason: string
+        }
+        Insert: {
+          amount: number
+          borrowing_id: string
+          created_at?: string | null
+          id?: string
+          paid?: boolean | null
+          paid_at?: string | null
+          reason: string
+        }
+        Update: {
+          amount?: number
+          borrowing_id?: string
+          created_at?: string | null
+          id?: string
+          paid?: boolean | null
+          paid_at?: string | null
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_fines_borrowing_id_fkey"
+            columns: ["borrowing_id"]
+            isOneToOne: false
+            referencedRelation: "library_borrowings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       library_resources: {
         Row: {
           author: string | null
           available_copies: number | null
+          barcode: string | null
           borrowed_by: Json | null
           campus_id: string | null
+          category: string | null
           cover_url: string | null
           created_at: string | null
           created_by: string | null
@@ -2180,6 +2278,9 @@ export type Database = {
           grade_levels: string[] | null
           id: string
           isbn: string | null
+          location: string | null
+          publication_year: number | null
+          publisher: string | null
           resource_type: string
           subject_id: string | null
           title: string
@@ -2188,8 +2289,10 @@ export type Database = {
         Insert: {
           author?: string | null
           available_copies?: number | null
+          barcode?: string | null
           borrowed_by?: Json | null
           campus_id?: string | null
+          category?: string | null
           cover_url?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2197,6 +2300,9 @@ export type Database = {
           grade_levels?: string[] | null
           id?: string
           isbn?: string | null
+          location?: string | null
+          publication_year?: number | null
+          publisher?: string | null
           resource_type: string
           subject_id?: string | null
           title: string
@@ -2205,8 +2311,10 @@ export type Database = {
         Update: {
           author?: string | null
           available_copies?: number | null
+          barcode?: string | null
           borrowed_by?: Json | null
           campus_id?: string | null
+          category?: string | null
           cover_url?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2214,6 +2322,9 @@ export type Database = {
           grade_levels?: string[] | null
           id?: string
           isbn?: string | null
+          location?: string | null
+          publication_year?: number | null
+          publisher?: string | null
           resource_type?: string
           subject_id?: string | null
           title?: string

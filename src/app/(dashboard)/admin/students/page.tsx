@@ -610,7 +610,7 @@ export default function StudentManagementPage() {
       </Modal>
 
       {/* Credentials Modal */}
-      <Modal isOpen={showCredentials} onClose={() => setShowCredentials(null)} title="Temporary Credentials" size="sm">
+      <Modal isOpen={showCredentials} onClose={() => setShowCredentials(false)} title="Temporary Credentials" size="sm">
         {credentials && (
           <div className="space-y-4">
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">

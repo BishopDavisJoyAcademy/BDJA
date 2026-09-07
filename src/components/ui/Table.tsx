@@ -3,8 +3,9 @@
 import { cn } from "@/lib/utils";
 
 interface TableProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 }
 
 export function Table({ children, className }: TableProps) {

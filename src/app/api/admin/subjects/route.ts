@@ -141,8 +141,8 @@ export async function PUT(req: NextRequest) {
       code?: string | null;
       grade_levels?: string[] | null;
       description?: string | null;
-      grading_scales?: unknown;
-      curriculum_strands?: unknown;
+      grading_scales?: object | null;
+      curriculum_strands?: object | null;
     } = {};
     if (body.name !== undefined) updateData.name = String(body.name).trim();
     if (body.code !== undefined) updateData.code = body.code || null;

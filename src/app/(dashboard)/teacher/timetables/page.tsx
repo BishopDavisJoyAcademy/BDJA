@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
-import { supabase } from "@/lib/supabase-client";
+import { supabase } from "@/lib/supabase";
 import SchoolDocumentHeader from "@/components/SchoolDocumentHeader";
 import {
   CalendarDays, Clock, MapPin, User, Printer, Loader2, GraduationCap, BookOpen
@@ -21,6 +21,7 @@ interface TimetableSlot {
   day_of_week: number;
   start_time: string;
   end_time: string;
+  term?: string;
   classes?: { id: string; name: string; grade_level: string } | null;
   subjects?: { id: string; name: string; code: string | null; color: string | null } | null;
 }

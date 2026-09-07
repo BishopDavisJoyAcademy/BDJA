@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
         emergency_contact_phone: data.emergency_contact_phone,
         emergency_contact_relationship: data.emergency_contact_relationship,
         notes: data.notes,
-        custom_fields: data.custom_fields,
+        custom_fields: data.custom_fields as unknown as import("@/types/database").Json,
         status: "pending",
         admission_date: new Date().toISOString().split("T")[0],
       })

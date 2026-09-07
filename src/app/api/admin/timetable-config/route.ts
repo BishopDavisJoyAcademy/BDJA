@@ -54,22 +54,28 @@ export async function PUT(req: NextRequest) {
       .select("id")
       .maybeSingle();
 
-    const payload = {
-      school_days: Array.isArray(body.school_days) ? body.school_days : undefined,
-      time_slots: Array.isArray(body.time_slots) ? body.time_slots : undefined,
-      lesson_duration_minutes: typeof body.lesson_duration_minutes === "number" ? body.lesson_duration_minutes : undefined,
-      terms: Array.isArray(body.terms) ? body.terms : undefined,
-      academic_year: typeof body.academic_year === "string" ? body.academic_year : undefined,
-      start_time: typeof body.start_time === "string" ? body.start_time : undefined,
-      end_time: typeof body.end_time === "string" ? body.end_time : undefined,
-      grade_levels: Array.isArray(body.grade_levels) ? body.grade_levels : undefined,
-      updated_at: new Date().toISOString(),
+    type ConfigPayload = {
+      school_days?: string[];
+      time_slots?: string[];
+      lesson_duration_minutes?: number;
+      terms?: string[];
+      academic_year?: string;
+      start_time?: string;
+      end_time?: string;
+      grade_levels?: string[];
+      updated_at?: string;
     };
 
-    // Remove undefined values
-    const cleanPayload = Object.fromEntries(
-      Object.entries(payload).filter(([_, v]) => v !== undefined)
-    );
+    const payload: ConfigPayload = {};
+    if (Array.isArray(body.school_days)) payload.school_days = body.school_days;
+    if (Array.isArray(body.time_slots)) payload.time_slots = body.time_slots;
+    if (typeof body.lesson_duration_minutes === "number") payload.lesson_duration_minutes = body.lesson_duration_minutes;
+    if (Array.isArray(body.terms)) payload.terms = body.terms;
+    if (typeof body.academic_year === "string") payload.academic_year = body.academic_year;
+    if (typeof body.start_time === "string") payload.start_time = body.start_time;
+    if (typeof body.end_time === "string") payload.end_time = body.end_time;
+    if (Array.isArray(body.grade_levels)) payload.grade_levels = body.grade_levels;
+    payload.updated_at = new Date().toISOString();
 
     let result;
     if (existing) {
@@ -96,7 +102,7 @@ export async function PUT(req: NextRequest) {
       action: "TIMETABLE_CONFIG_UPDATED",
       table_name: "timetable_config",
       record_id: result.id,
-      new_data: cleanPayload,
+      new_data: payload,
       ip_address: getClientIP(req),
     });
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
-import { supabase } from "@/lib/supabase-client";
+import { supabase } from "@/lib/supabase";
 import { Database } from "@/types/database";
 import SchoolDocumentHeader from "@/components/SchoolDocumentHeader";
 import {

@@ -798,31 +798,40 @@ export type Database = {
         Row: {
           academic_year: string
           campus_id: string
+          capacity: number | null
           class_teacher_id: string | null
           created_at: string | null
           grade_level: string
           id: string
+          is_active: boolean | null
           name: string
+          room: string | null
           stream: string | null
         }
         Insert: {
           academic_year: string
           campus_id: string
+          capacity?: number | null
           class_teacher_id?: string | null
           created_at?: string | null
           grade_level: string
           id?: string
+          is_active?: boolean | null
           name: string
+          room?: string | null
           stream?: string | null
         }
         Update: {
           academic_year?: string
           campus_id?: string
+          capacity?: number | null
           class_teacher_id?: string | null
           created_at?: string | null
           grade_level?: string
           id?: string
+          is_active?: boolean | null
           name?: string
+          room?: string | null
           stream?: string | null
         }
         Relationships: [
@@ -3492,21 +3501,30 @@ export type Database = {
         Row: {
           code: string | null
           created_at: string | null
+          curriculum_strands: Json | null
+          description: string | null
           grade_levels: string[] | null
+          grading_scales: Json | null
           id: string
           name: string
         }
         Insert: {
           code?: string | null
           created_at?: string | null
+          curriculum_strands?: Json | null
+          description?: string | null
           grade_levels?: string[] | null
+          grading_scales?: Json | null
           id?: string
           name: string
         }
         Update: {
           code?: string | null
           created_at?: string | null
+          curriculum_strands?: Json | null
+          description?: string | null
           grade_levels?: string[] | null
+          grading_scales?: Json | null
           id?: string
           name?: string
         }

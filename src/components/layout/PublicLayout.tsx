@@ -89,7 +89,7 @@ ${contactForm.message}`);
   return (
     <div className="min-h-screen flex flex-col relative bg-slate-950">
       {/* Subtle watermark */}
-      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0">
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 no-print">
         <Image src="/logo.png" alt="" width={400} height={400} className="object-contain opacity-[0.02]" />
       </div>
 

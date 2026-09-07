@@ -201,7 +201,48 @@ export default function AdmissionsPage() {
   };
 
   const handlePrint = () => {
-    window.print();
+    const printWindow = window.open("", "_blank", "width=800,height=600");
+    if (!printWindow) {
+      toast.error("Please allow popups to print the application");
+      return;
+    }
+    const printContent = document.getElementById("admission-confirmation")?.innerHTML || "";
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Admission Application - Bishop Davis Joy Academy</title>
+          <style>
+            @page { margin: 15mm; }
+            body { font-family: system-ui, -apple-system, sans-serif; color: #000; background: #fff; line-height: 1.5; }
+            .print-header { border-bottom: 2px solid #D4AF37; padding-bottom: 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
+            .print-header img { width: 64px; height: 64px; object-fit: contain; }
+            .print-header h1 { font-size: 20px; font-weight: bold; margin: 0; }
+            .print-header .motto { font-size: 12px; font-style: italic; color: #B8860B; }
+            .print-header .meta { font-size: 10px; color: #666; margin-top: 4px; }
+            .section { margin-bottom: 16px; }
+            .section-title { font-size: 14px; font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 8px; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .field { margin-bottom: 6px; }
+            .field-label { font-size: 10px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; }
+            .field-value { font-size: 13px; font-weight: 500; }
+            .notice { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-top: 16px; }
+            .notice h3 { font-size: 12px; margin: 0 0 8px 0; }
+            .notice ul { margin: 0; padding-left: 16px; font-size: 11px; color: #555; }
+            .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 9px; color: #888; text-align: center; }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   // ========== PRINT STYLES ==========
@@ -285,7 +326,7 @@ export default function AdmissionsPage() {
             className="admission-card bg-slate-900/60 border border-slate-700/50 rounded-2xl p-8"
           >
             <div className="print-header">
-              <SchoolDocumentHeader title="Admission Application" subtitle={`Reference: ${admissionRef.slice(0, 8).toUpperCase()}`} />
+              <SchoolDocumentHeader title="Admission Application" showLogo={true} subtitle={`Reference: ${admissionRef.slice(0, 8).toUpperCase()}`} />
             </div>
 
             <div className="text-center mb-8">
@@ -347,7 +388,7 @@ export default function AdmissionsPage() {
             </div>
 
             {/* Printable Application Summary */}
-            <div className="print-only">
+            <div id="admission-confirmation" className="print-only">
               <h3 className="text-lg font-bold text-slate-900 mb-4 border-b border-slate-300 pb-2">Application Summary</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><strong>Full Name:</strong> {form.first_name} {form.last_name}</div>

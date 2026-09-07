@@ -18,7 +18,6 @@ interface Campus {
   id: string;
   name: string;
   location: string;
-  address?: string;
   email?: string;
   phone?: string;
 }
@@ -552,7 +551,7 @@ export default function AdmissionsPage() {
                       {loadingCampuses ? "Loading campuses..." : campuses.length === 0 ? "No campuses available — contact school" : "Select campus"}
                     </option>
                     {campuses.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name} — {c.location}{c.address ? `, ${c.address}` : ""}</option>
+                      <option key={c.id} value={c.id}>{c.name} — {c.location}</option>
                     ))}
                   </select>
                   {!loadingCampuses && campuses.length === 0 && (
@@ -568,7 +567,7 @@ export default function AdmissionsPage() {
                         return (
                           <div className="space-y-1 text-xs text-slate-400">
                             <p className="text-sm font-semibold text-white">{c.name}</p>
-                            <p className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-[#D4AF37]" /> {c.location}{c.address ? `, ${c.address}` : ""}</p>
+                            <p className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-[#D4AF37]" /> {c.location}</p>
                             {c.phone && <p className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-[#D4AF37]" /> {c.phone}</p>}
                             {c.email && <p className="flex items-center gap-1.5"><Mail className="w-3 h-3 text-[#D4AF37]" /> {c.email}</p>}
                           </div>

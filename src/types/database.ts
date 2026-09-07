@@ -3229,6 +3229,53 @@ export type Database = {
           },
         ]
       }
+      staff_activity_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: unknown
+          new_data: Json | null
+          old_data: Json | null
+          staff_id: string
+          target_id: string | null
+          target_table: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown
+          new_data?: Json | null
+          old_data?: Json | null
+          staff_id: string
+          target_id?: string | null
+          target_table?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown
+          new_data?: Json | null
+          old_data?: Json | null
+          staff_id?: string
+          target_id?: string | null
+          target_table?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_activity_logs_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_permissions: {
         Row: {
           created_at: string | null
@@ -3337,6 +3384,9 @@ export type Database = {
           date_of_birth: string | null
           enrollment_date: string | null
           grade_level: string | null
+          guardian_email: string | null
+          guardian_name: string | null
+          guardian_phone: string | null
           house_team: string | null
           id: string
           profile_id: string | null
@@ -3352,6 +3402,9 @@ export type Database = {
           date_of_birth?: string | null
           enrollment_date?: string | null
           grade_level?: string | null
+          guardian_email?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
           house_team?: string | null
           id?: string
           profile_id?: string | null
@@ -3367,6 +3420,9 @@ export type Database = {
           date_of_birth?: string | null
           enrollment_date?: string | null
           grade_level?: string | null
+          guardian_email?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
           house_team?: string | null
           id?: string
           profile_id?: string | null

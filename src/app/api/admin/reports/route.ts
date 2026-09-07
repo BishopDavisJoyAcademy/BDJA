@@ -37,8 +37,19 @@ interface DataExport {
   created_at: string | null;
 }
 
-const VALID_REPORT_TYPES = ["students", "staff", "parents", "attendance", "grades", "fees", "classes", "custom"];
-const VALID_EXPORT_TYPES = ["csv", "json", "pdf", "excel"];
+const VALID_REPORT_TYPES = ["students", "staff", "parents", "attendance", "assessments", "fees", "classes", "custom"] as const;
+type ValidReportType = typeof VALID_REPORT_TYPES[number];
+
+const VALID_EXPORT_TYPES = ["csv", "json", "pdf", "excel"] as const;
+type ValidExportType = typeof VALID_EXPORT_TYPES[number];
+
+function isValidReportType(t: string): t is ValidReportType {
+  return VALID_REPORT_TYPES.includes(t as ValidReportType);
+}
+
+function isValidExportType(t: string): t is ValidExportType {
+  return VALID_EXPORT_TYPES.includes(t as ValidExportType);
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -176,7 +187,7 @@ async function handleCreateTemplate(
   const isShared = body.is_shared === true;
 
   if (!name) throw new ValidationError("Template name is required");
-  if (!VALID_REPORT_TYPES.includes(reportType)) {
+  if (!isValidReportType(reportType)) {
     throw new ValidationError(`Invalid report type. Must be one of: ${VALID_REPORT_TYPES.join(", ")}`);
   }
   if (!config || typeof config !== "object") {
@@ -222,7 +233,7 @@ async function handleGenerateExport(
   const filters = body.filters as Json | null;
 
   if (!name) throw new ValidationError("Export name is required");
-  if (!VALID_EXPORT_TYPES.includes(exportType)) {
+  if (!isValidExportType(exportType)) {
     throw new ValidationError(`Invalid export type. Must be one of: ${VALID_EXPORT_TYPES.join(", ")}`);
   }
 
@@ -259,7 +270,7 @@ async function handleGenerateExport(
 
 async function processExport(
   exportId: string,
-  exportType: string,
+  exportType: ValidExportType,
   tableName: string | null,
   filters: Json | null,
   admin: ReturnType<typeof getSupabaseAdmin>
@@ -267,39 +278,24 @@ async function processExport(
   try {
     await admin.from("data_exports").update({ status: "running" }).eq("id", exportId);
 
-    let query = admin.from(tableName || "profiles").select("*");
-
-    if (filters && typeof filters === "object") {
-      const f = filters as Record<string, unknown>;
-      if (f.campus_id) query = query.eq("campus_id", String(f.campus_id));
-      if (f.grade_level) query = query.eq("grade_level", String(f.grade_level));
-      if (f.status) query = query.eq("status", String(f.status));
-      if (f.date_from) query = query.gte("created_at", String(f.date_from));
-      if (f.date_to) query = query.lte("created_at", String(f.date_to));
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
+    const rawData = await fetchReportData(admin, tableName || "profiles", filters);
 
     let fileContent: string;
     let contentType: string;
 
     if (exportType === "json") {
-      fileContent = JSON.stringify(data || [], null, 2);
+      fileContent = JSON.stringify(rawData, null, 2);
       contentType = "application/json";
     } else if (exportType === "csv") {
-      fileContent = arrayToCsv(data || []);
+      fileContent = arrayToCsv(rawData);
       contentType = "text/csv";
     } else {
-      fileContent = JSON.stringify(data || [], null, 2);
+      fileContent = JSON.stringify(rawData, null, 2);
       contentType = "application/json";
     }
 
     const blob = new Blob([fileContent], { type: contentType });
     const fileSize = blob.size;
-
-    // Store in Supabase Storage (simulated - in production, upload to a bucket)
     const fileUrl = `data:${contentType};base64,${Buffer.from(fileContent).toString("base64")}`;
 
     await admin.from("data_exports").update({
@@ -318,7 +314,79 @@ async function processExport(
   }
 }
 
-function arrayToCsv(data: Array<Record<string, unknown>>): string {
+async function fetchReportData(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  tableName: string,
+  filters: Json | null
+): Promise<Record<string, unknown>[]> {
+  const f = filters as Record<string, unknown> | null;
+
+  switch (tableName) {
+    case "profiles": {
+      let q = admin.from("profiles").select("*");
+      if (f?.campus_id) q = q.eq("campus_id", String(f.campus_id));
+      if (f?.status) q = q.eq("is_active", String(f.status) === "active");
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as Record<string, unknown>[];
+    }
+    case "students": {
+      let q = admin.from("students").select("*");
+      if (f?.campus_id) q = q.eq("campus_id", String(f.campus_id));
+      if (f?.grade_level) q = q.eq("grade_level", String(f.grade_level));
+      if (f?.status) q = q.eq("status", String(f.status));
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as Record<string, unknown>[];
+    }
+    case "staff": {
+      let q = admin.from("staff").select("*");
+      if (f?.department) q = q.eq("department", String(f.department));
+      if (f?.status) q = q.eq("status", String(f.status));
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as Record<string, unknown>[];
+    }
+    case "attendance": {
+      let q = admin.from("attendance").select("*");
+      if (f?.date_from) q = q.gte("date", String(f.date_from));
+      if (f?.date_to) q = q.lte("date", String(f.date_to));
+      if (f?.status) q = q.eq("status", String(f.status));
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as Record<string, unknown>[];
+    }
+    case "assessments": {
+      let q = admin.from("assessments").select("*");
+      if (f?.student_id) q = q.eq("student_id", String(f.student_id));
+      if (f?.subject_id) q = q.eq("subject_id", String(f.subject_id));
+      if (f?.term) q = q.eq("term", String(f.term));
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as Record<string, unknown>[];
+    }
+    case "fees": {
+      let q = admin.from("fee_structures").select("*");
+      if (f?.campus_id) q = q.eq("campus_id", String(f.campus_id));
+      if (f?.grade_level) q = q.eq("grade_level", String(f.grade_level));
+      if (f?.term) q = q.eq("term", String(f.term));
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as Record<string, unknown>[];
+    }
+    case "classes": {
+      let q = admin.from("classes").select("*");
+      if (f?.campus_id) q = q.eq("campus_id", String(f.campus_id));
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as Record<string, unknown>[];
+    }
+    default:
+      return [];
+  }
+}
+
+function arrayToCsv(data: Record<string, unknown>[]): string {
   if (data.length === 0) return "";
   const headers = Object.keys(data[0]);
   const rows = data.map((row) =>
@@ -345,76 +413,21 @@ async function handleRunReport(
   const reportType = String(body.report_type || "").trim();
   const filters = body.filters as Record<string, unknown> | null;
 
-  if (!VALID_REPORT_TYPES.includes(reportType)) {
+  if (!isValidReportType(reportType)) {
     throw new ValidationError(`Invalid report type: ${reportType}`);
   }
 
-  let data: unknown[] = [];
-  let count = 0;
-
-  switch (reportType) {
-    case "students": {
-      let q = admin.from("students").select("*, profiles!inner(*)", { count: "exact" });
-      if (filters?.campus_id) q = q.eq("campus_id", String(filters.campus_id));
-      if (filters?.grade_level) q = q.eq("grade_level", String(filters.grade_level));
-      if (filters?.status) q = q.eq("status", String(filters.status));
-      const res = await q;
-      data = res.data || [];
-      count = res.count || 0;
-      break;
-    }
-    case "staff": {
-      let q = admin.from("staff").select("*, profiles!inner(*)", { count: "exact" });
-      if (filters?.department) q = q.eq("department", String(filters.department));
-      if (filters?.status) q = q.eq("status", String(filters.status));
-      const res = await q;
-      data = res.data || [];
-      count = res.count || 0;
-      break;
-    }
-    case "attendance": {
-      let q = admin.from("attendance").select("*", { count: "exact" });
-      if (filters?.date_from) q = q.gte("date", String(filters.date_from));
-      if (filters?.date_to) q = q.lte("date", String(filters.date_to));
-      if (filters?.status) q = q.eq("status", String(filters.status));
-      const res = await q;
-      data = res.data || [];
-      count = res.count || 0;
-      break;
-    }
-    case "grades": {
-      let q = admin.from("grades").select("*", { count: "exact" });
-      if (filters?.student_id) q = q.eq("student_id", String(filters.student_id));
-      if (filters?.subject_id) q = q.eq("subject_id", String(filters.subject_id));
-      if (filters?.term) q = q.eq("term", String(filters.term));
-      const res = await q;
-      data = res.data || [];
-      count = res.count || 0;
-      break;
-    }
-    case "fees": {
-      let q = admin.from("fee_structures").select("*", { count: "exact" });
-      if (filters?.campus_id) q = q.eq("campus_id", String(filters.campus_id));
-      if (filters?.grade_level) q = q.eq("grade_level", String(filters.grade_level));
-      if (filters?.term) q = q.eq("term", String(filters.term));
-      const res = await q;
-      data = res.data || [];
-      count = res.count || 0;
-      break;
-    }
-    default:
-      throw new ValidationError(`Report type "${reportType}" not yet implemented`);
-  }
+  const rawData = await fetchReportData(admin, reportType === "assessments" ? "assessments" : reportType === "fees" ? "fee_structures" : reportType, filters);
 
   await logAudit({
     user_id: session.userId,
     action: "REPORT_RUN",
     table_name: "data_exports",
-    new_data: { report_type: reportType, filters, count },
+    new_data: { report_type: reportType, filters, count: rawData.length },
     ip_address: getClientIP(req),
   });
 
-  return NextResponse.json({ success: true, data, count, report_type: reportType });
+  return NextResponse.json({ success: true, data: rawData, count: rawData.length, report_type: reportType });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -447,7 +460,7 @@ export async function PATCH(req: NextRequest) {
     if (updates.description !== undefined) updateData.description = updates.description ? String(updates.description).trim() : null;
     if (updates.report_type !== undefined) {
       const rt = String(updates.report_type).trim();
-      if (!VALID_REPORT_TYPES.includes(rt)) {
+      if (!isValidReportType(rt)) {
         return NextResponse.json({ error: `Invalid report type: ${rt}` }, { status: 400 });
       }
       updateData.report_type = rt;

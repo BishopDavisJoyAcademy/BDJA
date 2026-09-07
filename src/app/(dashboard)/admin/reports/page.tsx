@@ -15,7 +15,7 @@ import { Table, TableHead, TableBody, TableCell, TableHeader, TableRow } from "@
 import {
   Loader2, Plus, Trash2, X, FileText, Download, Calendar, Filter,
   BarChart3, FileSpreadsheet, FileJson, FileCode, CheckCircle, AlertTriangle,
-  Eye, Copy, ChevronDown, Search, RefreshCw, Clock
+  Eye, Copy, ChevronDown, Search, RefreshCw, Clock, Save
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
@@ -51,7 +51,7 @@ const REPORT_TYPES = [
   { value: "staff", label: "Staff", icon: FileText },
   { value: "parents", label: "Parents", icon: FileText },
   { value: "attendance", label: "Attendance", icon: Calendar },
-  { value: "grades", label: "Grades", icon: BarChart3 },
+  { value: "assessments", label: "Assessments", icon: BarChart3 },
   { value: "fees", label: "Fees", icon: FileText },
   { value: "classes", label: "Classes", icon: FileText },
   { value: "custom", label: "Custom", icon: FileCode },
@@ -426,7 +426,7 @@ export default function ReportsPage() {
                                   report_type: template.report_type,
                                   format: "csv",
                                   name: `${template.name} - ${new Date().toISOString().split("T")[0]}`,
-                                  filters: (template.config as Record<string, unknown>)?.filters as Record<string, string> || { campus_id: "", grade_level: "", status: "", date_from: "", date_to: "" },
+                                  filters: ((template.config as Record<string, unknown>)?.filters as Record<string, string> | undefined) || { campus_id: "", grade_level: "", status: "", date_from: "", date_to: "" },
                                 });
                                 setShowGenerateModal(true);
                               }}

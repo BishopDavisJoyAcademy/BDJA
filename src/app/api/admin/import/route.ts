@@ -34,10 +34,14 @@ interface CsvImportRow {
   status: string;
   validation_errors: Json | null;
   imported_record_id: string | null;
-  created_at: string | null;
 }
 
-const VALID_IMPORT_TYPES = ["students", "staff", "parents"];
+const VALID_IMPORT_TYPES = ["students", "staff", "parents"] as const;
+type ValidImportType = typeof VALID_IMPORT_TYPES[number];
+
+function isValidImportType(t: string): t is ValidImportType {
+  return VALID_IMPORT_TYPES.includes(t as ValidImportType);
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -143,13 +147,11 @@ async function handleValidate(
   session: Awaited<ReturnType<typeof requireAuth>>,
   req: NextRequest
 ) {
-  const admin = getSupabaseAdmin();
-
   const importType = String(body.import_type || "").trim();
   const rows = body.rows as Array<Record<string, unknown>>;
   const mapping = body.mapping as Record<string, string> | null;
 
-  if (!VALID_IMPORT_TYPES.includes(importType)) {
+  if (!isValidImportType(importType)) {
     throw new ValidationError(`Invalid import type. Must be one of: ${VALID_IMPORT_TYPES.join(", ")}`);
   }
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -239,7 +241,7 @@ async function handleImport(
     validation_errors: string[];
   }>;
 
-  if (!VALID_IMPORT_TYPES.includes(importType)) {
+  if (!isValidImportType(importType)) {
     throw new ValidationError(`Invalid import type: ${importType}`);
   }
   if (!fileName) throw new ValidationError("File name is required");
@@ -340,12 +342,16 @@ async function handleImport(
 
 async function insertRecord(
   admin: ReturnType<typeof getSupabaseAdmin>,
-  importType: string,
+  importType: ValidImportType,
   data: Record<string, unknown>,
   createdBy: string
 ): Promise<{ id: string } | null> {
+  const newId = crypto.randomUUID();
+
   if (importType === "students") {
+    // profiles.id is REQUIRED in Insert type
     const { data: profile, error: profileError } = await admin.from("profiles").insert({
+      id: newId,
       email: data.email ? String(data.email) : `${Date.now()}@placeholder.bdja`,
       full_name: `${String(data.first_name || "").trim()} ${String(data.last_name || "").trim()}`.trim(),
       role: "student",
@@ -359,11 +365,19 @@ async function insertRecord(
 
     if (profileError || !profile) throw new Error(profileError?.message || "Failed to create profile");
 
+    // students table uses profile_id (not student_id) per actual DB schema
     const { error: studentError } = await admin.from("students").insert({
-      student_id: profile.id,
-      parent_id: data.parent_id ? String(data.parent_id) : createdBy,
-      relationship: data.relationship ? String(data.relationship) : "guardian",
-      is_primary: data.is_primary === true,
+      id: crypto.randomUUID(),
+      profile_id: profile.id,
+      admission_number: data.admission_number ? String(data.admission_number) : `STU${Date.now()}`,
+      grade_level: String(data.grade_level || "").trim(),
+      campus_id: data.campus_id ? String(data.campus_id) : null,
+      guardian_name: data.parent_name ? String(data.parent_name) : null,
+      guardian_email: data.parent_email ? String(data.parent_email) : null,
+      guardian_phone: data.parent_phone ? String(data.parent_phone) : null,
+      date_of_birth: data.date_of_birth ? String(data.date_of_birth) : null,
+      gender: data.gender ? String(data.gender) : null,
+      status: "active",
     });
 
     if (studentError) throw new Error(studentError.message);
@@ -387,7 +401,9 @@ async function insertRecord(
   }
 
   if (importType === "staff") {
+    const staffId = crypto.randomUUID();
     const { data: profile, error: profileError } = await admin.from("profiles").insert({
+      id: staffId,
       email: String(data.email || "").trim(),
       full_name: String(data.full_name || "").trim(),
       role: "staff",
@@ -416,7 +432,9 @@ async function insertRecord(
   }
 
   if (importType === "parents") {
+    const parentId = crypto.randomUUID();
     const { data: profile, error: profileError } = await admin.from("profiles").insert({
+      id: parentId,
       email: String(data.email || "").trim(),
       full_name: String(data.full_name || "").trim(),
       role: "parent",

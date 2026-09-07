@@ -881,7 +881,6 @@ export default function AdmissionsPage() {
         </motion.div>
       </div>
     </div>
-  </div>
   );
 }
 

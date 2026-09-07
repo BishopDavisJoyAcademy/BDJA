@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { logAudit } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
 import { getErrorMessage, AuthRequiredError, PermissionDeniedError } from "@/lib/errors";
+import { Json } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
@@ -141,8 +142,8 @@ export async function PUT(req: NextRequest) {
       code?: string | null;
       grade_levels?: string[] | null;
       description?: string | null;
-      grading_scales?: object | null;
-      curriculum_strands?: object | null;
+      grading_scales?: Json;
+      curriculum_strands?: Json;
     } = {};
     if (body.name !== undefined) updateData.name = String(body.name).trim();
     if (body.code !== undefined) updateData.code = body.code || null;

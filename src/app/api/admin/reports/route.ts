@@ -317,7 +317,7 @@ async function processExport(
 async function fetchReportData(
   admin: ReturnType<typeof getSupabaseAdmin>,
   tableName: string,
-  filters: Json | null
+  filters: Record<string, unknown> | null
 ): Promise<Record<string, unknown>[]> {
   const f = filters as Record<string, unknown> | null;
 

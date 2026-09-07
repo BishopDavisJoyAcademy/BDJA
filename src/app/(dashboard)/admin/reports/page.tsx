@@ -426,7 +426,7 @@ export default function ReportsPage() {
                                   report_type: template.report_type,
                                   format: "csv",
                                   name: `${template.name} - ${new Date().toISOString().split("T")[0]}`,
-                                  filters: ((template.config as Record<string, unknown>)?.filters as Record<string, string> | undefined) || { campus_id: "", grade_level: "", status: "", date_from: "", date_to: "" },
+                                  filters: (((template.config as Record<string, unknown>)?.filters as Record<string, string> | undefined) || { campus_id: "", grade_level: "", status: "", date_from: "", date_to: "" }) as { campus_id: string; grade_level: string; status: string; date_from: string; date_to: string; },
                                 });
                                 setShowGenerateModal(true);
                               }}

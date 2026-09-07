@@ -48,6 +48,7 @@ export default function CampusesPage() {
     location: "",
     phone: "",
     email: "",
+    is_active: true,
   });
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export default function CampusesPage() {
   }, [user, fetchCampuses]);
 
   const resetForm = () => {
-    setForm({ name: "", location: "", phone: "", email: "" });
+    setForm({ name: "", location: "", phone: "", email: "", is_active: true });
     setEditingId(null);
   };
 
@@ -91,6 +92,7 @@ export default function CampusesPage() {
       location: campus.location,
       phone: campus.phone || "",
       email: campus.email || "",
+      is_active: campus.is_active !== false,
     });
     setEditingId(campus.id);
     setShowForm(true);
@@ -302,6 +304,23 @@ export default function CampusesPage() {
                       </div>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={async () => {
+                          try {
+                            await apiPut("/api/admin/campuses", { id: campus.id, is_active: !campus.is_active });
+                            setCampuses((prev) => prev.map((c) => c.id === campus.id ? { ...c, is_active: !c.is_active } : c));
+                            toast.success(campus.is_active ? "Campus deactivated" : "Campus activated");
+                          } catch (err: unknown) {
+                            toast.error(getErrorMessage(err));
+                          }
+                        }}
+                        className={campus.is_active ? "text-emerald-400 hover:text-amber-400 hover:bg-amber-500/10" : "text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10"}
+                        title={campus.is_active ? "Deactivate" : "Activate"}
+                      >
+                        {campus.is_active ? <CheckCircle className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"

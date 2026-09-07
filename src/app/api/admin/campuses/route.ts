@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
       location: body.location,
       phone: body.phone || null,
       email: body.email || null,
+      is_active: body.is_active !== undefined ? body.is_active : true,
     }]).select().single();
 
     if (error) return NextResponse.json({ error: error.message || "Failed to create campus" }, { status: 500 });

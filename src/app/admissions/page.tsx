@@ -18,6 +18,9 @@ interface Campus {
   id: string;
   name: string;
   location: string;
+  address?: string;
+  email?: string;
+  phone?: string;
 }
 
 interface GradeLevel {
@@ -216,7 +219,11 @@ export default function AdmissionsPage() {
 
   if (submitted && admissionRef) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-slate-950 relative">
+      {/* Logo watermark background for form steps */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-0 flex items-center justify-center">
+        <Image src="/logo.png" alt="" width={600} height={600} className="object-contain" priority={false} />
+      </div>
         <style>{printStyles}</style>
         <div className="admissions-container max-w-4xl mx-auto py-8 px-4">
           {/* Confirmation Card */}
@@ -336,7 +343,11 @@ export default function AdmissionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-slate-950 relative">
+      {/* Logo watermark background for form steps */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-0 flex items-center justify-center">
+        <Image src="/logo.png" alt="" width={600} height={600} className="object-contain" priority={false} />
+      </div>
       <style>{printStyles}</style>
       <div className="admissions-container max-w-4xl mx-auto py-8 px-4">
         {/* Header */}
@@ -534,9 +545,25 @@ export default function AdmissionsPage() {
                   >
                     <option value="">{loadingCampuses ? "Loading campuses..." : "Select campus"}</option>
                     {campuses.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name} — {c.location}</option>
+                      <option key={c.id} value={c.id}>{c.name} — {c.location}{c.address ? `, ${c.address}` : ""}</option>
                     ))}
                   </select>
+                  {form.campus_id && (
+                    <div className="mt-2 p-3 rounded-xl bg-slate-800/40 border border-slate-700/40">
+                      {(() => {
+                        const c = campuses.find((x) => x.id === form.campus_id);
+                        if (!c) return null;
+                        return (
+                          <div className="space-y-1 text-xs text-slate-400">
+                            <p className="text-sm font-semibold text-white">{c.name}</p>
+                            <p className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-[#D4AF37]" /> {c.location}{c.address ? `, ${c.address}` : ""}</p>
+                            {c.phone && <p className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-[#D4AF37]" /> {c.phone}</p>}
+                            {c.email && <p className="flex items-center gap-1.5"><Mail className="w-3 h-3 text-[#D4AF37]" /> {c.email}</p>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                   {errors.campus_id && <p className="text-xs text-red-400 mt-1">{errors.campus_id}</p>}
                 </div>
                 <div>
@@ -854,6 +881,7 @@ export default function AdmissionsPage() {
         </motion.div>
       </div>
     </div>
+  </div>
   );
 }
 

@@ -1,5 +1,3 @@
-"use server";
-
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";

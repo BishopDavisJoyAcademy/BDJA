@@ -77,6 +77,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Student not found" }, { status: 404 });
       }
 
+      if (!student.grade_level) {
+        return NextResponse.json({ feeStructures: [], payments: [] });
+      }
+
       const { data: feeStructures } = await admin
         .from("fee_structures")
         .select("*")

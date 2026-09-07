@@ -9,7 +9,8 @@ import {
   LayoutDashboard, Users, GraduationCap, Calendar, BookOpen, MessageSquare,
   Settings, Shield, ChevronLeft, ChevronRight, Video, Library, Wallet,
   ClipboardList, UserCheck, BarChart3, LogOut, School, FileText, MapPin,
-  PenLine, Bell, Home, HelpCircle, Eye, MessageSquareText, Lightbulb
+  PenLine, Bell, Home, HelpCircle, Eye, MessageSquareText, Lightbulb,
+  Upload, HardDrive, AlertTriangle, Database, Inbox
 } from "lucide-react";
 import Link from "next/link";
 
@@ -53,18 +54,77 @@ const staffNavItems: NavItem[] = [
   { label: "VORA Mgmt", href: "/manage/vora", icon: Video, module: "showVora", showFor: ["staff", "admin"] },
 ];
 
-const adminNavItems: NavItem[] = [
-  { label: "Staff", href: `/${ADMIN_SEGMENT}/staff`, icon: Users },
-  { label: "Students", href: `/${ADMIN_SEGMENT}/students`, icon: GraduationCap },
-  { label: "God Mode", href: `/${ADMIN_SEGMENT}/god-mode`, icon: Eye },
-  { label: "Suggestions", href: `/${ADMIN_SEGMENT}/suggestions`, icon: MessageSquareText },
-  { label: "Analytics", href: `/${ADMIN_SEGMENT}/analytics`, icon: BarChart3 },
-  { label: "Audit Logs", href: `/${ADMIN_SEGMENT}/audit`, icon: Shield },
-  { label: "CMS Pages", href: `/${ADMIN_SEGMENT}/pages`, icon: FileText },
-  { label: "VORA Content", href: `/${ADMIN_SEGMENT}/vora`, icon: Video },
-  { label: "Content", href: `/${ADMIN_SEGMENT}/content`, icon: FileText },
-  { label: "Campuses", href: `/${ADMIN_SEGMENT}/campuses`, icon: MapPin },
-  { label: "Settings", href: `/${ADMIN_SEGMENT}/settings`, icon: Settings },
+const adminNavGroups = [
+  {
+    label: "People",
+    items: [
+      { label: "Staff", href: `/${ADMIN_SEGMENT}/staff`, icon: Users },
+      { label: "Students", href: `/${ADMIN_SEGMENT}/students`, icon: GraduationCap },
+      { label: "Parents", href: `/${ADMIN_SEGMENT}/parents`, icon: UserCheck },
+      { label: "All Users", href: `/${ADMIN_SEGMENT}/users`, icon: Users },
+    ],
+  },
+  {
+    label: "Academics",
+    items: [
+      { label: "Classes", href: `/${ADMIN_SEGMENT}/classes`, icon: School },
+      { label: "Subjects", href: `/${ADMIN_SEGMENT}/subjects`, icon: BookOpen },
+      { label: "Timetable Builder", href: `/${ADMIN_SEGMENT}/timetable-builder`, icon: Calendar },
+      { label: "Admissions", href: "/manage/admissions", icon: ClipboardList },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { label: "Fee Management", href: `/${ADMIN_SEGMENT}/fees`, icon: Wallet },
+      { label: "Reports", href: `/${ADMIN_SEGMENT}/reports`, icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Resources",
+    items: [
+      { label: "Content", href: `/${ADMIN_SEGMENT}/content`, icon: FileText },
+      { label: "VORA Videos", href: `/${ADMIN_SEGMENT}/vora`, icon: Video },
+      { label: "Library", href: `/${ADMIN_SEGMENT}/library`, icon: Library },
+      { label: "IMS", href: `/${ADMIN_SEGMENT}/ims`, icon: Database },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { label: "Calendar", href: "/manage/calendar", icon: Calendar },
+      { label: "Campuses", href: `/${ADMIN_SEGMENT}/campuses`, icon: MapPin },
+      { label: "Bulk Import", href: `/${ADMIN_SEGMENT}/import`, icon: Upload },
+      { label: "Data Backup", href: `/${ADMIN_SEGMENT}/backup`, icon: HardDrive },
+    ],
+  },
+  {
+    label: "Governance",
+    items: [
+      { label: "Audit Logs", href: `/${ADMIN_SEGMENT}/audit`, icon: Shield },
+      { label: "Error Logs", href: `/${ADMIN_SEGMENT}/errors`, icon: AlertTriangle },
+      { label: "Suggestions", href: `/${ADMIN_SEGMENT}/suggestions`, icon: MessageSquareText },
+      { label: "Sovereign View", href: `/${ADMIN_SEGMENT}/sovereign-view`, icon: Eye },
+    ],
+  },
+  {
+    label: "Joy AI",
+    items: [
+      { label: "Knowledge Base", href: `/${ADMIN_SEGMENT}/joy-knowledge`, icon: BookOpen },
+      { label: "Page Assistants", href: `/${ADMIN_SEGMENT}/joy-assistants`, icon: MessageSquare },
+      { label: "AI Reports", href: `/${ADMIN_SEGMENT}/joy-reports`, icon: BarChart3 },
+      { label: "Communication", href: `/${ADMIN_SEGMENT}/joy-communication`, icon: MessageSquareText },
+      { label: "Analytics", href: `/${ADMIN_SEGMENT}/joy-analytics`, icon: BarChart3 },
+      { label: "Request Inbox", href: `/${ADMIN_SEGMENT}/joy-requests`, icon: Inbox },
+    ],
+  },
+  {
+    label: "Setup",
+    items: [
+      { label: "Platform Setup", href: `/${ADMIN_SEGMENT}/setup`, icon: Settings },
+      { label: "Settings", href: `/${ADMIN_SEGMENT}/settings`, icon: Settings },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -169,17 +229,21 @@ export function Sidebar() {
           )}
 
           {isAdmin && sidebarOpen && (
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <p className="px-3 text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Administration</p>
-              {adminNavItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-sm"
-                >
-                  <item.icon className="w-4 h-4 shrink-0 text-bdja-secondary" />
-                  <span className="truncate">{item.label}</span>
-                </Link>
+            <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
+              {adminNavGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="px-3 text-xs font-semibold text-white/40 uppercase tracking-wider mb-1.5">{group.label}</p>
+                  {group.items.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors text-sm"
+                    >
+                      <item.icon className="w-4 h-4 shrink-0 text-bdja-secondary" />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  ))}
+                </div>
               ))}
             </div>
           )}

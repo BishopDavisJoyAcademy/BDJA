@@ -340,7 +340,7 @@ ${contactForm.message}`);
           </motion.div>
         )}
       </AnimatePresence>
-      <JoyPublicChat />
+      <div className="no-print"><JoyPublicChat /></div>
     </div>
   );
 }

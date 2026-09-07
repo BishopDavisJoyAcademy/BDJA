@@ -207,12 +207,64 @@ export default function AdmissionsPage() {
   // ========== PRINT STYLES ==========
   const printStyles = `
     @media print {
-      body { background: white !important; color: black !important; }
-      .no-print { display: none !important; }
-      .print-only { display: block !important; }
-      .admissions-container { max-width: 100% !important; padding: 0 !important; }
-      .admission-card { border: 1px solid #ccc !important; box-shadow: none !important; background: white !important; }
-      .print-header { border-bottom: 2px solid #D4AF37 !important; padding-bottom: 12px !important; margin-bottom: 16px !important; }
+      @page { margin: 15mm; }
+      html, body {
+        background: white !important;
+        color: black !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .no-print, .no-print * {
+        display: none !important;
+        visibility: hidden !important;
+      }
+      .print-only {
+        display: block !important;
+        visibility: visible !important;
+      }
+      .fixed, [class*="fixed"] {
+        position: static !important;
+      }
+      .admissions-container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .admission-card {
+        border: none !important;
+        box-shadow: none !important;
+        background: white !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .print-header {
+        border-bottom: 2px solid #D4AF37 !important;
+        padding-bottom: 12px !important;
+        margin-bottom: 16px !important;
+      }
+      h1, h2, h3, p, div, span, strong {
+        color: black !important;
+      }
+      .text-slate-400, .text-slate-500, .text-slate-600 {
+        color: #333 !important;
+      }
+      .text-white, .text-slate-100, .text-slate-200, .text-slate-300 {
+        color: black !important;
+      }
+      .bg-slate-800\/40, .bg-slate-800\/30, .bg-amber-500\/5 {
+        background: white !important;
+        border: 1px solid #ddd !important;
+      }
+      .text-\[#D4AF37\] {
+        color: #B8860B !important;
+      }
+      .text-emerald-400, .text-amber-300, .text-amber-400, .text-red-400 {
+        color: #333 !important;
+      }
+      .bg-emerald-500\/15, .bg-amber-500\/15 {
+        background: white !important;
+        border: 1px solid #ddd !important;
+      }
     }
     .print-only { display: none; }
   `;
@@ -221,7 +273,7 @@ export default function AdmissionsPage() {
     return (
       <div className="min-h-screen bg-slate-950 relative">
       {/* Logo watermark background for form steps */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-0 flex items-center justify-center">
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-0 flex items-center justify-center no-print">
         <Image src="/logo.png" alt="" width={600} height={600} className="object-contain" priority={false} />
       </div>
         <style>{printStyles}</style>
@@ -345,7 +397,7 @@ export default function AdmissionsPage() {
   return (
     <div className="min-h-screen bg-slate-950 relative">
       {/* Logo watermark background for form steps */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-0 flex items-center justify-center">
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-0 flex items-center justify-center no-print">
         <Image src="/logo.png" alt="" width={600} height={600} className="object-contain" priority={false} />
       </div>
       <style>{printStyles}</style>

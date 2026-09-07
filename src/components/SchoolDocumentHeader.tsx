@@ -42,7 +42,7 @@ export function SchoolDocumentHeader({ title, subtitle, showLogo = true, classNa
   const country = settings?.country || "";
   const email = settings?.contact_email || "bishopdavisjoyacademy@gmail.com";
   const phone = settings?.contact_phone || "";
-  const logo = settings?.logo_url || "/logo.png";
+  const logo = settings?.logo_url || "/logo-official.png";
 
   return (
     <div className={`school-document-header ${className}`}>
@@ -70,7 +70,7 @@ export function SchoolDocumentHeader({ title, subtitle, showLogo = true, classNa
               width={64}
               height={64}
               className="object-contain rounded-lg"
-              onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
+              onError={(e) => { (e.target as HTMLImageElement).src = "/logo-official.png"; }}
             />
           </div>
         )}

@@ -83,61 +83,172 @@ export type Database = {
         }
         Relationships: []
       }
+      admission_custom_fields: {
+        Row: {
+          created_at: string | null
+          field_key: string
+          field_type: string
+          id: string
+          is_active: boolean
+          label: string
+          options: string[] | null
+          required: boolean
+          section: string
+          sort_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          field_key: string
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          options?: string[] | null
+          required?: boolean
+          section?: string
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          field_key?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          options?: string[] | null
+          required?: boolean
+          section?: string
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       admissions: {
         Row: {
+          admission_date: string | null
           admission_number: string | null
+          allergies: string | null
+          birth_certificate_no: string | null
           campus_id: string
+          city: string | null
+          country: string | null
+          county: string | null
           created_at: string | null
+          custom_fields: Json | null
           date_of_birth: string | null
           documents: Json | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
           first_name: string
           gender: string | null
           grade_applied: string
+          home_address: string | null
           id: string
+          interview_date: string | null
           last_name: string
+          medical_conditions: string | null
+          nationality: string | null
           notes: string | null
+          parent_address: string | null
           parent_email: string | null
+          parent_id_number: string | null
           parent_name: string | null
+          parent_occupation: string | null
           parent_phone: string | null
+          passport_no: string | null
+          previous_grade: string | null
+          previous_school: string | null
+          religion: string | null
           reviewed_by: string | null
+          sibling_names: string | null
+          special_needs: string | null
           status: string | null
           updated_at: string | null
         }
         Insert: {
+          admission_date?: string | null
           admission_number?: string | null
+          allergies?: string | null
+          birth_certificate_no?: string | null
           campus_id: string
+          city?: string | null
+          country?: string | null
+          county?: string | null
           created_at?: string | null
+          custom_fields?: Json | null
           date_of_birth?: string | null
           documents?: Json | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           first_name: string
           gender?: string | null
           grade_applied: string
+          home_address?: string | null
           id?: string
+          interview_date?: string | null
           last_name: string
+          medical_conditions?: string | null
+          nationality?: string | null
           notes?: string | null
+          parent_address?: string | null
           parent_email?: string | null
+          parent_id_number?: string | null
           parent_name?: string | null
+          parent_occupation?: string | null
           parent_phone?: string | null
+          passport_no?: string | null
+          previous_grade?: string | null
+          previous_school?: string | null
+          religion?: string | null
           reviewed_by?: string | null
+          sibling_names?: string | null
+          special_needs?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Update: {
+          admission_date?: string | null
           admission_number?: string | null
+          allergies?: string | null
+          birth_certificate_no?: string | null
           campus_id?: string
+          city?: string | null
+          country?: string | null
+          county?: string | null
           created_at?: string | null
+          custom_fields?: Json | null
           date_of_birth?: string | null
           documents?: Json | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           first_name?: string
           gender?: string | null
           grade_applied?: string
+          home_address?: string | null
           id?: string
+          interview_date?: string | null
           last_name?: string
+          medical_conditions?: string | null
+          nationality?: string | null
           notes?: string | null
+          parent_address?: string | null
           parent_email?: string | null
+          parent_id_number?: string | null
           parent_name?: string | null
+          parent_occupation?: string | null
           parent_phone?: string | null
+          passport_no?: string | null
+          previous_grade?: string | null
+          previous_school?: string | null
+          religion?: string | null
           reviewed_by?: string | null
+          sibling_names?: string | null
+          special_needs?: string | null
           status?: string | null
           updated_at?: string | null
         }
@@ -3805,6 +3916,7 @@ export type Database = {
       subjects: {
         Row: {
           code: string | null
+          color: string | null
           created_at: string | null
           curriculum_strands: Json | null
           description: string | null
@@ -3815,6 +3927,7 @@ export type Database = {
         }
         Insert: {
           code?: string | null
+          color?: string | null
           created_at?: string | null
           curriculum_strands?: Json | null
           description?: string | null
@@ -3825,6 +3938,7 @@ export type Database = {
         }
         Update: {
           code?: string | null
+          color?: string | null
           created_at?: string | null
           curriculum_strands?: Json | null
           description?: string | null
@@ -4183,6 +4297,48 @@ export type Database = {
           },
         ]
       }
+      timetable_config: {
+        Row: {
+          academic_year: string | null
+          created_at: string | null
+          end_time: string | null
+          grade_levels: string[] | null
+          id: string
+          lesson_duration_minutes: number
+          school_days: string[]
+          start_time: string | null
+          terms: string[]
+          time_slots: string[]
+          updated_at: string | null
+        }
+        Insert: {
+          academic_year?: string | null
+          created_at?: string | null
+          end_time?: string | null
+          grade_levels?: string[] | null
+          id?: string
+          lesson_duration_minutes?: number
+          school_days?: string[]
+          start_time?: string | null
+          terms?: string[]
+          time_slots?: string[]
+          updated_at?: string | null
+        }
+        Update: {
+          academic_year?: string | null
+          created_at?: string | null
+          end_time?: string | null
+          grade_levels?: string[] | null
+          id?: string
+          lesson_duration_minutes?: number
+          school_days?: string[]
+          start_time?: string | null
+          terms?: string[]
+          time_slots?: string[]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       timetable_slots: {
         Row: {
           academic_year: string
@@ -4196,6 +4352,7 @@ export type Database = {
           is_active: boolean | null
           room: string | null
           start_time: string
+          subject_id: string | null
           subject_name: string
           teacher_id: string | null
           term: string
@@ -4213,6 +4370,7 @@ export type Database = {
           is_active?: boolean | null
           room?: string | null
           start_time: string
+          subject_id?: string | null
           subject_name: string
           teacher_id?: string | null
           term: string
@@ -4230,6 +4388,7 @@ export type Database = {
           is_active?: boolean | null
           room?: string | null
           start_time?: string
+          subject_id?: string | null
           subject_name?: string
           teacher_id?: string | null
           term?: string
@@ -4255,6 +4414,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_slots_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
           {

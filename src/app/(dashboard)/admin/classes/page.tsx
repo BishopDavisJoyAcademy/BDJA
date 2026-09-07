@@ -156,11 +156,15 @@ export default function ClassesManagementPage() {
         apiGet<{ subjects: Subject[] }>("/api/admin/subjects"),
       ]);
       setCampuses(campusesRes.campuses || []);
-      setTeachers((teachersRes.staff || []).map((t: Record<string, unknown>) => ({
-        id: String(t.id),
-        full_name: String(t.full_name || ""),
-        email: String(t.email || ""),
-        department: String((t.staff as Record<string, unknown> | null)?.department || ""),
+      const staffList = (teachersRes.staff || []) as Array<{
+        id: string; full_name: string; email: string;
+        staff?: { department?: string | null } | null;
+      }>;
+      setTeachers(staffList.map((t) => ({
+        id: t.id,
+        full_name: t.full_name || "",
+        email: t.email || "",
+        department: t.staff?.department || null,
       })));
       setSubjects(subjectsRes.subjects || []);
     } catch (err: unknown) {

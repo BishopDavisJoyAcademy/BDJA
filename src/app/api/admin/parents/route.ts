@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, requirePermission } from "@/lib/session";
+import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { logAudit } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
 import { getErrorMessage, AuthRequiredError, PermissionDeniedError, ValidationError } from "@/lib/errors";
+import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "parents.view");
+    if (session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
@@ -76,7 +79,7 @@ export async function GET(req: NextRequest) {
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter((row: Record<string, unknown>) => {
+      result = result.filter((row) => {
         const fullName = String(row.full_name || "").toLowerCase();
         const email = String(row.email || "").toLowerCase();
         const phone = String(row.phone || "").toLowerCase();
@@ -85,18 +88,19 @@ export async function GET(req: NextRequest) {
     }
 
     // Get children counts
-    const parentIds = result.map((p: Record<string, unknown>) => p.id);
+    const parentIds: string[] = result.map((p) => p.id);
     let childrenCounts: Record<string, number> = {};
     if (parentIds.length > 0) {
-      const { data: counts } = await admin
+      const { data: linksData } = await admin
         .from("parent_students")
-        .select("parent_id, count")
-        .in("parent_id", parentIds)
-        .group("parent_id");
+        .select("parent_id")
+        .in("parent_id", parentIds);
 
-      if (counts) {
-        for (const c of counts as Record<string, unknown>[]) {
-          childrenCounts[String(c.parent_id)] = Number(c.count) || 0;
+      if (linksData) {
+        for (const link of linksData) {
+          if (link.parent_id) {
+            childrenCounts[link.parent_id] = (childrenCounts[link.parent_id] || 0) + 1;
+          }
         }
       }
     }
@@ -117,7 +121,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "parents.create");
+    if (session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const body = await req.json();
     const action = body.action || "create";
@@ -173,7 +179,25 @@ async function handleCreateParent(
   const { data: existing } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
   if (existing) throw new ValidationError("Email already in use");
 
-  const { data, error } = await admin.from("profiles").insert([{
+  // Create auth user first
+  const tempPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  const { data: authUser, error: authError } = await admin.auth.admin.createUser({
+    email,
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: { full_name: fullName, user_category: "parent" },
+  });
+
+  if (authError || !authUser.user) {
+    console.error("[parents POST] Auth create error:", authError?.message);
+    throw new ValidationError(authError?.message || "Failed to create auth user");
+  }
+
+  const userId = authUser.user.id;
+
+  // Insert profile
+  const { data, error } = await admin.from("profiles").insert({
+    id: userId,
     email,
     full_name: fullName,
     phone,
@@ -182,10 +206,12 @@ async function handleCreateParent(
     is_active: true,
     password_changed: false,
     onboarding_completed: false,
-  }]).select().single();
+  }).select().single();
 
   if (error) {
-    console.error("[parents POST] Create error:", error.message);
+    // Rollback: delete auth user
+    await admin.auth.admin.deleteUser(userId);
+    console.error("[parents POST] Profile insert error:", error.message);
     return NextResponse.json({ error: error.message || "Failed to create parent" }, { status: 500 });
   }
 
@@ -193,7 +219,7 @@ async function handleCreateParent(
     user_id: session.userId,
     action: "PARENT_CREATED",
     table_name: "profiles",
-    record_id: data.id,
+    record_id: userId,
     new_data: body,
     ip_address: getClientIP(req),
   });
@@ -242,12 +268,12 @@ async function handleLinkStudent(
 
   if (existingLink) throw new ValidationError("This parent is already linked to this student");
 
-  const { data, error } = await admin.from("parent_students").insert([{
+  const { data, error } = await admin.from("parent_students").insert({
     parent_id: parentId,
     student_id: studentId,
     relationship,
     is_primary: isPrimary,
-  }]).select().single();
+  }).select().single();
 
   if (error) {
     console.error("[parents POST] Link error:", error.message);
@@ -338,7 +364,9 @@ async function handleBulkMessage(
 export async function PATCH(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "parents.edit");
+    if (session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const body = await req.json();
     const { id, ...updates } = body;
@@ -356,7 +384,11 @@ export async function PATCH(req: NextRequest) {
 
     if (!existing) return NextResponse.json({ error: "Parent not found" }, { status: 404 });
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: {
+      full_name?: string;
+      phone?: string | null;
+      is_active?: boolean;
+    } = {};
     if (updates.full_name !== undefined) updateData.full_name = String(updates.full_name).trim();
     if (updates.phone !== undefined) updateData.phone = updates.phone || null;
     if (updates.is_active !== undefined) updateData.is_active = Boolean(updates.is_active);
@@ -394,7 +426,9 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "parents.delete");
+    if (session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -404,16 +438,23 @@ export async function DELETE(req: NextRequest) {
     const admin = getSupabaseAdmin();
 
     // Check if parent has linked students
-    const { data: linkCount } = await admin
+    const { data: linksData } = await admin
       .from("parent_students")
-      .select("id", { count: "exact", head: true })
-      .eq("parent_id", id);
+      .select("id")
+      .eq("parent_id", id)
+      .limit(1);
 
-    if (linkCount && linkCount.length > 0) {
+    if (linksData && linksData.length > 0) {
       return NextResponse.json(
         { error: "Cannot delete parent with linked students. Unlink students first." },
         { status: 400 }
       );
+    }
+
+    // Delete auth user (cascades to profile via FK)
+    const { error: authError } = await admin.auth.admin.deleteUser(id);
+    if (authError) {
+      console.error("[parents DELETE] Auth delete error:", authError.message);
     }
 
     const { error } = await admin.from("profiles").delete().eq("id", id).eq("user_category", "parent");

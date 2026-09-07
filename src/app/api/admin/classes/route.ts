@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, requirePermission } from "@/lib/session";
+import { requireAuth } from "@/lib/session";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { logAudit } from "@/lib/audit";
 import { getClientIP } from "@/lib/security";
@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "classes.view");
+    if (session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
@@ -85,29 +87,30 @@ export async function GET(req: NextRequest) {
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter((row: Record<string, unknown>) => {
+      result = result.filter((row) => {
         const name = String(row.name || "").toLowerCase();
         const grade = String(row.grade_level || "").toLowerCase();
-        const stream = String((row as Record<string, unknown>).stream || "").toLowerCase();
-        const campusName = String((row.campuses as Record<string, unknown> | null)?.name || "").toLowerCase();
+        const stream = String(row.stream || "").toLowerCase();
+        const campusName = String(row.campuses?.name || "").toLowerCase();
         return name.includes(q) || grade.includes(q) || stream.includes(q) || campusName.includes(q);
       });
     }
 
     // Get student counts for each class
-    const classIds = result.map((c: Record<string, unknown>) => c.id);
+    const classIds: string[] = result.map((c) => c.id);
     let studentCounts: Record<string, number> = {};
     if (classIds.length > 0) {
-      const { data: counts } = await admin
+      const { data: studentsData } = await admin
         .from("students")
-        .select("class_id, count")
+        .select("class_id")
         .in("class_id", classIds)
-        .eq("status", "active")
-        .group("class_id");
+        .eq("status", "active");
 
-      if (counts) {
-        for (const c of counts as Record<string, unknown>[]) {
-          studentCounts[String(c.class_id)] = Number(c.count) || 0;
+      if (studentsData) {
+        for (const s of studentsData) {
+          if (s.class_id) {
+            studentCounts[s.class_id] = (studentCounts[s.class_id] || 0) + 1;
+          }
         }
       }
     }
@@ -128,7 +131,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "classes.create");
+    if (session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const body = await req.json();
     const action = body.action || "create";
@@ -197,17 +202,17 @@ async function handleCreateClass(
     if (!teacher) throw new ValidationError("Invalid class teacher selected");
   }
 
-  const { data, error } = await admin.from("classes").insert([{
+  const { data, error } = await admin.from("classes").insert({
     name,
     grade_level: gradeLevel,
     campus_id: campusId,
     class_teacher_id: classTeacherId,
-    stream: stream || null,
-    capacity: capacity || null,
-    room: room || null,
+    stream,
+    capacity,
+    room,
     academic_year: academicYear,
     is_active: true,
-  }]).select().single();
+  }).select().single();
 
   if (error) {
     console.error("[classes POST] Create error:", error.message);
@@ -298,7 +303,9 @@ async function handleRemoveSubject(
 export async function PATCH(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "classes.edit");
+    if (session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const body = await req.json();
     const { id, ...updates } = body;
@@ -310,7 +317,17 @@ export async function PATCH(req: NextRequest) {
     const { data: existing } = await admin.from("classes").select("*").eq("id", id).single();
     if (!existing) return NextResponse.json({ error: "Class not found" }, { status: 404 });
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: {
+      name?: string;
+      grade_level?: string;
+      campus_id?: string;
+      class_teacher_id?: string | null;
+      stream?: string | null;
+      capacity?: number | null;
+      room?: string | null;
+      academic_year?: string;
+      is_active?: boolean;
+    } = {};
     if (updates.name !== undefined) updateData.name = String(updates.name).trim();
     if (updates.grade_level !== undefined) updateData.grade_level = String(updates.grade_level).trim();
     if (updates.campus_id !== undefined) updateData.campus_id = String(updates.campus_id).trim();
@@ -354,7 +371,9 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const session = await requireAuth(req);
-    requirePermission(session, "classes.delete");
+    if (session.userCategory !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -364,12 +383,13 @@ export async function DELETE(req: NextRequest) {
     const admin = getSupabaseAdmin();
 
     // Check if class has students
-    const { data: studentCount } = await admin
+    const { data: studentsInClass } = await admin
       .from("students")
-      .select("id", { count: "exact", head: true })
-      .eq("class_id", id);
+      .select("id")
+      .eq("class_id", id)
+      .limit(1);
 
-    if (studentCount && studentCount.length > 0) {
+    if (studentsInClass && studentsInClass.length > 0) {
       return NextResponse.json(
         { error: "Cannot delete class with enrolled students. Transfer students first." },
         { status: 400 }

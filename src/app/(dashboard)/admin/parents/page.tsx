@@ -113,12 +113,16 @@ export default function ParentsManagementPage() {
   const fetchStudents = useCallback(async () => {
     try {
       const data = await apiGet<{ students: StudentOption[] }>("/api/admin/students?status=active");
-      setStudents(data.students?.map((s: Record<string, unknown>) => ({
-        id: String(s.id),
-        full_name: String(s.full_name || ""),
-        admission_number: String((s.students as Record<string, unknown> | null)?.admission_number || ""),
-        grade_level: String((s.students as Record<string, unknown> | null)?.grade_level || ""),
-      })) || []);
+      const studentList = (data.students || []) as Array<{
+        id: string; full_name: string;
+        students?: { admission_number?: string | null; grade_level?: string | null } | null;
+      }>;
+      setStudents(studentList.map((s) => ({
+        id: s.id,
+        full_name: s.full_name || "",
+        admission_number: s.students?.admission_number || "",
+        grade_level: s.students?.grade_level || "",
+      })));
     } catch (err: unknown) {
       console.error("Failed to load students:", err);
     }

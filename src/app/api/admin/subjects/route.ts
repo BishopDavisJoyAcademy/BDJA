@@ -7,6 +7,13 @@ import { getErrorMessage, AuthRequiredError, PermissionDeniedError } from "@/lib
 
 export const dynamic = "force-dynamic";
 
+interface LinkedClass {
+  id: string;
+  name: string;
+  grade_level: string;
+  teacher_name: string;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
@@ -27,17 +34,17 @@ export async function GET(req: NextRequest) {
       }
       if (!data) return NextResponse.json({ error: "Subject not found" }, { status: 404 });
 
-      let linkedClasses = [];
+      let linkedClasses: LinkedClass[] = [];
       if (withLinked) {
         const { data: linkedData } = await admin
           .from("class_subjects")
           .select("*, classes(id, name, grade_level), profiles!class_subjects_teacher_id_fkey(full_name)")
           .eq("subject_id", id);
-        linkedClasses = (linkedData || []).map((row: Record<string, unknown>) => ({
-          id: String((row.classes as Record<string, unknown> | null)?.id || row.id),
-          name: String((row.classes as Record<string, unknown> | null)?.name || ""),
-          grade_level: String((row.classes as Record<string, unknown> | null)?.grade_level || ""),
-          teacher_name: String((row.profiles as Record<string, unknown> | null)?.full_name || ""),
+        linkedClasses = (linkedData || []).map((row) => ({
+          id: String(row.classes?.id || row.id),
+          name: String(row.classes?.name || ""),
+          grade_level: String(row.classes?.grade_level || ""),
+          teacher_name: String(row.profiles?.full_name || ""),
         }));
       }
 
@@ -76,16 +83,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Subject name is required" }, { status: 400 });
     }
 
-    const insertData: Record<string, unknown> = {
-      name: body.name.trim(),
+    const { data, error } = await admin.from("subjects").insert({
+      name: String(body.name).trim(),
       code: body.code || null,
       grade_levels: body.grade_levels || null,
       description: body.description || null,
       grading_scales: body.grading_scales || null,
       curriculum_strands: body.curriculum_strands || null,
-    };
-
-    const { data, error } = await admin.from("subjects").insert([insertData]).select().single();
+    }).select().single();
 
     if (error) {
       console.error("[subjects POST] Create error:", error.message);
@@ -131,7 +136,14 @@ export async function PUT(req: NextRequest) {
     const { data: existing } = await admin.from("subjects").select("*").eq("id", id).single();
     if (!existing) return NextResponse.json({ error: "Subject not found" }, { status: 404 });
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: {
+      name?: string;
+      code?: string | null;
+      grade_levels?: string[] | null;
+      description?: string | null;
+      grading_scales?: unknown;
+      curriculum_strands?: unknown;
+    } = {};
     if (body.name !== undefined) updateData.name = String(body.name).trim();
     if (body.code !== undefined) updateData.code = body.code || null;
     if (body.grade_levels !== undefined) updateData.grade_levels = body.grade_levels || null;

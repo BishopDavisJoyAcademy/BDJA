@@ -968,6 +968,156 @@ export type Database = {
           },
         ]
       }
+      csv_import_batches: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          created_by: string
+          error_count: number | null
+          error_summary: Json | null
+          file_name: string
+          id: string
+          import_type: string
+          processed_rows: number | null
+          started_at: string | null
+          status: string | null
+          success_count: number | null
+          total_rows: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          created_by: string
+          error_count?: number | null
+          error_summary?: Json | null
+          file_name: string
+          id?: string
+          import_type: string
+          processed_rows?: number | null
+          started_at?: string | null
+          status?: string | null
+          success_count?: number | null
+          total_rows: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string
+          error_count?: number | null
+          error_summary?: Json | null
+          file_name?: string
+          id?: string
+          import_type?: string
+          processed_rows?: number | null
+          started_at?: string | null
+          status?: string | null
+          success_count?: number | null
+          total_rows?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "csv_import_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      csv_import_rows: {
+        Row: {
+          batch_id: string
+          created_at: string | null
+          id: string
+          imported_record_id: string | null
+          raw_data: Json
+          row_number: number
+          status: string | null
+          validation_errors: Json | null
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string | null
+          id?: string
+          imported_record_id?: string | null
+          raw_data: Json
+          row_number: number
+          status?: string | null
+          validation_errors?: Json | null
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string | null
+          id?: string
+          imported_record_id?: string | null
+          raw_data?: Json
+          row_number?: number
+          status?: string | null
+          validation_errors?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "csv_import_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "csv_import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_exports: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          created_by: string
+          error_message: string | null
+          export_type: string
+          file_size: number | null
+          file_url: string | null
+          filters: Json | null
+          id: string
+          name: string
+          status: string | null
+          table_name: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          created_by: string
+          error_message?: string | null
+          export_type: string
+          file_size?: number | null
+          file_url?: string | null
+          filters?: Json | null
+          id?: string
+          name: string
+          status?: string | null
+          table_name?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string
+          error_message?: string | null
+          export_type?: string
+          file_size?: number | null
+          file_url?: string | null
+          filters?: Json | null
+          id?: string
+          name?: string
+          status?: string | null
+          table_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_exports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fee_payments: {
         Row: {
           amount: number
@@ -3210,6 +3360,50 @@ export type Database = {
           },
         ]
       }
+      report_templates: {
+        Row: {
+          config: Json
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          is_shared: boolean | null
+          name: string
+          report_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          is_shared?: boolean | null
+          name: string
+          report_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_shared?: boolean | null
+          name?: string
+          report_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       runtime_errors: {
         Row: {
           component: string | null
@@ -3982,6 +4176,89 @@ export type Database = {
           },
           {
             foreignKeyName: "timetable_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timetable_slots: {
+        Row: {
+          academic_year: string
+          campus_id: string | null
+          class_id: string
+          created_at: string | null
+          created_by: string | null
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean | null
+          room: string | null
+          start_time: string
+          subject_name: string
+          teacher_id: string | null
+          term: string
+          updated_at: string | null
+        }
+        Insert: {
+          academic_year: string
+          campus_id?: string | null
+          class_id: string
+          created_at?: string | null
+          created_by?: string | null
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          room?: string | null
+          start_time: string
+          subject_name: string
+          teacher_id?: string | null
+          term: string
+          updated_at?: string | null
+        }
+        Update: {
+          academic_year?: string
+          campus_id?: string | null
+          class_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          room?: string | null
+          start_time?: string
+          subject_name?: string
+          teacher_id?: string | null
+          term?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_slots_campus_id_fkey"
+            columns: ["campus_id"]
+            isOneToOne: false
+            referencedRelation: "campuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_slots_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_slots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_slots_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"

@@ -771,6 +771,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          is_active: boolean
           location: string
           name: string
           phone: string | null
@@ -779,6 +780,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          is_active?: boolean
           location: string
           name: string
           phone?: string | null
@@ -787,6 +789,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          is_active?: boolean
           location?: string
           name?: string
           phone?: string | null

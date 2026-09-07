@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
         // If teacher requests their own timetable
         if (teacherId !== session.userId) {
           // Check if teacher has manage permission
-          const canManage = session.permissions.includes("timetable.manage") || session.userCategory === "admin";
+          const canManage = session.permissions.includes("timetable.manage");
           if (!canManage) {
             return NextResponse.json({ error: "Access denied" }, { status: 403 });
           }

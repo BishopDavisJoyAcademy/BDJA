@@ -81,7 +81,7 @@ export async function PUT(req: NextRequest) {
     if (existing) {
       const { data, error } = await admin
         .from("timetable_config")
-        .update(cleanPayload)
+        .update(payload)
         .eq("id", existing.id)
         .select()
         .single();
@@ -90,7 +90,7 @@ export async function PUT(req: NextRequest) {
     } else {
       const { data, error } = await admin
         .from("timetable_config")
-        .insert(cleanPayload)
+        .insert(payload)
         .select()
         .single();
       if (error) throw new ValidationError(error.message);

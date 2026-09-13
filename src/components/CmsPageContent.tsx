@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { apiGet } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/errors";
 import { Loader2, AlertCircle } from "lucide-react";
+import DOMPurify from "dompurify";
 
 interface CmsPageData {
   id: string;
@@ -94,7 +95,7 @@ export function CmsPageContent({ slug: propSlug, fallback, publicMode = false }:
   return (
     <div className="prose prose-invert max-w-none">
       <h1 className="text-3xl font-bold text-white mb-6">{page.title}</h1>
-      <div dangerouslySetInnerHTML={{ __html: page.content }} />
+      <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(page.content) }} />
     </div>
   );
 }

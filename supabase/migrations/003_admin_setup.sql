@@ -1,4 +1,18 @@
 -- ============================================================
+-- 003_admin_setup
+-- Admin bootstrap: canonical admin profile + full permission grant. Run after creating the auth user.
+--
+-- BDJA Platform — Version 1.0.0
+-- Consolidated from: 003_admin_setup, 004_complete_reset (PHASE 4)
+--
+-- ORDER MATTERS: run 001 → 009 in sequence on a fresh database.
+-- ============================================================
+
+-- ============================================
+--PHASE 4: ADMIN SETUP
+-- ============================================
+
+-- ============================================================
 -- BDJA Platform — Admin User Setup
 -- Run this AFTER creating the auth user in Supabase Dashboard
 -- or after the user signs up via the app

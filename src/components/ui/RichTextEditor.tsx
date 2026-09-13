@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useCallback } from "react";
+import DOMPurify from "dompurify";
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, Image as ImageIcon,
@@ -42,27 +43,41 @@ const ToolbarButton = ({
 export function RichTextEditor({ value, onChange, placeholder, className = "" }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
 
+  const sanitize = useCallback(
+    (html: string) =>
+      DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+        // Never allow scriptable URLs or event handlers through the editor
+        FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form", "input", "button"],
+        FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
+      }),
+    []
+  );
+
   const exec = useCallback((command: string, valueArg: string = "") => {
     document.execCommand(command, false, valueArg);
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      onChange(sanitize(editorRef.current.innerHTML));
     }
-  }, [onChange]);
+  }, [onChange, sanitize]);
 
   const handleInput = useCallback(() => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      onChange(sanitize(editorRef.current.innerHTML));
     }
-  }, [onChange]);
+  }, [onChange, sanitize]);
+
+  const isSafeUrl = (url: string) =>
+    /^(https?:|mailto:|\/|\.\/|\.\.\/)/i.test(url.trim());
 
   const insertLink = useCallback(() => {
     const url = prompt("Enter URL:");
-    if (url) exec("createLink", url);
+    if (url && isSafeUrl(url)) exec("createLink", url);
   }, [exec]);
 
   const insertImage = useCallback(() => {
     const url = prompt("Enter image URL:");
-    if (url) exec("insertImage", url);
+    if (url && isSafeUrl(url)) exec("insertImage", url);
   }, [exec]);
 
   return (

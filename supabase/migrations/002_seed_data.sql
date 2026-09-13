@@ -1,7 +1,17 @@
 -- ============================================================
+-- 002_seed_data
+-- Reference & content seeds: permission categories, permissions, campuses, subjects, CMS pages, homepage content.
+--
+-- BDJA Platform — Version 1.0.0
+-- Consolidated from: 002_seed_data, 004_complete_reset (seed section), 015, 016 (permission seeds merged)
+--
+-- ORDER MATTERS: run 001 → 009 in sequence on a fresh database.
+-- ============================================================
+
+-- -- ============================================================
 -- BDJA Platform — Seed Data (v4.0)
 -- Corrected to match the complete 61-table schema
--- Run AFTER 001_initial_schema.sql
+-- Runs after 001_core_schema.sql
 -- ============================================================
 
 -- ============================================
@@ -67,7 +77,7 @@ INSERT INTO campuses (name, location, phone, email)
 VALUES ('Bishop Davis Joy Academy Main Campus', 'Kenya Faiba, near Peaks Hotel, Nanyuki–Nturukuma', '0708 449 158', 'bishopdavisjoyacademy@gmail.com')
 ON CONFLICT DO NOTHING;
 
-
+-- ============================================
 -- DEFAULT SUBJECTS
 -- ============================================
 
@@ -120,3 +130,49 @@ INSERT INTO homepage_notices (title, content, notice_date, priority, is_pinned, 
  ('School Fees Reminder', 'Please ensure all fees are paid by the deadline. Contact the bursar for any inquiries.', '2026-08-12', 2, false, true),
  ('Admissions Are Open', 'Enroll your child at Bishop Davis Joy Academy. Call 0708 449 158 or email bishopdavisjoyacademy@gmail.com.', '2026-08-12', 3, false, true)
 ON CONFLICT DO NOTHING;
+
+
+-- ============================================
+-- ADDITIONAL PERMISSIONS (users / campuses / audit / permissions)
+-- ============================================
+
+-- ============================================================
+-- BDJA Phase 7A: Admin Foundation Fixes
+-- Dark theme UI primitives, Users/Campuses/Setup/Audit rewrites
+-- No new tables - uses existing schema
+-- Date: 2026-09-06
+-- ============================================================
+
+-- Ensure permission categories exist FIRST (required by FK constraint)
+INSERT INTO permission_categories (key, name, icon, sort_order) VALUES
+  ('users', 'User Management', 'Users', 1),
+  ('campuses', 'Campus Management', 'Building2', 2),
+  ('audit', 'Audit & Compliance', 'Shield', 10)
+ON CONFLICT (key) DO NOTHING;
+
+-- Then insert permissions
+INSERT INTO permissions (key, name, category, description) VALUES
+  ('users.view', 'View All Users', 'users', 'View the complete list of all platform users'),
+  ('users.edit', 'Edit Users', 'users', 'Activate or deactivate user accounts'),
+  ('campuses.create', 'Create Campuses', 'campuses', 'Add new school campuses'),
+  ('campuses.edit', 'Edit Campuses', 'campuses', 'Modify campus details'),
+  ('campuses.delete', 'Delete Campuses', 'campuses', 'Remove campuses from the system'),
+  ('audit.view', 'View Audit Logs', 'audit', 'Access the complete audit log history')
+ON CONFLICT (key) DO NOTHING;
+
+-- ============================================================
+-- BDJA Phase 7B: Sovereign View
+-- New permissions for session management and permission override
+-- Date: 2026-09-06
+-- ============================================================
+
+-- Ensure permission categories exist
+INSERT INTO permission_categories (key, name, icon, sort_order) VALUES
+  ('permissions', 'Permission Management', 'Shield', 3)
+ON CONFLICT (key) DO NOTHING;
+
+-- New permissions
+INSERT INTO permissions (key, name, category, description) VALUES
+  ('permissions.view', 'View Permissions', 'permissions', 'View user permission assignments'),
+  ('permissions.edit', 'Edit Permissions', 'permissions', 'Grant or revoke user permissions')
+ON CONFLICT (key) DO NOTHING;

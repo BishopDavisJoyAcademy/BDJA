@@ -805,11 +805,7 @@ bdja/
 ├── .eslintrc.json
 ├── .gitignore
 ├── .prettierrc
-├── CHANGELOG.md
 ├── README.md
-├── SECURITY.md
-├── SETUP.md
-├── SETUP_TYPES.md
 ├── next-env.d.ts
 ├── next.config.js
 ├── package.json

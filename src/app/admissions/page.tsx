@@ -201,124 +201,192 @@ export default function AdmissionsPage() {
   };
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank", "width=800,height=600");
+    // Standalone print document built purely from form state — no site chrome, no watermarks.
+    const escapeHtml = (value: string): string =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+    const field = (label: string, value: string): string =>
+      `<div class="field"><div class="field-label">${escapeHtml(label)}</div><div class="field-value">${value ? escapeHtml(value) : '<span class="na">N/A</span>'}</div></div>`;
+
+    const campus = campuses.find((x) => x.id === form.campus_id);
+    const logoUrl = `${window.location.origin}/logo-official.png`;
+    const ref = admissionRef ? admissionRef.slice(0, 8).toUpperCase() : "PENDING";
+    const submittedOn = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+    const doc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Admission Application - Bishop Davis Joy Academy</title>
+<style>
+  @page { margin: 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: #111; background: #fff; margin: 0; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .doc { max-width: 720px; margin: 0 auto; }
+  .header { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #D4AF37; padding-bottom: 14px; margin-bottom: 20px; }
+  .header img { width: 72px; height: 72px; object-fit: contain; }
+  .header .school { font-size: 21px; font-weight: 700; letter-spacing: 0.2px; margin: 0; }
+  .header .motto { font-size: 12px; font-style: italic; color: #B8960C; margin: 2px 0 0 0; }
+  .header .contact { font-size: 10px; color: #666; margin-top: 4px; }
+  .doc-title { text-align: center; margin: 4px 0 18px 0; }
+  .doc-title h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
+  .doc-title p { font-size: 11px; color: #666; margin: 3px 0 0 0; }
+  .meta-bar { display: flex; justify-content: space-between; background: #FBF7E8; border: 1px solid #E5D9A7; border-radius: 6px; padding: 8px 12px; font-size: 11px; margin-bottom: 18px; }
+  .meta-bar strong { color: #7A6410; }
+  .section { margin-bottom: 16px; page-break-inside: avoid; }
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #7A6410; border-bottom: 1px solid #E5D9A7; padding-bottom: 4px; margin-bottom: 10px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+  .field-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #777; }
+  .field-value { font-size: 12.5px; font-weight: 600; margin-top: 1px; }
+  .na { color: #aaa; font-weight: 400; }
+  .full { grid-column: 1 / -1; }
+  .notice { background: #FBF7E8; border: 1px solid #E5D9A7; border-radius: 6px; padding: 12px 14px; margin-top: 18px; page-break-inside: avoid; }
+  .notice h3 { font-size: 11px; margin: 0 0 6px 0; color: #7A6410; text-transform: uppercase; letter-spacing: 0.5px; }
+  .notice ol { margin: 0; padding-left: 18px; font-size: 10.5px; color: #444; }
+  .notice li { margin-bottom: 3px; }
+  .footer { margin-top: 26px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 9px; color: #999; text-align: center; line-height: 1.6; }
+  @media print { .no-print-btn { display: none; } }
+</style>
+</head>
+<body>
+  <div class="doc">
+    <div class="header">
+      <img src="${logoUrl}" alt="Bishop Davis Joy Academy" />
+      <div>
+        <p class="school">Bishop Davis Joy Academy</p>
+        <p class="motto">Prayer, Commitment and Hard Work for Success</p>
+        <p class="contact">Admissions Office &bull; bishopdavisjoyacademy@gmail.com</p>
+      </div>
+    </div>
+
+    <div class="doc-title">
+      <h2>Admission Application</h2>
+      <p>Official copy for parent/guardian records</p>
+    </div>
+
+    <div class="meta-bar">
+      <span>Reference: <strong>${escapeHtml(ref)}</strong></span>
+      <span>Submitted: <strong>${escapeHtml(submittedOn)}</strong></span>
+      <span>Campus: <strong>${escapeHtml(campus?.name || "—")}</strong></span>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Student Information</div>
+      <div class="grid">
+        ${field("First Name", form.first_name)}
+        ${field("Last Name", form.last_name)}
+        ${field("Date of Birth", form.date_of_birth)}
+        ${field("Gender", form.gender)}
+        ${field("Nationality", form.nationality)}
+        ${field("Religion", form.religion)}
+        ${field("Birth Certificate No.", form.birth_certificate_no)}
+        ${field("Passport No.", form.passport_no)}
+        ${field("Sibling Names", form.sibling_names)}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Academic Background</div>
+      <div class="grid">
+        ${field("Grade Applied For", form.grade_applied)}
+        ${field("Campus", campus ? `${campus.name} — ${campus.location}` : "")}
+        ${field("Previous School", form.previous_school)}
+        ${field("Previous Grade", form.previous_grade)}
+        <div class="field full"><div class="field-label">Home Address</div><div class="field-value">${escapeHtml(form.home_address || "") || '<span class="na">N/A</span>'}${form.city || form.county ? escapeHtml([form.city, form.county].filter(Boolean).join(", ")) : ""}</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Health &amp; Medical</div>
+      <div class="grid">
+        ${field("Medical Conditions", form.medical_conditions || "None")}
+        ${field("Allergies", form.allergies || "None")}
+        <div class="field full"><div class="field-label">Special Needs</div><div class="field-value">${form.special_needs ? escapeHtml(form.special_needs) : 'None'}</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Parent / Guardian</div>
+      <div class="grid">
+        ${field("Full Name", form.parent_name)}
+        ${field("Phone", form.parent_phone)}
+        ${field("Email", form.parent_email)}
+        ${field("Occupation", form.parent_occupation)}
+        ${field("ID Number", form.parent_id_number)}
+        <div class="field full"><div class="field-label">Address</div><div class="field-value">${escapeHtml(form.parent_address || "") || '<span class="na">N/A</span>'}</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Emergency Contact</div>
+      <div class="grid">
+        ${field("Full Name", form.emergency_contact_name)}
+        ${field("Phone", form.emergency_contact_phone)}
+        ${field("Relationship", form.emergency_contact_relationship)}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Additional Notes</div>
+      <div class="grid">
+        <div class="field full"><div class="field-value" style="font-weight:400">${escapeHtml(form.notes || "") || '<span class="na">None</span>'}</div></div>
+      </div>
+    </div>
+
+    <div class="notice">
+      <h3>What Happens Next</h3>
+      <ol>
+        <li>Our admissions team will review your application within 5–7 working days.</li>
+        <li>You will be contacted via phone or email regarding the next steps.</li>
+        <li>An interview and/or assessment may be scheduled for the applicant.</li>
+        <li>If processing is delayed, you may be required to appear physically at the school with original documents.</li>
+      </ol>
+    </div>
+
+    <div class="footer">
+      This document was generated by the Bishop Davis Joy Academy Admissions System.<br />
+      Please retain this copy for your records &bull; Reference: ${escapeHtml(ref)}
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const printWindow = window.open("", "_blank", "width=820,height=1000");
     if (!printWindow) {
       toast.error("Please allow popups to print the application");
       return;
     }
-    const printContent = document.getElementById("admission-confirmation")?.innerHTML || "";
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Admission Application - Bishop Davis Joy Academy</title>
-          <style>
-            @page { margin: 15mm; }
-            body { font-family: system-ui, -apple-system, sans-serif; color: #000; background: #fff; line-height: 1.5; }
-            .print-header { border-bottom: 2px solid #D4AF37; padding-bottom: 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
-            .print-header img { width: 64px; height: 64px; object-fit: contain; }
-            .print-header h1 { font-size: 20px; font-weight: bold; margin: 0; }
-            .print-header .motto { font-size: 12px; font-style: italic; color: #B8860B; }
-            .print-header .meta { font-size: 10px; color: #666; margin-top: 4px; }
-            .section { margin-bottom: 16px; }
-            .section-title { font-size: 14px; font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 8px; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-            .field { margin-bottom: 6px; }
-            .field-label { font-size: 10px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; }
-            .field-value { font-size: 13px; font-weight: 500; }
-            .notice { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-top: 16px; }
-            .notice h3 { font-size: 12px; margin: 0 0 8px 0; }
-            .notice ul { margin: 0; padding-left: 16px; font-size: 11px; color: #555; }
-            .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 9px; color: #888; text-align: center; }
-          </style>
-        </head>
-        <body>
-          ${printContent}
-        </body>
-      </html>
-    `);
+    printWindow.document.open();
+    printWindow.document.write(doc);
     printWindow.document.close();
     printWindow.focus();
+    const cleanup = () => { printWindow.close(); };
+    printWindow.onafterprint = cleanup;
+    printWindow.addEventListener("afterprint", cleanup);
     setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
+      try {
+        printWindow.print();
+      } catch {
+        /* popup closed by user before print */
+      }
+    }, 400);
   };
 
-  // ========== PRINT STYLES ==========
-  const printStyles = `
-    @media print {
-      @page { margin: 15mm; }
-      html, body {
-        background: white !important;
-        color: black !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-      .no-print, .no-print * {
-        display: none !important;
-        visibility: hidden !important;
-      }
-      .print-only {
-        display: block !important;
-        visibility: visible !important;
-      }
-      .fixed, [class*="fixed"] {
-        position: static !important;
-      }
-      .admissions-container {
-        max-width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-      .admission-card {
-        border: none !important;
-        box-shadow: none !important;
-        background: white !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-      .print-header {
-        border-bottom: 2px solid #D4AF37 !important;
-        padding-bottom: 12px !important;
-        margin-bottom: 16px !important;
-      }
-      h1, h2, h3, p, div, span, strong {
-        color: black !important;
-      }
-      .text-slate-400, .text-slate-500, .text-slate-600 {
-        color: #333 !important;
-      }
-      .text-white, .text-slate-100, .text-slate-200, .text-slate-300 {
-        color: black !important;
-      }
-      .bg-slate-800\/40, .bg-slate-800\/30, .bg-amber-500\/5 {
-        background: white !important;
-        border: 1px solid #ddd !important;
-      }
-      .text-\[#D4AF37\] {
-        color: #B8860B !important;
-      }
-      .text-emerald-400, .text-amber-300, .text-amber-400, .text-red-400 {
-        color: #333 !important;
-      }
-      .bg-emerald-500\/15, .bg-amber-500\/15 {
-        background: white !important;
-        border: 1px solid #ddd !important;
-      }
-    }
-    .print-only { display: none; }
-  `;
+
 
   if (submitted && admissionRef) {
     return (
       <div className="min-h-screen bg-slate-950 relative">
       {/* Logo watermark background for form steps */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-0 flex items-center justify-center no-print">
-        <Image src="/logo.png" alt="" width={600} height={600} className="object-contain" priority={false} />
+        <Image src="/logo-official.png" alt="" width={600} height={600} className="object-contain" priority={false} />
       </div>
-        <style>{printStyles}</style>
-        <div className="admissions-container max-w-4xl mx-auto py-8 px-4">
+          <div className="admissions-container max-w-4xl mx-auto py-8 px-4">
           {/* Confirmation Card */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -387,33 +455,6 @@ export default function AdmissionsPage() {
               </ul>
             </div>
 
-            {/* Printable Application Summary */}
-            <div id="admission-confirmation" className="print-only">
-              <h3 className="text-lg font-bold text-slate-900 mb-4 border-b border-slate-300 pb-2">Application Summary</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><strong>Full Name:</strong> {form.first_name} {form.last_name}</div>
-                <div><strong>Date of Birth:</strong> {form.date_of_birth}</div>
-                <div><strong>Gender:</strong> {form.gender}</div>
-                <div><strong>Nationality:</strong> {form.nationality}</div>
-                <div><strong>Religion:</strong> {form.religion || "N/A"}</div>
-                <div><strong>Birth Cert No:</strong> {form.birth_certificate_no || "N/A"}</div>
-                <div><strong>Grade Applied:</strong> {form.grade_applied}</div>
-                <div><strong>Previous School:</strong> {form.previous_school || "N/A"}</div>
-                <div><strong>Home Address:</strong> {form.home_address || "N/A"}, {form.city || ""}, {form.county || ""}</div>
-                <div><strong>Medical Conditions:</strong> {form.medical_conditions || "None"}</div>
-                <div><strong>Allergies:</strong> {form.allergies || "None"}</div>
-                <div><strong>Parent/Guardian:</strong> {form.parent_name}</div>
-                <div><strong>Parent Phone:</strong> {form.parent_phone}</div>
-                <div><strong>Parent Email:</strong> {form.parent_email || "N/A"}</div>
-                <div><strong>Emergency Contact:</strong> {form.emergency_contact_name || "N/A"} ({form.emergency_contact_relationship || "N/A"}) — {form.emergency_contact_phone || "N/A"}</div>
-                <div><strong>Notes:</strong> {form.notes || "N/A"}</div>
-              </div>
-              <div className="mt-8 pt-4 border-t border-slate-300 text-xs text-slate-500 text-center">
-                This document was generated by the Bishop Davis Joy Academy Admissions System.<br/>
-                Please retain this copy for your records. Reference: {admissionRef.slice(0, 8).toUpperCase()}
-              </div>
-            </div>
-
             <div className="no-print flex flex-wrap gap-3 justify-center">
               <button
                 onClick={handlePrint}
@@ -439,9 +480,8 @@ export default function AdmissionsPage() {
     <div className="min-h-screen bg-slate-950 relative">
       {/* Logo watermark background for form steps */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-0 flex items-center justify-center no-print">
-        <Image src="/logo.png" alt="" width={600} height={600} className="object-contain" priority={false} />
+        <Image src="/logo-official.png" alt="" width={600} height={600} className="object-contain" priority={false} />
       </div>
-      <style>{printStyles}</style>
       <div className="admissions-container max-w-4xl mx-auto py-8 px-4">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">

@@ -178,6 +178,9 @@ export default function LoginPage() {
         return;
       }
 
+      // Signal the PWA install prompt (fires once, only after a successful login)
+      window.dispatchEvent(new Event("bdja:login-success"));
+
       if (result.mustChangePassword) {
         const type = role === "student" ? "student" : "staff";
         router.replace(`/reset-password?first=true&type=${type}`);

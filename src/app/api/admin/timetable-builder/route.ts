@@ -105,6 +105,10 @@ export async function GET(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
+    const action = searchParams.get("action");
+    if (action === "reference") {
+      return handleGetReference();
+    }
     const classId = searchParams.get("class_id");
     const teacherId = searchParams.get("teacher_id");
     const academicYear = searchParams.get("academic_year");
@@ -183,6 +187,48 @@ export async function POST(req: NextRequest) {
     console.error("[timetable POST] Unhandled error:", error);
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
+}
+
+async function handleGetReference() {
+  const admin = getSupabaseAdmin();
+
+  const [classesRes, teachersRes, campusesRes, subjectsRes] = await Promise.all([
+    admin
+      .from("classes")
+      .select("*")
+      .or("is_active.eq.true,is_active.is.null")
+      .order("grade_level", { ascending: true })
+      .order("name", { ascending: true }),
+    admin
+      .from("profiles")
+      .select("id, full_name, email, role, campus_id")
+      .eq("user_category", "staff")
+      .eq("is_active", true)
+      .order("full_name", { ascending: true }),
+    admin
+      .from("campuses")
+      .select("*")
+      .eq("is_active", true)
+      .order("name", { ascending: true }),
+    admin
+      .from("subjects")
+      .select("*")
+      .order("name", { ascending: true }),
+  ]);
+
+  const firstError =
+    classesRes.error || teachersRes.error || campusesRes.error || subjectsRes.error;
+  if (firstError) {
+    console.error("[timetable reference] Supabase error:", firstError.message);
+    return NextResponse.json({ error: "Failed to load reference data" }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    classes: classesRes.data || [],
+    teachers: teachersRes.data || [],
+    campuses: campusesRes.data || [],
+    subjects: subjectsRes.data || [],
+  });
 }
 
 async function handleCheckConflicts(body: Record<string, unknown>) {

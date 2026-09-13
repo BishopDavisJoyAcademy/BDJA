@@ -16,6 +16,7 @@ import {
 import { ADMIN_SEGMENT } from "@/lib/constants";
 import { JoyChat } from "@/components/joy/JoyChat";
 import { JoyPageBubble } from "@/components/joy/JoyPageBubble";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { ParentProvider, ChildSelector } from "@/contexts/ParentContext";
 
 interface NavItem {
@@ -357,6 +358,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       </div>
       <JoyPageBubble />
           <JoyChat />
+          <InstallPrompt />
     </div>
   );
 }
